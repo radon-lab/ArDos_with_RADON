@@ -2320,7 +2320,7 @@ void error(uint8_t err) //ошибки
   if (time_out < time_micros / 100) { //если время вышло, выводим ошибку
 
     clrScr(); //очистка экрана
-    setFont(SmallFont); //установка шрифта
+    setFont(RusFont); //установка шрифта
 
     invertText(true);
     print(" JIB<RF! ", CENTER, 0); //ОШИБКА!
