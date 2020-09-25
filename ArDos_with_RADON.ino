@@ -2325,25 +2325,25 @@ void error(uint8_t err) //ошибки
     invertText(true);
     print(" JIB<RF! ", CENTER, 0); //ОШИБКА!
     invertText(false);
-    print("Kju: ", CENTER, 32); //log:
+    print("Kju&", 18, 32); //log:
 
     switch (err) {
       case 0:
-        print("C,jq hf,jns", CENTER, 16); //WDT timer
-        print("nfqvthf!", CENTER, 24); //failure!
-        printNumI(wdt_period, RIGHT, 32);
+        print("C,jq hf,jns", CENTER, 16); //Сбой работы
+        print("nfqvthf!", CENTER, 24); //таймера!
+        printNumI(wdt_period, 43, 32);
         break;
 
       case 1:
-        print("Gthtuheprf", CENTER, 16); //Converter
-        print("ghtj,hfpjdfn!", CENTER, 24); //overload!
-        printNumI(hv_adc, RIGHT, 32);
+        print("Gthtuheprf", CENTER, 16); //Перегрузка
+        print("ghtj,hfpjdfn!", CENTER, 24); //преобразоват!
+        printNumI(hv_adc, 43, 32);
         break;
 
       case 2:
-        print("Rjhjnrjt pfv.", CENTER, 16); //Converter
-        print("ghtj,hfpjdfn!", CENTER, 24); //short-circuit!
-        printNumI(hv_adc, RIGHT, 32);
+        print("Rjhjnrjt pfv.", CENTER, 16); //Короткое зам.
+        print("ghtj,hfpjdfn!", CENTER, 24); //преобразователя!
+        printNumI(hv_adc, 43, 32);
         break;
     }
 
