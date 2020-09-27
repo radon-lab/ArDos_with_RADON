@@ -1,4 +1,4 @@
-Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr #ArDos_with_RADON_3.0.3
+Страница проекта [ArDos](http://arduino.ru/forum/proekty/delaem-dozimetr).
 
 Желательна установка лёгкого ядра https://alexgyver.github.io/package_GyverCore_index.json и загрузчика OptiBoot v8 https://github.com/Optiboot/optiboot
 
