@@ -1,6 +1,6 @@
-Страница проекта [ArDos](http://arduino.ru/forum/proekty/delaem-dozimetr).
+Страница проекта [ArDos](http://arduino.ru/forum/proekty/delaem-dozimetr) и [прошивки](http://arduino.ru/forum/proekty/delaem-dozimetr?page=84#comment-526157).
 
-Желательна установка лёгкого ядра https://alexgyver.github.io/package_GyverCore_index.json и загрузчика OptiBoot v8 https://github.com/Optiboot/optiboot
+Желательна установка [лёгкого ядра](https://alexgyver.github.io/package_GyverCore_index.json) и загрузчика [OptiBoot v8](https://github.com/Optiboot/optiboot).
 
 Для сброса настроек необходимо зажать клавишу "ОК" и включить питание, появится сообщение об успешном сбросе.
   Если что-то идет или работает не так, в первую очередь пробуйте сброс настроек хот-кеем как описано выше!!!
