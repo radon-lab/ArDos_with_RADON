@@ -490,6 +490,7 @@ ISR(INT1_vect) //внешнее прерывание на пине INT1 - вкл
 {
   _delay_ms(2000); //ждем 2 секунды
   if (!OK_OUT) { //если кнопка не отжата
+    PRR &= ~ lowByte(_BV(0)); //включаем питание АЦП
     if (VCC_read() < LOW_BAT_POWER) { //если батарея не разряжена
       disableSleep(contrast); //включаем дисплей
       if (light_lcd) LIGHT_ON; //включаем подсветку, если была включена настройками
@@ -504,7 +505,6 @@ ISR(INT1_vect) //внешнее прерывание на пине INT1 - вкл
 
       WDT_enable(); //запускаем WatchDog с пределителем 2
       EIMSK = 0b00000001; //разрешаем внешнее прерывание INT0
-      PRR &= ~ lowByte(_BV(0)); //включаем питание АЦП
 
       clrScr(); //очистка экрана
 
@@ -518,6 +518,7 @@ ISR(INT1_vect) //внешнее прерывание на пине INT1 - вкл
       print("hfphz;tyf!", CENTER, 40); //разряжена!
       for (uint32_t t = millis() + POWER_TIME; t > millis();); //ждём
       enableSleep(); //выключаем дисплей
+      PRR |= lowByte(_BV(0)); //выключаем питание ацп
     }
   }
 }
@@ -869,7 +870,7 @@ void power_down(void) //выключение устройства
   EIMSK = 0b00000000; //запрещаем внешние прерывание
 #endif
 
-  PRR |= lowByte(_BV(0)); //выключаем питание ацп
+  PRR |= lowByte(_BV(0)); //выключаем питание АЦП
 
   while (power_off) sleep_pwr();
 }
