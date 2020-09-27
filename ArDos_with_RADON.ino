@@ -2340,21 +2340,19 @@ void error_messege(void) //сообщение об ошибке
       case 1:
         print("C,jq hf,jns", CENTER, 16); //Сбой работы
         print("nfqvthf!", CENTER, 24); //таймера!
-        print("Kju&", 18, 32); //log:
-        printNumI(wdt_period, 43, 32);
         break;
 
       case 2:
         print("Gthtuheprf", CENTER, 16); //Перегрузка
         print("ghtj,hfpjdfn!", CENTER, 24); //преобразоват!
-        print("FWG&", 18, 32); //log:
+        print("FWG&", 18, 32); //АЦП:
         printNumI(hv_adc, 43, 32);
         break;
 
       case 3:
         print("Rjhjnrjt pfv.", CENTER, 16); //Короткое зам.
         print("ghtj,hfpjdfn!", CENTER, 24); //преобразователя!
-        print("FWG&", 18, 32); //log:
+        print("FWG&", 18, 32); //АЦП:
         printNumI(hv_adc, 43, 32);
         break;
 
