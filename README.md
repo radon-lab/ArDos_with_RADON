@@ -1,13 +1,11 @@
-# <b>Страница проекта [ArDos](http://arduino.ru/forum/proekty/delaem-dozimetr) с [общими рекомендациями](http://arduino.ru/forum/proekty/delaem-dozimetr#comment-263653) и [прошивки](http://arduino.ru/forum/proekty/delaem-dozimetr?page=84#comment-526157).</b>
-
-![](http://arduino.ru/sites/default/files/u52103/bezymyannyy.png "")
+# <b>Страница [проекта ArDos](http://arduino.ru/forum/proekty/delaem-dozimetr) с [общими рекомендациями](http://arduino.ru/forum/proekty/delaem-dozimetr#comment-263653) и [прошивки](http://arduino.ru/forum/proekty/delaem-dozimetr?page=84#comment-526157).</b>
 
 ## Желательна установка [лёгкого ядра](https://alexgyver.github.io/package_GyverCore_index.json) и загрузчика [OptiBoot v8](https://github.com/Optiboot/optiboot).
 
 Для сброса настроек необходимо зажать клавишу "ОК" и включить питание, появится сообщение об успешном сбросе.
   Если что-то идет или работает не так, в первую очередь пробуйте сброс настроек хот-кеем как описано выше!!!
 
-  Не забудьте установить свои настройки ADC_value и k_delitel в файле SETUP, если вы не настраивали параметры утилитой ранее!!! Этот файл также можно сохранить отдельно и вставлять в новые версии программы.
+  <b>Не забудьте установить свои настройки ADC_value и k_delitel в файле SETUP, если вы не настраивали параметры утилитой ранее!!!</b> Этот файл также можно сохранить отдельно и вставлять в новые версии программы.
 
   После выключения устройства при низком напряжении акб, включить его можно или передергиванием выключателя питания или зажать кнопку "OK" более чем на 2 сек.
 
@@ -88,3 +86,9 @@
   
   - Нет счета
   Отсутствуют импульсы от счетчика, проверьте цепи подключения счетчика, сам счетчик или преобразователь.
+  
+  
+  
+ <p align="center">
+  <img src="http://arduino.ru/sites/default/files/u52103/bezymyannyy.png" alt=""/>
+</p>
