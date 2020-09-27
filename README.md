@@ -1,4 +1,4 @@
-<b style='font-size:20px'>Страница проекта [ArDos](http://arduino.ru/forum/proekty/delaem-dozimetr) с [общими рекомендациями](http://arduino.ru/forum/proekty/delaem-dozimetr#comment-263653) и [прошивки "RADON"](http://arduino.ru/forum/proekty/delaem-dozimetr?page=84#comment-526157).</b>
+<b><font size=7>Страница проекта [ArDos](http://arduino.ru/forum/proekty/delaem-dozimetr) с [общими рекомендациями](http://arduino.ru/forum/proekty/delaem-dozimetr#comment-263653) и [прошивки "RADON"](http://arduino.ru/forum/proekty/delaem-dozimetr?page=84#comment-526157).</font></b>
 
 Желательна установка [лёгкого ядра](https://alexgyver.github.io/package_GyverCore_index.json) и загрузчика [OptiBoot v8](https://github.com/Optiboot/optiboot).
 
