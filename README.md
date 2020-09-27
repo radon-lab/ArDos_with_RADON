@@ -1,6 +1,4 @@
-# <b align="center">Страница [проекта ArDos](http://arduino.ru/forum/proekty/delaem-dozimetr) с [общими рекомендациями](http://arduino.ru/forum/proekty/delaem-dozimetr#comment-263653) и [прошивки](http://arduino.ru/forum/proekty/delaem-dozimetr?page=84#comment-526157).</b>
-
-## <p align="center">Желательна установка [лёгкого ядра](https://alexgyver.github.io/package_GyverCore_index.json) и загрузчика [OptiBoot v8](https://github.com/Optiboot/optiboot).</p>
+# <p align="center">Страница [проекта ArDos](http://arduino.ru/forum/proekty/delaem-dozimetr) с [общими рекомендациями](http://arduino.ru/forum/proekty/delaem-dozimetr#comment-263653) и [прошивки](http://arduino.ru/forum/proekty/delaem-dozimetr?page=84#comment-526157).</p> 
 
 Для сброса настроек необходимо зажать клавишу "ОК" и включить питание, появится сообщение об успешном сбросе.
   Если что-то идет или работает не так, в первую очередь пробуйте сброс настроек хот-кеем как описано выше!!!
@@ -87,7 +85,8 @@
   - Нет счета
   Отсутствуют импульсы от счетчика, проверьте цепи подключения счетчика, сам счетчик или преобразователь.
   
-  
+  ## <p align="center">Желательна установка [лёгкого ядра](https://alexgyver.github.io/package_GyverCore_index.json) и загрузчика [OptiBoot v8](https://github.com/Optiboot/optiboot).</p>
+
   
  <p align="center">
   <img src="http://arduino.ru/sites/default/files/u52103/bezymyannyy.png" alt=""/>
