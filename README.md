@@ -1,4 +1,4 @@
-Страница проекта [ArDos](http://arduino.ru/forum/proekty/delaem-dozimetr) и [прошивки](http://arduino.ru/forum/proekty/delaem-dozimetr?page=84#comment-526157).
+Страница проекта [ArDos](http://arduino.ru/forum/proekty/delaem-dozimetr#comment-263653) и [прошивки](http://arduino.ru/forum/proekty/delaem-dozimetr?page=84#comment-526157).
 
 Желательна установка [лёгкого ядра](https://alexgyver.github.io/package_GyverCore_index.json) и загрузчика [OptiBoot v8](https://github.com/Optiboot/optiboot).
 
