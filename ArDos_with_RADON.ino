@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.0.3 low_pwr 27.09.20 специально для проекта ArDos
+  Версия программы RADON v3.0.3 low_pwr 28.09.20 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr
   Желательна установка лёгкого ядра https://alexgyver.github.io/package_GyverCore_index.json и загрузчика OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -94,6 +94,8 @@
   3.0.2 24.09.20 - переработан алгоритм обработки экранов "ФОН" и "ДОЗА", это позволило уменьшить объём программы на 2Кб и расширить функционал добавлением градаций в режим замера и тревогу.
   3.0.2 25.09.20 - оптимизация работы с дисплеем, исправлен автоматический масштаб графиков.
   3.0.3 26.09.20 - новый алгоритм обработки ошибок.
+  3.0.3 28.09.20 - шкала точности фона разделена на заполнение времени счета и заполнения всего буфера для быстрого усреднения, добавлен порог выхода из сна при высоких уровнях фона, параметр в "config" - "RAD_SLEEP_OUT",
+                   теперь если пункт меню "СОН" стоит "ВЫКЛ", то энергосбережение выключается.
 
 
   Для сброса настроек необходимо зажать клавишу "ОК" и включить питание, появится сообщение об успешном сбросе.
@@ -177,7 +179,7 @@
 
   - Короткое замыкание преобразователя
   Короткое замыкание преобразователя напряжения либо не правильно настроен, проверьте цепи преобразователя и установленные параметры ADC_value / k_delitel / puls.
-  
+
   - Нет счета
   Отсутствуют импульсы от счетчика, проверьте цепи подключения счетчика, сам счетчик или преобразователь.
 */
@@ -681,8 +683,8 @@ void data_convert(void) //преобразование данных
           if (geiger_time_now >= GEIGER_CYCLE) { //если достаточно данных в массиве
             rad_mid_buff += rad_back; //заполняем буфер усреднения
 
-            if (++tmr_mid >= mid_rad_time[mid_level]) { //если время пришло, усредняем значение
-              rad_mid = rad_mid_buff / mid_rad_time[mid_level] ; //усредняем фон, добавляем в расчет предыдущее усреденение
+            if (++tmr_mid >= (mid_rad_time[mid_level] * 60)) { //если время пришло, усредняем значение
+              rad_mid = rad_mid_buff / (mid_rad_time[mid_level] * 60); //усредняем фон, добавляем в расчет предыдущее усреденение
               rad_mid_buff = 0; //сбрасываем буфер усреднения
               tmr_mid = 0; //сбрасываем таймер усреднения
               first_mid = 1; //устанавливаем флаг запрета первичного посекундного усреднения
@@ -797,7 +799,7 @@ void low_pwr(void)
     LIGHT_OFF; //выключаем подсветку
     light = 1; //выставляем флаг выключенной подсветки
   }
-  else if (!cnt_pwr || rad_back > RAD_SLEEP_OUT) { //если пора проснуться 
+  else if (!cnt_pwr || rad_back > RAD_SLEEP_OUT) { //если пора проснуться
     if (sleep) //если спали
     {
       disableSleep(contrast); //выводим дисплей из сна
@@ -1147,7 +1149,7 @@ void measur_menu(void) //режим замера
           print("&", 12, 40);            //строка 2
           printNumI((diff_measuring[pos_measur] * 60 - time_switch) % 60, 18, 40, 2, 48); //секунд
 
-          drawBitmap(1, 32, mid_time_lvl, map(time_switch, 0, diff_measuring[pos_measur] * 60, 5, 82), 8); //шкала времени до сохранения дозы
+          _screen_line(0, map(time_switch, 0, diff_measuring[pos_measur] * 60, 5, 82), 1, 1, 32); //шкала времени до сохранения дозы
           break;
 
         case 2: //2-й замер
@@ -1167,7 +1169,7 @@ void measur_menu(void) //режим замера
           printNumI((diff_measuring[pos_measur] * 60 - time_switch) % 60, 18, 40, 2, 48); //секунд
 
           drawBitmap(11, 24, measur_second_img, 62, 8); //второй замер
-          drawBitmap(1, 32, mid_time_lvl, map(time_switch, 0, diff_measuring[pos_measur] * 60, 5, 82), 8); //шкала времени до сохранения дозы
+          _screen_line(0, map(time_switch, 0, diff_measuring[pos_measur] * 60, 5, 82), 1, 1, 32); //шкала времени до сохранения дозы
           break;
       }
     }
@@ -1423,7 +1425,7 @@ void start_pump(void) //первая накачка
 
     if (i < millis()) break; //если время вышло, останавливаем накачку
 
-    drawBitmap(10, 32, load_img, map(hv_adc, 0, ADC_value, 0, 64), 8); //прогресс бар накачки преобразователя
+_screen_line(0, map(hv_adc, 0, ADC_value, 0, 64), 0, 10, 32); //прогресс бар накачки преобразователя
   }
 }
 //----------------------------Накачка по обратной связи с АЦП---------------------------------
@@ -2715,7 +2717,17 @@ void choice_menu(boolean n) //меню выбора
     if (n == i) invertText(false); //выключаем инверсию
   }
 }
-//----------------------------------Шапка экрана------------------------------------------------------
+// -----------------------------Отрисовка линий точности---------------------------------------
+void _screen_line(uint8_t up_bar, uint8_t down_bar, boolean rent_bar, uint8_t start_bar, uint8_t pos_bar) //отрисовка линий 
+{
+  for (uint8_t i = 0; i < down_bar; i++) {
+    drawBitmap(i + start_bar, pos_bar, (uint8_t*)pgm_read_word(&_scale[rent_bar]), 1, 8); //шкала готовности общая
+  }
+  for (uint8_t i = down_bar; i < up_bar; i++) {
+    drawBitmap(i + start_bar, pos_bar, (uint8_t*)pgm_read_word(&_scale[2]), 1, 8); //шкала готовности верхняя
+  }
+}
+//----------------------------------Шапка экрана------------------------------------------------
 void task_bar(void) //шапка экрана
 {
   drawBitmap(0, 0, font_alt_img, 84, 8); //устанавлваем фон
@@ -2895,7 +2907,7 @@ void main_screen(void)
       case 0: //режим измерения текущего фона
 
         switch (alarm_switch) {
-          case 0: drawBitmap(1, 24, mid_time_lvl, map(constrain(geiger_time_now, 0, GEIGER_TIME), 0, GEIGER_TIME, 5, 82), 8); break; //шкала готовности среднего замера
+          case 0: _screen_line(map(constrain(geiger_time_now, 0, GEIGER_TIME), 0, GEIGER_TIME, 5, 82), map(constrain(geiger_time_now, 0, MAX_GEIGER_TIME), 0, MAX_GEIGER_TIME, 5, 82), 1, 1, 24); break; //шкалы точности и усреднения
           case 3:
             switch (i) {
               case 0: drawBitmap(18, 24, warning_img, 48, 8); i = 1; break;
@@ -2959,7 +2971,7 @@ void main_screen(void)
             printNumI(time_sec % 60, 76, 24, 2, 48); //секунд
 
             switch (alarm_switch) {
-              case 0: drawBitmap(1, 32, mid_time_lvl, map(stat_upd_tmr, 0, STAT_UPD_TIME, 5, 82), 8); break; //шкала времени до сохранения дозы
+              case 0: _screen_line(0, map(stat_upd_tmr, 0, STAT_UPD_TIME, 5, 82), 1, 1, 32); break; //шкала времени до сохранения дозы 
               case 4:
                 switch (i) {
                   case 0: drawBitmap(18, 32, warning_img, 48, 8); i = 1; break;
