@@ -1754,6 +1754,7 @@ void parameters(void) //параметры
 
 #if TIME_OUT_PARAM
       if (++time_out > TIME_OUT_PARAM) {
+        sthv = 0; //запрещаем проверку скорости
         scr = 0; //разрешаем обновления экрана
         return;
       }
@@ -1785,15 +1786,9 @@ void parameters(void) //параметры
 
     switch (check_keys()) {
       case 2: //Down key
-        time_out = 0; //сбрасывает авто-выход
-        break;
       case 3: //Up key
-        time_out = 0; //сбрасывает авто-выход
-        break;
-
       case 5: //select key
         time_out = 0; //сбрасывает авто-выход
-        scr = 0; //разрешаем обновление экрана
         break;
 
       case 6: //hold select key //выход
@@ -1822,6 +1817,7 @@ void debug(void) //отладка
 #if TIME_OUT_DEBUG
       if (++time_out > TIME_OUT_DEBUG) {
         error = 0; //сбрасываем указатель ошибки
+        sthv = 0; //запрещаем проверку скорости
         scr = 0; //разрешаем обновления экрана
         return;
       }
@@ -1862,7 +1858,7 @@ void debug(void) //отладка
 
     switch (check_keys()) {
 
-      case 3: //Up key
+      case 3: //Up key //нажатие
         switch (n) {
           case 1: if (++puls > 30) puls = 30; break; //прибавляем длинну импульса
           case 0: if ((opornoe += 0.01) > 1.50) opornoe = 1.50; break; //прибавляем опорное напряжение
@@ -1871,7 +1867,7 @@ void debug(void) //отладка
         scr = 0; //разрешаем обновление экрана
         break;
 
-      case 2: //Down key
+      case 2: //Down key //нажатие
         switch (n) {
           case 1: if (--puls < 1) puls = 1; break; //убавляем длинну импульса
           case 0: if ((opornoe -= 0.01) < 0.50) opornoe = 0.50; break; //убавляем опорное напряжение
@@ -1880,7 +1876,7 @@ void debug(void) //отладка
         scr = 0; //разрешаем обновление экрана
         break;
 
-      case 5: //select key
+      case 5: //select key //нажатие
         if (++n > 1) n = 0;
         time_out = 0; //сбрасывает авто-выход
         scr = 0; //разрешаем обновление экрана
@@ -2137,18 +2133,9 @@ void setings(void) //настройки
     //+++++++++++++++++++++  опрос кнопок  +++++++++++++++++++++++++++
     switch (check_keys())
     {
-
-      case 1: //Down key hold //удержание вниз
-      switch (set) {
 #if PARAM_RETURN
-          case 0: parameters(); break;
+      case 1: if (!set) parameters(); break; //Down key hold //удержание вниз
 #endif
-          case 1: _setings_data_down(n); break; //прибавление данных
-        }
-        time_out = 0; //сбрасываем авто-выход
-        scr = 0; //разрешаем обновления экрана
-      break;
-
 
       case 2: //Down key //вниз
         switch (set) {
@@ -2162,7 +2149,7 @@ void setings(void) //настройки
               c = 0;
             }
             break;
-          case 1: _setings_data_down(n); break; //убавление данных 
+          case 1: _setings_data_down(n); break; //убавление данных
         }
         time_out = 0; //сбрасываем авто-выход
         scr = 0; //разрешаем обновления экрана
@@ -2180,23 +2167,15 @@ void setings(void) //настройки
               c = 3;
             }
             break;
-          case 1: _setings_data_up(n); break; //прибавление данных  
-        }
-        time_out = 0; //сбрасываем авто-выход
-        scr = 0; //разрешаем обновления экрана
-        break;
-
-
-      case 4: //Up key hold //удержание вверх
-        switch (set) {
-#if DEBUG_RETURN
-          case 0: debug(); break;
-#endif
           case 1: _setings_data_up(n); break; //прибавление данных
         }
         time_out = 0; //сбрасываем авто-выход
         scr = 0; //разрешаем обновления экрана
         break;
+
+#if DEBUG_RETURN
+      case 4: if (!set) debug(); break; //Up key hold //удержание вверх
+#endif
 
       case 5: //select key //выбор
         switch (set) {
