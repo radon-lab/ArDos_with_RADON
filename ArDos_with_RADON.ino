@@ -95,8 +95,9 @@
   3.0.2 25.09.20 - оптимизация работы с дисплеем, исправлен автоматический масштаб графиков.
   3.0.3 26.09.20 - новый алгоритм обработки ошибок.
   3.0.3 28.09.20 - шкала точности фона разделена на заполнение времени счета и заполнения всего буфера для быстрого усреднения, добавлен порог выхода из сна при высоких уровнях фона, параметр в "config" - "RAD_SLEEP_OUT",
-                   теперь если пункт меню "СОН" стоит "ВЫКЛ", то энергосбережение выключается.
+                   теперь если пункт меню "СОН" стоит "ВЫКЛ", то энергосбережение выключается, в меню настроек добавлена функция быстрого прибавления/убавления данных по удержанию кнопок "вверх" и "вниз".
 
+  Внимание!!! При выключении пункта "СОН" в меню настроек влечет увеличением энергопотребления, но тем самым увеличивается производительность устройства.
 
   Для сброса настроек необходимо зажать клавишу "ОК" и включить питание, появится сообщение об успешном сбросе.
   Если что-то идет или работает не так, в первую очередь пробуйте сброс настроек хот-кеем как описано выше!!!
@@ -1425,7 +1426,7 @@ void start_pump(void) //первая накачка
 
     if (i < millis()) break; //если время вышло, останавливаем накачку
 
-_screen_line(0, map(hv_adc, 0, ADC_value, 0, 64), 0, 10, 32); //прогресс бар накачки преобразователя
+    _screen_line(0, map(hv_adc, 0, ADC_value, 0, 64), 0, 10, 32); //прогресс бар накачки преобразователя
   }
 }
 //----------------------------Накачка по обратной связи с АЦП---------------------------------
@@ -1896,7 +1897,7 @@ void debug(void) //отладка
   }
 }
 //------------------------------------Отрисовка пунктов------------------------------------------------------
-void menu_switch(boolean set, boolean inv, uint8_t num, uint8_t pos) //отрисовка пунктов
+void _setings_item_switch(boolean set, boolean inv, uint8_t num, uint8_t pos) //отрисовка пунктов
 {
   uint8_t pos_row = pos * 8 + 16; //переводим позицию в номер строки
 
@@ -2016,6 +2017,84 @@ void menu_switch(boolean set, boolean inv, uint8_t num, uint8_t pos) //отри�
   }
   if (inv) invertText(false); //выключаем инверсию
 }
+//------------------------------------Прибавление данных------------------------------------------------------
+void _setings_data_up(uint8_t pos) //прибавление данных
+{
+  switch (pos)
+  {
+    case 0: switch (rad_flash) { //Вспышки
+        case 0: rad_flash = 1; break;
+        case 1: rad_flash = 2; break;
+      }
+      break;
+    case 1: if (contrast < 127) contrast++; setContrast(contrast); break; //Контраст
+    case 2: //Сон
+      switch (sleep_switch) {
+        case 0: sleep_switch = 2; LIGHT_ON; light_lcd = 1; break;
+        case 1: sleep_switch = 2; TIME_BRIGHT = 5; break;
+        case 2: if (TIME_SLEEP < 250) TIME_SLEEP += 5; break;
+      }
+      break;
+    case 3: //Подсветка
+      switch (sleep_switch) {
+        case 0: sleep_switch = 1; LIGHT_ON; light_lcd = 1; break;
+        case 1: if (TIME_BRIGHT < 250) TIME_BRIGHT += 5; break;
+        case 2: if (TIME_BRIGHT < TIME_SLEEP - 5) TIME_BRIGHT += 5; break;
+      }
+      break;
+    case 4: switch (buzz_switch) { //Щелчки
+        case 0: buzz_switch = 1; break;
+        case 1: buzz_switch = 2; break;
+      }
+      break;
+    case 5: knock_disable = 0; break; //Зв.кнопок
+    case 6: if (GEIGER_TIME < MAX_GEIGER_TIME) GEIGER_TIME++; break; //Счет
+    case 7: if (pos_measur < 9) pos_measur++; break; //Разн.зам
+    case 8: if (mid_level < 9) mid_level ++; else mid_level = 0; break; //Средн.зам
+    case 9: rad_mode = 1; break; //Ед.измер
+    case 10: if (alarm_back_disable) alarm_back_disable = 0; else alarm_back_sound_disable = 0; break; //Тревога Ф
+    case 11: if (warn_level_back < 300) warn_level_back += 5; else warn_level_back = 30; break; //Порог Ф1
+    case 12: if (alarm_level_back < 500) alarm_level_back += 10; else if (alarm_level_back < 1000) alarm_level_back += 50; else if (alarm_level_back < 65000) alarm_level_back += 100; else alarm_level_back = 300; break; //Порог Ф2
+    case 13: if (alarm_dose_disable) alarm_dose_disable = 0; else alarm_dose_sound_disable = 0; break; //Тревога Д
+    case 14: if (warn_level_dose < 300) warn_level_dose += 5; else warn_level_dose = 10; break; //Порог Д1
+    case 15: if (alarm_level_dose < 500) alarm_level_dose += 10; else if (alarm_level_dose < 1000) alarm_level_dose += 50; else if (alarm_level_dose < 65000) alarm_level_dose += 100; else alarm_level_dose = 300; break; //Порог Д2
+  }
+}
+//------------------------------------Убавление данных------------------------------------------------------
+void _setings_data_down(uint8_t pos) //убавление данных
+{
+  switch (pos)
+  {
+    case 0: switch (rad_flash) { //Вспышки
+        case 1: rad_flash = 0; break;
+        case 2: rad_flash = 1; break;
+      }
+      break;
+    case 1: if (contrast > 0) contrast--; setContrast(contrast); break; //Контраст
+    case 2: if (TIME_SLEEP > 10) { //Сон
+        TIME_SLEEP -= 5;
+        if (TIME_BRIGHT == TIME_SLEEP) TIME_BRIGHT -= 5;
+      }
+      else if (sleep_switch == 2) sleep_switch = 1; break;
+    case 3: if (TIME_BRIGHT > 5) TIME_BRIGHT -= 5; else sleep_switch = 0; break; //Подсветка
+    case 4: switch (buzz_switch) { //Щелчки
+        case 1: buzz_switch = 0; break;
+        case 2: buzz_switch = 1; break;
+      }
+      break;
+    case 5: knock_disable = 1; break; //Зв.кнопок
+    case 6: if (GEIGER_TIME > MIN_GEIGER_TIME) GEIGER_TIME--; break; //Счет
+    case 7: if (pos_measur > 0) pos_measur--;  break; //Разн.зам
+    case 8: if (mid_level > 0) mid_level --; else mid_level = 9; break; //Средн.зам
+    case 9: rad_mode = 0; break; //Ед.измер
+    case 10: if (!alarm_back_sound_disable) alarm_back_sound_disable = 1; else alarm_back_disable = 1; break; //Тревога Ф
+    case 11: if (warn_level_back > 30) warn_level_back -= 5; else warn_level_back = 300; break; //Порог Ф1
+    case 12: if (alarm_level_back > 1000) alarm_level_back -= 100; else if (alarm_level_back > 500) alarm_level_back -= 50; else if (alarm_level_back > 300) alarm_level_back -= 10; else alarm_level_back = 65000; break; //Порог Ф2
+    case 13: if (!alarm_dose_sound_disable) alarm_dose_sound_disable = 1; else alarm_dose_disable = 1; break; //Тревога Д
+    case 14: if (warn_level_dose > 10) warn_level_dose -= 5; else warn_level_dose = 300; break; //Порог Д1
+    case 15: if (alarm_level_dose > 1000) alarm_level_dose -= 100; else if (alarm_level_dose > 500) alarm_level_dose -= 50; else if (alarm_level_dose > 300) alarm_level_dose -= 10; else alarm_level_dose = 65000; break; //Порог Д2
+  }
+}
 //------------------------------------Настройки------------------------------------------------------
 void setings(void) //настройки
 {
@@ -2051,16 +2130,25 @@ void setings(void) //настройки
         for (uint8_t r = 0; r < 2; r++) { //отсчет позиции
           boolean inv = 0; //инверсия
           if (i == c) if (r == set) inv = 1; //если курсор на нужной строке
-          menu_switch(r, inv, n - c + i, i); //отрисовываем пункты настроек
+          _setings_item_switch(r, inv, n - c + i, i); //отрисовываем пункты настроек
         }
       }
     }
     //+++++++++++++++++++++  опрос кнопок  +++++++++++++++++++++++++++
     switch (check_keys())
     {
+
+      case 1: //Down key hold //удержание вниз
+      switch (set) {
 #if PARAM_RETURN
-      case 1: if (!set) parameters(); break;
+          case 0: parameters(); break;
 #endif
+          case 1: _setings_data_down(n); break; //прибавление данных
+        }
+        time_out = 0; //сбрасываем авто-выход
+        scr = 0; //разрешаем обновления экрана
+      break;
+
 
       case 2: //Down key //вниз
         switch (set) {
@@ -2074,39 +2162,7 @@ void setings(void) //настройки
               c = 0;
             }
             break;
-          case 1:
-            switch (n)
-            {
-              case 0: switch (rad_flash) { //Вспышки
-                  case 1: rad_flash = 0; break;
-                  case 2: rad_flash = 1; break;
-                }
-                break;
-              case 1: if (contrast > 0) contrast--; setContrast(contrast); break; //Контраст
-              case 2: if (TIME_SLEEP > 10) { //Сон
-                  TIME_SLEEP -= 5;
-                  if (TIME_BRIGHT == TIME_SLEEP) TIME_BRIGHT -= 5;
-                }
-                else if (sleep_switch == 2) sleep_switch = 1; break;
-              case 3: if (TIME_BRIGHT > 5) TIME_BRIGHT -= 5; else sleep_switch = 0; break; //Подсветка
-              case 4: switch (buzz_switch) { //Щелчки
-                  case 1: buzz_switch = 0; break;
-                  case 2: buzz_switch = 1; break;
-                }
-                break;
-              case 5: knock_disable = 1; break; //Зв.кнопок
-              case 6: if (GEIGER_TIME > MIN_GEIGER_TIME) GEIGER_TIME--; break; //Счет
-              case 7: if (pos_measur > 0) pos_measur--;  break; //Разн.зам
-              case 8: if (mid_level > 0) mid_level --; else mid_level = 9; break; //Средн.зам
-              case 9: rad_mode = 0; break; //Ед.измер
-              case 10: if (!alarm_back_sound_disable) alarm_back_sound_disable = 1; else alarm_back_disable = 1; break; //Тревога Ф
-              case 11: if (warn_level_back > 30) warn_level_back -= 5; else warn_level_back = 300; break; //Порог Ф1
-              case 12: if (alarm_level_back > 1000) alarm_level_back -= 100; else if (alarm_level_back > 500) alarm_level_back -= 50; else if (alarm_level_back > 300) alarm_level_back -= 10; else alarm_level_back = 65000; break; //Порог Ф2
-              case 13: if (!alarm_dose_sound_disable) alarm_dose_sound_disable = 1; else alarm_dose_disable = 1; break; //Тревога Д
-              case 14: if (warn_level_dose > 10) warn_level_dose -= 5; else warn_level_dose = 300; break; //Порог Д1
-              case 15: if (alarm_level_dose > 1000) alarm_level_dose -= 100; else if (alarm_level_dose > 500) alarm_level_dose -= 50; else if (alarm_level_dose > 300) alarm_level_dose -= 10; else alarm_level_dose = 65000; break; //Порог Д2
-            }
-            break;
+          case 1: _setings_data_down(n); break; //убавление данных 
         }
         time_out = 0; //сбрасываем авто-выход
         scr = 0; //разрешаем обновления экрана
@@ -2124,55 +2180,23 @@ void setings(void) //настройки
               c = 3;
             }
             break;
-          case 1:
-            switch (n)
-            {
-              case 0: switch (rad_flash) { //Вспышки
-                  case 0: rad_flash = 1; break;
-                  case 1: rad_flash = 2; break;
-                }
-                break;
-              case 1: if (contrast < 127) contrast++; setContrast(contrast); break; //Контраст
-              case 2: //Сон
-                switch (sleep_switch) {
-                  case 0: sleep_switch = 2; LIGHT_ON; light_lcd = 1; break;
-                  case 1: sleep_switch = 2; TIME_BRIGHT = 5; break;
-                  case 2: if (TIME_SLEEP < 250) TIME_SLEEP += 5; break;
-                }
-                break;
-              case 3: //Подсветка
-                switch (sleep_switch) {
-                  case 0: sleep_switch = 1; LIGHT_ON; light_lcd = 1; break;
-                  case 1: if (TIME_BRIGHT < 250) TIME_BRIGHT += 5; break;
-                  case 2: if (TIME_BRIGHT < TIME_SLEEP - 5) TIME_BRIGHT += 5; break;
-                }
-                break;
-              case 4: switch (buzz_switch) { //Щелчки
-                  case 0: buzz_switch = 1; break;
-                  case 1: buzz_switch = 2; break;
-                }
-                break;
-              case 5: knock_disable = 0; break; //Зв.кнопок
-              case 6: if (GEIGER_TIME < MAX_GEIGER_TIME) GEIGER_TIME++; break; //Счет
-              case 7: if (pos_measur < 9) pos_measur++; break; //Разн.зам
-              case 8: if (mid_level < 9) mid_level ++; else mid_level = 0; break; //Средн.зам
-              case 9: rad_mode = 1; break; //Ед.измер
-              case 10: if (alarm_back_disable) alarm_back_disable = 0; else alarm_back_sound_disable = 0; break; //Тревога Ф
-              case 11: if (warn_level_back < 300) warn_level_back += 5; else warn_level_back = 30; break; //Порог Ф1
-              case 12: if (alarm_level_back < 500) alarm_level_back += 10; else if (alarm_level_back < 1000) alarm_level_back += 50; else if (alarm_level_back < 65000) alarm_level_back += 100; else alarm_level_back = 300; break; //Порог Ф2
-              case 13: if (alarm_dose_disable) alarm_dose_disable = 0; else alarm_dose_sound_disable = 0; break; //Тревога Д
-              case 14: if (warn_level_dose < 300) warn_level_dose += 5; else warn_level_dose = 10; break; //Порог Д1
-              case 15: if (alarm_level_dose < 500) alarm_level_dose += 10; else if (alarm_level_dose < 1000) alarm_level_dose += 50; else if (alarm_level_dose < 65000) alarm_level_dose += 100; else alarm_level_dose = 300; break; //Порог Д2
-            }
-            break;
+          case 1: _setings_data_up(n); break; //прибавление данных  
         }
         time_out = 0; //сбрасываем авто-выход
         scr = 0; //разрешаем обновления экрана
         break;
 
+
+      case 4: //Up key hold //удержание вверх
+        switch (set) {
 #if DEBUG_RETURN
-      case 4: if (!set) debug(); break;
+          case 0: debug(); break;
 #endif
+          case 1: _setings_data_up(n); break; //прибавление данных
+        }
+        time_out = 0; //сбрасываем авто-выход
+        scr = 0; //разрешаем обновления экрана
+        break;
 
       case 5: //select key //выбор
         switch (set) {
@@ -2392,6 +2416,8 @@ void error_messege(void) //сообщение об ошибке
     error = 0; //сбрасываем указатель ошибки
     buzz_read(); //считываем настроку щелчков
     time_out = time_sec + ERROR_LENGTHY_TIME; //добавляем n сек. до следущего сообщения
+    clrScr(); //очистка экрана
+    scr = 0; //разрешаем обновления экрана
   }
 }
 //---------------------------------Калибровка wdt---------------------------------------
@@ -2718,7 +2744,7 @@ void choice_menu(boolean n) //меню выбора
   }
 }
 // -----------------------------Отрисовка линий точности---------------------------------------
-void _screen_line(uint8_t up_bar, uint8_t down_bar, boolean rent_bar, uint8_t start_bar, uint8_t pos_bar) //отрисовка линий 
+void _screen_line(uint8_t up_bar, uint8_t down_bar, boolean rent_bar, uint8_t start_bar, uint8_t pos_bar) //отрисовка линий
 {
   for (uint8_t i = 0; i < down_bar; i++) {
     drawBitmap(i + start_bar, pos_bar, (uint8_t*)pgm_read_word(&_scale[rent_bar]), 1, 8); //шкала готовности общая
@@ -2971,7 +2997,7 @@ void main_screen(void)
             printNumI(time_sec % 60, 76, 24, 2, 48); //секунд
 
             switch (alarm_switch) {
-              case 0: _screen_line(0, map(stat_upd_tmr, 0, STAT_UPD_TIME, 5, 82), 1, 1, 32); break; //шкала времени до сохранения дозы 
+              case 0: _screen_line(0, map(stat_upd_tmr, 0, STAT_UPD_TIME, 5, 82), 1, 1, 32); break; //шкала времени до сохранения дозы
               case 4:
                 switch (i) {
                   case 0: drawBitmap(18, 32, warning_img, 48, 8); i = 1; break;
