@@ -96,6 +96,8 @@
   3.0.3 26.09.20 - новый алгоритм обработки ошибок.
   3.0.3 28.09.20 - шкала точности фона разделена на заполнение времени счета и заполнения всего буфера для быстрого усреднения, добавлен порог выхода из сна при высоких уровнях фона, параметр в "config" - "RAD_SLEEP_OUT",
                    теперь если пункт меню "СОН" стоит "ВЫКЛ", то энергосбережение выключается.
+  3.0.3 29.09.20 - новый алгоритм обработки тревоги фона/дозы, добавлено синхронное управление вибрацией и отключением звука 1-х уровней тревоги, тревога по дозе теперь будет срабатывать каждый раз когда установленный порог будет превышен от текущей дозы,
+                   добавлена защита от "спантанных" скачков, тревога по фону начинает работать только если набран минимальный массив или превышен порог фона "RAD_PRE_WARN".
 
   Внимание!!! При выключении пункта "СОН" в меню настроек влечет увеличением энергопотребления, но тем самым увеличивается производительность устройства.
 
@@ -237,6 +239,7 @@ uint8_t TIME_FACT_1; //секундные интервалы 1
 #define TIME_FACT_12 37 //секундные интервалы 12
 #define TIME_FACT_13 38 //секундные интервалы 13
 #define TIME_FACT_14 39 //секундные интервалы 14
+#define TIME_FACT_15 40 //секундные интервалы 15
 
 uint16_t stat_upd_tmr; //таймер записи статистики в память
 uint16_t tmr_mid; //таймер расчета среднего фона
@@ -287,10 +290,6 @@ boolean bat_update = 0; //флаг обновления батареи
 boolean scr = 0; //флаг обновления экрана
 boolean graf = 0; //флаг обновления графика
 boolean first_mid = 0; //флаг первого усреднения
-boolean alarm_back_disable = 1; //флаг запрета тревоги фона
-boolean alarm_dose_disable = 1; //флаг запрета тревоги дозы
-boolean alarm_back_sound_disable = 1; //флаг запрета звука тревоги фона
-boolean alarm_dose_sound_disable = 1; //флаг запрета звука тревоги дозы
 boolean knock_disable = 0; //флаг запрет треска кнопками
 uint8_t buzz_switch = 0; //указатель на тип треска пищалкой
 uint8_t error = 0; //указатель на номер ошибки
@@ -298,10 +297,15 @@ uint8_t error = 0; //указатель на номер ошибки
 uint16_t speed_nak; //скорость накачки
 boolean sthv; //флаг считывания скорости накачки
 
+boolean alarm_back_disable = 1; //флаг запрета тревоги фона
+boolean alarm_dose_disable = 1; //флаг запрета тревоги дозы
+boolean alarm_back_sound_disable = 1; //флаг запрета звука тревоги фона
+boolean alarm_dose_sound_disable = 1; //флаг запрета звука тревоги дозы
+
 boolean alarm_back_wait = 0; //флаг ожидания выключения запрета тревоги фона
 boolean warn_back_wait = 0; //флаг ожидания выключения запрета предупреждения фона
-boolean alarm_dose_wait = 0; //флаг ожидания выключения запрета тревоги дозы
-boolean warn_dose_wait = 0; //флаг ожидания выключения запрета предупреждения дозы
+uint32_t alarm_dose_wait = 0; //флаг ожидания выключения запрета тревоги дозы
+uint32_t warn_dose_wait = 0; //флаг ожидания выключения запрета предупреждения дозы
 
 uint16_t warn_level_back = 30; //указатель на уровень тревоги 1 фона в массиве
 uint16_t alarm_level_back = 300; //указатель на уровень тревоги 2 фона в массиве
@@ -421,6 +425,7 @@ int main(void)  //инициализация
     print("ghtj,hfpjdfn.", CENTER, 24); //преобразоват.
     print("yt yfcnhjty!", CENTER, 32); //не настроен!
     for (uint32_t t = millis() + FONT_TIME; t > millis() && !check_keys();); //ждём
+    clrRow(3); //очистка строки 4
     CYCLE_OVERFLOW = 0; //запрещаем накачку
   }
 #endif
@@ -737,8 +742,40 @@ void data_convert(void) //преобразование данных
           //--------------------------------------
 #endif
           break;
+
+        case TIME_FACT_11: //обработка тревоги
+          if (!alarm_dose_disable && (rad_dose - alarm_dose_wait) >= alarm_level_dose) {
+            alarm_switch = 2;  //превышение дозы 2
+            break;
+          }
+          else if (!alarm_dose_disable && (rad_dose - warn_dose_wait) >= warn_level_dose) {
+            alarm_switch = 4;  //превышение дозы 1
+            break;
+          }
+
+          if (geiger_time_now >= GEIGER_CYCLE || rad_back >= RAD_PRE_WARN) {
+            if (!alarm_back_disable && !alarm_back_wait && rad_back >= alarm_level_back) {
+              alarm_switch = 1;  //превышение фона 2
+              break;
+            }
+            else if (!alarm_back_disable && !warn_back_wait && rad_back >= warn_level_back) {
+              alarm_switch = 3;  //превышение фона 1
+              break;
+            }
+          }
+
+          if (rad_back < warn_level_back && warn_back_wait) warn_back_wait = 0; //сброс предупреждения
+          if (rad_back < alarm_level_back && alarm_back_wait) alarm_back_wait = 0; //сброс тревоги
+
+          if (alarm_switch) { //иначе ждем понижения фона
+            _vibro_off(); //выключаем вибрацию
+            buzz_read(); //чтение состояния щелчков
+            alarm_switch = 0; //устанавливаем признак отсутствия тревоги
+          }
+          break;
+
 #if ERRORS_RETURN
-        case TIME_FACT_11: //проверка на наличие импульсов от счетчика
+        case TIME_FACT_12: //проверка на наличие импульсов от счетчика
           if (!rad_buff[1]) { //если нету импульсов в обменном буфере
             if (nop_imp_tmr++ >= IMP_ERROR_TIME) { //считаем время до вывода предупреждения
               error = 4; //устанавливаем ошибку 4 нету импульсов
@@ -752,7 +789,7 @@ void data_convert(void) //преобразование данных
     }
 
     switch (time_wdt) {
-      case TIME_FACT_12:
+      case TIME_FACT_13:
 #if !MESSUR_OR_PWR
         switch (measur) { //разностный замер
           case 1: if (time_switch < (diff_measuring[pos_measur] * 60)) time_switch ++; //прибавляем секунду
@@ -769,12 +806,12 @@ void data_convert(void) //преобразование данных
 #endif
         break;
 
-      case TIME_FACT_13:
+      case TIME_FACT_14:
         bat_update = 0; //устанавливаем флаг для обновления батареи
         time_sec = time_micros / 100000; //считаем секунды
         break;
 
-      case TIME_FACT_14:
+      case TIME_FACT_15:
         if (!sleep) scr = 0; //устанавливаем флаг для обновления экрана
         break;
     }
@@ -1231,17 +1268,14 @@ void measur_menu(void) //режим замера
 void alarm_messege(boolean set, boolean sound, char *mode) //тревога
 {
   uint8_t pos = 21 + (6 * set); //определяем позицию
-  uint8_t n = 0; //переключатель вибрации
   uint8_t i = 0; //переключатель мелодии
   uint32_t rad_set; //текущие данные фона/дозы
+  uint32_t timer_sound = millis(); //таймер мелодии
 
   cnt_pwr = 0; //обнуляем счетчик
   low_pwr(); //просыпаемся если спали
 
   buzz_switch = 0; //запретить звуковую индикацию импульсов
-
-  uint32_t timer_sound = millis(); //таймер мелодии
-  uint32_t timer_vibro = millis(); //таймер вибрации
 
   clrScr(); //очистка экрана
   setFont(RusFont); //установка шрифта
@@ -1283,41 +1317,7 @@ void alarm_messege(boolean set, boolean sound, char *mode) //тревога
         case 8: buzz_pulse(SAMPLE_8_FREQ, SAMPLE_8_TIME); i = 0; timer_sound = millis() + SAMPLE_OVERFLOW_WAINT; break;
       }
     }
-    //==================================================================
-#if (TYPE_ALARM_IND == 1)
-    if (millis() > timer_vibro) { //вибрируем танго и мигаем фонариком
-      switch (n) {
-        case 0: VIBRO_ON; FLASH_ON; n++; timer_vibro = millis() + VIBRO_TIME_ON; break;
-        case 1: VIBRO_OFF; FLASH_OFF; n++; timer_vibro = millis() + VIBRO_TIME_OFF; break;
-        case 2: VIBRO_ON; FLASH_ON; n++; timer_vibro = millis() + VIBRO_TIME_ON; break;
-        case 3: VIBRO_OFF; FLASH_OFF; n++; timer_vibro = millis() + VIBRO_TIME_OFF; break;
-        case 4: VIBRO_ON; FLASH_ON; n++; timer_vibro = millis() + VIBRO_TIME_ON; break;
-        case 5: VIBRO_OFF; FLASH_OFF; n = 0; timer_vibro = millis() + VIBRO_TIME_WAINT; break;
-      }
-    }
-#elif (TYPE_ALARM_IND == 2)
-    if (millis() > timer_vibro) { //вибрируем танго и мигаем подсветкой
-      switch (n) {
-        case 0: VIBRO_ON; LIGHT_ON; n++; timer_vibro = millis() + VIBRO_TIME_ON; break;
-        case 1: VIBRO_OFF; LIGHT_OFF; n++; timer_vibro = millis() + VIBRO_TIME_OFF; break;
-        case 2: VIBRO_ON; LIGHT_ON; n++; timer_vibro = millis() + VIBRO_TIME_ON; break;
-        case 3: VIBRO_OFF; LIGHT_OFF; n++; timer_vibro = millis() + VIBRO_TIME_OFF; break;
-        case 4: VIBRO_ON; LIGHT_ON; n++; timer_vibro = millis() + VIBRO_TIME_ON; break;
-        case 5: VIBRO_OFF; LIGHT_OFF; n = 0; timer_vibro = millis() + VIBRO_TIME_WAINT; break;
-      }
-    }
-#else
-    if (millis() > timer_vibro) { //вибрируем танго
-      switch (n) {
-        case 0: VIBRO_ON; n++; timer_vibro = millis() + VIBRO_TIME_ON; break;
-        case 1: VIBRO_OFF; n++; timer_vibro = millis() + VIBRO_TIME_OFF; break;
-        case 2: VIBRO_ON; n++; timer_vibro = millis() + VIBRO_TIME_ON; break;
-        case 3: VIBRO_OFF; n++; timer_vibro = millis() + VIBRO_TIME_OFF; break;
-        case 4: VIBRO_ON; n++; timer_vibro = millis() + VIBRO_TIME_ON; break;
-        case 5: VIBRO_OFF; n = 0; timer_vibro = millis() + VIBRO_TIME_WAINT; break;
-      }
-    }
-#endif
+    _vibro_on(); //включаем вибрацию
     //==================================================================
 #if ALARM_AUTO_DISABLE
     if (check_keys() || (!set && rad_back < (alarm_level_back * ALARM_AUTO_GISTERESIS))) //если нажата любая кнопка или фон упал отключаем тревогу
@@ -1325,24 +1325,14 @@ void alarm_messege(boolean set, boolean sound, char *mode) //тревога
     if (check_keys()) //если нажата любая кнопка отключаем тревогу
 #endif
     {
-
-#if (TYPE_ALARM_IND == 1)
-      FLASH_OFF; //выключаем фонарик
-      VIBRO_OFF; //выключаем вибрацию
-#elif (TYPE_ALARM_IND == 2)
-      if (light_lcd) LIGHT_ON; //включаем подсветку, если была включена настройками
-      else LIGHT_OFF; //иначе выключаем подсветку
-      VIBRO_OFF; //выключаем вибрацию
-#else
-      VIBRO_OFF; //выключаем вибрацию
-#endif
-
+      _vibro_off(); //выключаем вибрацию
       buzz_read(); //восстанавливаем настроку щелчков
 
       switch (set) {
         case 0: alarm_back_wait = 1; warn_back_wait = 1; break;
-        case 1: alarm_dose_wait = 1; warn_dose_wait = 1; break;
+        case 1: alarm_dose_wait = warn_dose_wait = rad_dose; break;
       }
+      alarm_switch = 0; //устанавливаем признак отсутствия тревоги
       clrScr(); // Очистка экрана
       scr = 0; //разрешаем обновление экрана
       return;
@@ -1350,7 +1340,62 @@ void alarm_messege(boolean set, boolean sound, char *mode) //тревога
   }
 }
 //-------------------------------Предупреждение----------------------------------------------------------
-void warn_messege(boolean set) //предупреждение
+void _vibro_on(void) //предупреждение
+{
+  static uint8_t n; //переключатель вибрации
+  static uint32_t timer_vibro; //таймер вибрации
+
+#if (TYPE_ALARM_IND == 1)
+  if (millis() > timer_vibro) { //вибрируем танго и мигаем фонариком
+    switch (n) {
+      case 0: VIBRO_ON; FLASH_ON; n++; timer_vibro = millis() + VIBRO_TIME_ON; break;
+      case 1: VIBRO_OFF; FLASH_OFF; n++; timer_vibro = millis() + VIBRO_TIME_OFF; break;
+      case 2: VIBRO_ON; FLASH_ON; n++; timer_vibro = millis() + VIBRO_TIME_ON; break;
+      case 3: VIBRO_OFF; FLASH_OFF; n++; timer_vibro = millis() + VIBRO_TIME_OFF; break;
+      case 4: VIBRO_ON; FLASH_ON; n++; timer_vibro = millis() + VIBRO_TIME_ON; break;
+      case 5: VIBRO_OFF; FLASH_OFF; n = 0; timer_vibro = millis() + VIBRO_TIME_WAINT; break;
+    }
+  }
+#elif (TYPE_ALARM_IND == 2)
+  if (millis() > timer_vibro) { //вибрируем танго и мигаем подсветкой
+    switch (n) {
+      case 0: VIBRO_ON; LIGHT_ON; n++; timer_vibro = millis() + VIBRO_TIME_ON; break;
+      case 1: VIBRO_OFF; LIGHT_OFF; n++; timer_vibro = millis() + VIBRO_TIME_OFF; break;
+      case 2: VIBRO_ON; LIGHT_ON; n++; timer_vibro = millis() + VIBRO_TIME_ON; break;
+      case 3: VIBRO_OFF; LIGHT_OFF; n++; timer_vibro = millis() + VIBRO_TIME_OFF; break;
+      case 4: VIBRO_ON; LIGHT_ON; n++; timer_vibro = millis() + VIBRO_TIME_ON; break;
+      case 5: VIBRO_OFF; LIGHT_OFF; n = 0; timer_vibro = millis() + VIBRO_TIME_WAINT; break;
+    }
+  }
+#else
+  if (millis() > timer_vibro) { //вибрируем танго
+    switch (n) {
+      case 0: VIBRO_ON; n++; timer_vibro = millis() + VIBRO_TIME_ON; break;
+      case 1: VIBRO_OFF; n++; timer_vibro = millis() + VIBRO_TIME_OFF; break;
+      case 2: VIBRO_ON; n++; timer_vibro = millis() + VIBRO_TIME_ON; break;
+      case 3: VIBRO_OFF; n++; timer_vibro = millis() + VIBRO_TIME_OFF; break;
+      case 4: VIBRO_ON; n++; timer_vibro = millis() + VIBRO_TIME_ON; break;
+      case 5: VIBRO_OFF; n = 0; timer_vibro = millis() + VIBRO_TIME_WAINT; break;
+    }
+  }
+#endif
+}
+//-------------------------------Предупреждение----------------------------------------------------------
+void _vibro_off(void) //предупреждение
+{
+#if (TYPE_ALARM_IND == 1)
+  FLASH_OFF; //выключаем фонарик
+  VIBRO_OFF; //выключаем вибрацию
+#elif (TYPE_ALARM_IND == 2)
+  if (light_lcd) LIGHT_ON; //включаем подсветку, если была включена настройками
+  else LIGHT_OFF; //иначе выключаем подсветку
+  VIBRO_OFF; //выключаем вибрацию
+#else
+  VIBRO_OFF; //выключаем вибрацию
+#endif
+}
+//-------------------------------Предупреждение----------------------------------------------------------
+void warn_messege(boolean set, boolean sound) //предупреждение
 {
   static uint8_t i; //переключатель мелодии
   static uint32_t timer_sound; //таймер мелодии
@@ -1376,7 +1421,7 @@ void warn_messege(boolean set) //предупреждение
       break;
   }
   //==================================================================
-  if (millis() > timer_sound) { //пиликаем волшебную мелодию
+  if (millis() > timer_sound && !sound) { //пиликаем волшебную мелодию
     switch (i) {
       case 0: buzz_pulse(SAMPLE_WARN_0_FREQ, SAMPLE_WARN_0_TIME); i = 1; timer_sound = millis() + SAMPLE_WARN_0_WAINT; break;
       case 1: buzz_pulse(SAMPLE_WARN_1_FREQ, SAMPLE_WARN_1_TIME); i = 2; timer_sound = millis() + SAMPLE_WARN_1_WAINT; break;
@@ -1384,33 +1429,17 @@ void warn_messege(boolean set) //предупреждение
       case 3: buzz_pulse(SAMPLE_WARN_3_FREQ, SAMPLE_WARN_3_TIME); i = 0; timer_sound = millis() + SAMPLE_WARN_OVERFLOW_WAINT; break;
     }
   }
+  _vibro_on(); //включаем вибрацию
   //==================================================================
 }
-//-------------------------------Обработка тревоги----------------------------------------------------------
-void alarm_warning(void) //обработка тревоги
+//-------------------------------Выбор тревоги----------------------------------------------------------
+void alarm_warning(void) //выбор тревоги
 {
-  static boolean warn_buzz;
-
-  if (!alarm_back_disable && !alarm_back_wait && rad_back >= alarm_level_back) alarm_switch = 1; //превышение фона 2
-  else if (!alarm_dose_disable && !alarm_dose_wait && rad_dose >= alarm_level_dose) alarm_switch = 2; //превышение дозы 2
-  else if (!alarm_back_disable && !warn_back_wait && rad_back >= warn_level_back) alarm_switch = 3; //превышение фона 1
-  else if (!alarm_dose_disable && !warn_dose_wait && rad_dose >= warn_level_dose) alarm_switch = 4; //превышение дозы 1
-  else { //иначе ждем понижения фона
-    if (rad_back < warn_level_back && warn_back_wait) warn_back_wait = 0; //сброс предупреждения
-    if (rad_back < alarm_level_dose && alarm_back_wait) alarm_back_wait = 0; //сброс тревоги
-    if (warn_buzz) {
-      buzz_read(); //чтение состояния щелчков
-      warn_buzz = 0;
-    }
-    alarm_switch = 0;
-  }
-
-  //-------------------------------------------------------------------------//
   switch (alarm_switch) {
-    case 1: alarm_messege(0, alarm_back_sound_disable, "Ajy"); break; //фон
-    case 2: alarm_messege(1, alarm_dose_sound_disable, "Ljpf"); break; //доза
-    case 3: warn_messege(0); warn_buzz = 1; break; //фон
-    case 4: warn_messege(1); warn_buzz = 1; break; //доза
+    case 1: alarm_messege(0, alarm_back_sound_disable, "Ajy"); break; //фон 2
+    case 2: alarm_messege(1, alarm_dose_sound_disable, "Ljpf"); break; //доза 2
+    case 3: warn_messege(0, alarm_back_sound_disable); break; //фон 1
+    case 4: warn_messege(1, alarm_dose_sound_disable); break; //доза 1
   }
 }
 //-----------------------------------Первая накачка--------------------------------------------
@@ -3071,8 +3100,8 @@ void main_screen(void)
     case 2: //Down key //выбор режима
       switch (alarm_switch) {
         case 0: if (scr_mode > 0) scr_mode--; else scr_mode = MAX_SCREENS; break; //назад
-        case 3: warn_back_wait = 1; buzz_read(); break; //фон
-        case 4: warn_dose_wait = 1; buzz_read(); break; //доза
+        case 3: warn_back_wait = 1; alarm_switch = 0; _vibro_off(); buzz_read(); break; //фон
+        case 4: warn_dose_wait = rad_dose; alarm_switch = 0; _vibro_off(); buzz_read(); break; //доза
       }
       scr = 0; //разрешаем обновления экрана
       break;
@@ -3080,8 +3109,8 @@ void main_screen(void)
     case 3: //Up key  //выбор режима
       switch (alarm_switch) {
         case 0: if (scr_mode < MAX_SCREENS) scr_mode++; else scr_mode = 0; break; //вперёд
-        case 3: warn_back_wait = 1; buzz_read(); break; //фон
-        case 4: warn_dose_wait = 1; buzz_read(); break; //доза
+        case 3: warn_back_wait = 1; alarm_switch = 0; _vibro_off(); buzz_read(); break; //фон
+        case 4: warn_dose_wait = rad_dose; alarm_switch = 0; _vibro_off(); buzz_read(); break; //доза
       }
       scr = 0; //разрешаем обновления экрана
       break;
@@ -3120,8 +3149,8 @@ void main_screen(void)
 #endif
           }
           break;
-        case 3: warn_back_wait = 1; buzz_read(); break; //фон
-        case 4: warn_dose_wait = 1; buzz_read(); break; //доза
+        case 3: warn_back_wait = 1; alarm_switch = 0; _vibro_off(); buzz_read(); break; //фон
+        case 4: warn_dose_wait = rad_dose; alarm_switch = 0; _vibro_off(); buzz_read(); break; //доза
       }
       scr = 0; //разрешаем обновления экрана
       break;
