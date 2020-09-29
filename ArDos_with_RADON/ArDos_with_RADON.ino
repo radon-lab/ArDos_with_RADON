@@ -98,6 +98,7 @@
                    теперь если пункт меню "СОН" стоит "ВЫКЛ", то энергосбережение выключается.
   3.0.3 29.09.20 - новый алгоритм обработки тревоги фона/дозы, добавлено синхронное управление вибрацией и отключением звука 1-х уровней тревоги, тревога по дозе теперь будет срабатывать каждый раз когда установленный порог будет превышен от текущей дозы,
                    добавлена защита от "спантанных" скачков, тревога по фону начинает работать только если набран минимальный массив или превышен порог фона "RAD_PRE_WARN".
+  3.0.4 29.09.20 - новый алгоритм обработки мелодий, позволяет более гибко настраивать мелодии пользователю и занимает на 1Кб памяти меньше.
 
   Внимание!!! При выключении пункта "СОН" в меню настроек влечет увеличением энергопотребления, но тем самым увеличивается производительность устройства.
 
@@ -1024,6 +1025,20 @@ uint8_t check_keys(void) //проверить клавиатуру
       break;
   }
 }
+//---------------------------------Воспроизведение мелодии---------------------------------------
+void _melody_chart(uint16_t arr[][3], uint8_t n, uint8_t s) //воспроизведение мелодии
+{
+  static uint8_t i; //переключатель мелодии
+  static uint8_t signature; //переключатель мелодии
+  static uint32_t timer_sound; //таймер мелодии
+  if (signature != s) {
+    i = 0;
+    signature = s;
+  }
+  if (millis() > timer_sound) {
+    buzz_pulse(pgm_read_word(&arr[i][0]), pgm_read_word(&arr[i][1])); timer_sound = millis() + pgm_read_word(&arr[i][2]); if (i < n - 1) i++; else i = 0;
+  }
+}
 //-------------------------------Оостановка замера----------------------------------------------------------
 void measur_stop(void) //остановка замера
 {
@@ -1073,9 +1088,6 @@ void measur_stop(void) //остановка замера
 void measur_warning(void) //окончание замера
 {
   if (next_measur && !alarm_measur) { //если поднят флаг следующего замера и оповещение окончания замера разешено
-    uint8_t i = 0; //переключатель мелодии
-
-    uint32_t timer_sound = millis(); //таймер переключения мелодии
 
     cnt_pwr = 0; //обнуляем счетчик
     low_pwr(); //просыпаемся если спали
@@ -1089,13 +1101,7 @@ void measur_warning(void) //окончание замера
       pump();//накачка по обратной связи с АЦП
       data_convert(); //преобразование данных
 #if MEASUR_SOUND
-      if (millis() > timer_sound) { //пиликаем волшебную мелодию
-        switch (i) {
-          case 0: buzz_pulse(SAMPLE_MEASUR_0_FREQ, SAMPLE_MEASUR_0_TIME); i++; timer_sound = millis() + SAMPLE_MEASUR_0_WAINT; break;
-          case 1: buzz_pulse(SAMPLE_MEASUR_1_FREQ, SAMPLE_MEASUR_1_TIME); i++; timer_sound = millis() + SAMPLE_MEASUR_1_WAINT; break;
-          case 2: buzz_pulse(SAMPLE_MEASUR_2_FREQ, SAMPLE_MEASUR_2_TIME); i++; timer_sound = millis() + SAMPLE_MEASUR_2_WAINT; break;
-        }
-      }
+      _melody_chart(measur_sound, SAMPLS_MEASUR, 0); //играем волшебную мклодию
 #endif
     }
     switch (measur) {
@@ -1268,9 +1274,7 @@ void measur_menu(void) //режим замера
 void alarm_messege(boolean set, boolean sound, char *mode) //тревога
 {
   uint8_t pos = 21 + (6 * set); //определяем позицию
-  uint8_t i = 0; //переключатель мелодии
   uint32_t rad_set; //текущие данные фона/дозы
-  uint32_t timer_sound = millis(); //таймер мелодии
 
   cnt_pwr = 0; //обнуляем счетчик
   low_pwr(); //просыпаемся если спали
@@ -1304,18 +1308,8 @@ void alarm_messege(boolean set, boolean sound, char *mode) //тревога
     }
 
     //==================================================================
-    if (millis() > timer_sound && !sound) { //пиликаем волшебную мелодию
-      switch (i) {
-        case 0: buzz_pulse(SAMPLE_0_FREQ, SAMPLE_0_TIME); i++; timer_sound = millis() + SAMPLE_0_WAINT; break;
-        case 1: buzz_pulse(SAMPLE_1_FREQ, SAMPLE_1_TIME); i++; timer_sound = millis() + SAMPLE_1_WAINT; break;
-        case 2: buzz_pulse(SAMPLE_2_FREQ, SAMPLE_2_TIME); i++; timer_sound = millis() + SAMPLE_2_WAINT; break;
-        case 3: buzz_pulse(SAMPLE_3_FREQ, SAMPLE_3_TIME); i++; timer_sound = millis() + SAMPLE_3_WAINT; break;
-        case 4: buzz_pulse(SAMPLE_4_FREQ, SAMPLE_4_TIME); i++; timer_sound = millis() + SAMPLE_4_WAINT; break;
-        case 5: buzz_pulse(SAMPLE_5_FREQ, SAMPLE_5_TIME); i++; timer_sound = millis() + SAMPLE_5_WAINT; break;
-        case 6: buzz_pulse(SAMPLE_6_FREQ, SAMPLE_6_TIME); i++; timer_sound = millis() + SAMPLE_6_WAINT; break;
-        case 7: buzz_pulse(SAMPLE_7_FREQ, SAMPLE_7_TIME); i++; timer_sound = millis() + SAMPLE_7_WAINT; break;
-        case 8: buzz_pulse(SAMPLE_8_FREQ, SAMPLE_8_TIME); i = 0; timer_sound = millis() + SAMPLE_OVERFLOW_WAINT; break;
-      }
+    if (!sound) { //пиликаем волшебную мелодию
+      _melody_chart(alarm_sound, SAMPLS_ALARM, 1); //играем волшебную мклодию
     }
     _vibro_on(); //включаем вибрацию
     //==================================================================
@@ -1397,9 +1391,6 @@ void _vibro_off(void) //предупреждение
 //-------------------------------Предупреждение----------------------------------------------------------
 void warn_messege(boolean set, boolean sound) //предупреждение
 {
-  static uint8_t i; //переключатель мелодии
-  static uint32_t timer_sound; //таймер мелодии
-
   buzz_switch = 0; //запрещаем щелчки
   cnt_pwr = 0; //обнуляем счетчик сна
 
@@ -1421,13 +1412,8 @@ void warn_messege(boolean set, boolean sound) //предупреждение
       break;
   }
   //==================================================================
-  if (millis() > timer_sound && !sound) { //пиликаем волшебную мелодию
-    switch (i) {
-      case 0: buzz_pulse(SAMPLE_WARN_0_FREQ, SAMPLE_WARN_0_TIME); i = 1; timer_sound = millis() + SAMPLE_WARN_0_WAINT; break;
-      case 1: buzz_pulse(SAMPLE_WARN_1_FREQ, SAMPLE_WARN_1_TIME); i = 2; timer_sound = millis() + SAMPLE_WARN_1_WAINT; break;
-      case 2: buzz_pulse(SAMPLE_WARN_2_FREQ, SAMPLE_WARN_2_TIME); i = 3; timer_sound = millis() + SAMPLE_WARN_2_WAINT; break;
-      case 3: buzz_pulse(SAMPLE_WARN_3_FREQ, SAMPLE_WARN_3_TIME); i = 0; timer_sound = millis() + SAMPLE_WARN_OVERFLOW_WAINT; break;
-    }
+  if (!sound) { //пиликаем волшебную мелодию
+    _melody_chart(warn_sound, SAMPLS_WARN, 2); //играем волшебную мклодию
   }
   _vibro_on(); //включаем вибрацию
   //==================================================================
@@ -1551,9 +1537,6 @@ void stat_bat(void) //заряд батареи
 
       buzz_switch = 0; //запретить звуковую индикацию импульсов
 
-      uint8_t i = 0; //переключатель мелодии
-      uint32_t timer_sound = millis(); //таймер мелодии
-
       clrScr(); // Очистка экрана
       drawBitmap(26, 0, low_bat_img, 32, 32); //рисуем заставку
       setFont(RusFont); //установка шрифта
@@ -1565,13 +1548,7 @@ void stat_bat(void) //заряд батареи
         data_convert(); //преобразование данных
         //--------------------------------------------------------------------------------------
 #if BAT_LOW_SOUND
-        if (millis() > timer_sound) { //пиликаем волшебную мелодию
-          switch (i) {
-            case 0: buzz_pulse(SAMPLE_BAT_0_FREQ, SAMPLE_BAT_0_TIME); i++; timer_sound = millis() + SAMPLE_BAT_0_WAINT; break;
-            case 1: buzz_pulse(SAMPLE_BAT_1_FREQ, SAMPLE_BAT_1_TIME); i++; timer_sound = millis() + SAMPLE_BAT_1_WAINT; break;
-            case 2: buzz_pulse(SAMPLE_BAT_2_FREQ, SAMPLE_BAT_2_TIME); i++; timer_sound = millis() + SAMPLE_BAT_2_WAINT; break;
-          }
-        }
+        _melody_chart(bat_low_sound, SAMPLS_BAT_LOW, 3); //играем волшебную мклодию
 #endif
         //--------------------------------------------------------------------------------------
       }
@@ -1587,9 +1564,6 @@ void stat_bat(void) //заряд батареи
       cnt_pwr = 0; //обнуление счетчика сна
       low_pwr(); //просыпаемся
 
-      uint8_t i = 0; //переключатель мелодии
-      uint32_t timer_sound = millis(); //таймер мелодии
-
       clrScr(); //очистка экрана
       drawBitmap(26, 0, low_bat_img, 32, 32);
       setFont(RusFont); //установка шрифта
@@ -1601,13 +1575,7 @@ void stat_bat(void) //заряд батареи
         data_convert(); //преобразование данных
         //--------------------------------------------------------------------------------------
 #if BAT_SLEEP_LOW_SOUND
-        if (millis() > timer_sound) {
-          switch (i) {
-            case 0: buzz_pulse(SAMPLE_BAT_SLEEP_0_FREQ, SAMPLE_BAT_SLEEP_0_TIME); i++; timer_sound = millis() + SAMPLE_BAT_SLEEP_0_WAINT; break;
-            case 1: buzz_pulse(SAMPLE_BAT_SLEEP_1_FREQ, SAMPLE_BAT_SLEEP_1_TIME); i++; timer_sound = millis() + SAMPLE_BAT_SLEEP_1_WAINT; break;
-            case 2: buzz_pulse(SAMPLE_BAT_SLEEP_2_FREQ, SAMPLE_BAT_SLEEP_2_TIME); i++; timer_sound = millis() + SAMPLE_BAT_SLEEP_2_WAINT; break;
-          }
-        }
+        _melody_chart(bat_sleep_low_sound, SAMPLS_BAT_SLEEP_LOW, 4); //играем волшебную мклодию
 #endif
         //--------------------------------------------------------------------------------------
       }
@@ -2225,8 +2193,6 @@ void setings(void) //настройки
 //-----------------------------------быстрое меню---------------------------------
 void fast_menu(void) //быстрое меню
 {
-  uint8_t i = 0; //переключатель мелодии
-  uint32_t timer_sound = millis(); //таймер мелодии
   uint8_t time_out = 0; //счетчик тайм-аута
   scr = 0; //разрешаем обновление экрана
 
@@ -2247,13 +2213,7 @@ void fast_menu(void) //быстрое меню
 
     //--------------------------------------------------------------------------------------
 #if FAST_SOUND
-    if (millis() > timer_sound && !knock_disable) {
-      switch (i) {
-        case 0: buzz_pulse(SAMPLE_FAST_0_FREQ, SAMPLE_FAST_0_TIME); i++; timer_sound = millis() + SAMPLE_FAST_0_WAINT; break;
-        case 1: buzz_pulse(SAMPLE_FAST_1_FREQ, SAMPLE_FAST_1_TIME); i++; timer_sound = millis() + SAMPLE_FAST_1_WAINT; break;
-        case 2: buzz_pulse(SAMPLE_FAST_2_FREQ, SAMPLE_FAST_2_TIME); i++; timer_sound = millis() + SAMPLE_FAST_2_WAINT; break;
-      }
-    }
+   _melody_chart(fast_sound, SAMPLS_FAST, 5); //играем волшебную мклодию
 #endif
     //--------------------------------------------------------------------------------------
 
@@ -2403,12 +2363,7 @@ void error_messege(void) //сообщение об ошибке
       data_convert(); //преобразование данных
 
       //==================================================================
-      if (millis() > timer_sound) { //пиликаем волшебную мелодию
-        switch (i) {
-          case 0: buzz_pulse(SAMPLE_ERROR_0_FREQ, SAMPLE_ERROR_0_TIME); i = 1; timer_sound = millis() + SAMPLE_ERROR_0_WAINT; break;
-          case 1: buzz_pulse(SAMPLE_ERROR_1_FREQ, SAMPLE_ERROR_1_TIME); i = 0; timer_sound = millis() + SAMPLE_ERROR_OVERFLOW_WAINT; break;
-        }
-      }
+      _melody_chart(error_sound, SAMPLS_ERROR, 6); //играем волшебную мклодию
       //==================================================================
 
       if (check_keys()) break;
