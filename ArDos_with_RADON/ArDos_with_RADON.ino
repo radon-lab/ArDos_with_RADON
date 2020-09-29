@@ -408,13 +408,13 @@ int main(void)  //инициализация
 
   TIMSK1 = 0; //отключаем прерывания Таймера1
   TCCR1A = 0; //отключаем OC1A/OC1B
-  TCCR1B = 0b00000100; //пределитель: 16000000/1024=15625Гц
+  TCCR1B = 0b00000100; //пределитель 256
 
   TIME_FACT_1 = 100000 / wdt_period; //расчитываем период для секунд
   buzz_time = (TIME_BUZZ / float(1.00 / FREQ_BUZZ * 1000)); //пересчитываем частоту и время щелчков в циклы таймера
   buzz_freq = (65536 - (F_CPU / TMR1_PRESCALER) / FREQ_BUZZ); //устанавливаем частоту таймера щелчков
 
-  if (eeprom_read_byte(101) == 101) pump_read(); //считываение параметров преобразователя из памяти
+  pump_read(); //считываение параметров преобразователя из памяти
   start_pump(); //первая накачка преобразователя
 
   WDT_enable(); //запускаем WatchDog с пределителем 2
@@ -1017,14 +1017,14 @@ void _melody_chart(uint16_t arr[][3], uint8_t n, uint8_t s) //воспроизв
   static uint8_t i; //переключатель мелодии
   static uint8_t signature; //переключатель мелодии
   static uint32_t timer_sound; //таймер мелодии
-  
+
   if (signature != s) {
     i = 0;
     signature = s;
   }
   if (millis() > timer_sound) {
-    buzz_pulse(pgm_read_word(&arr[i][0]), pgm_read_word(&arr[i][1])); 
-    timer_sound = millis() + pgm_read_word(&arr[i][2]); 
+    buzz_pulse(pgm_read_word(&arr[i][0]), pgm_read_word(&arr[i][1]));
+    timer_sound = millis() + pgm_read_word(&arr[i][2]);
     if (++i > n - 1) i = 0;
   }
 }
@@ -1865,8 +1865,7 @@ void debug(void) //отладка
         break;
 
       case 6: //hold select key ///выход в настройки
-        eeprom_update_byte(52, puls);
-        eeprom_update_float(53, opornoe);
+        pump_update(); //обновление настроек преобразователя
         error = 0; //сбрасываем указатель ошибки
         sthv = 0; //запрещаем проверку скорости
         scr = 0; //разрешаем обновление экрана
@@ -2200,14 +2199,14 @@ void fast_menu(void) //быстрое меню
 
     //==================================================================
 #if FAST_SOUND
-  if (i != SAMPLS_FAST && millis() > timer_sound) { //играем волшебную мелодию
-    buzz_pulse(pgm_read_word(&fast_sound[i][0]), pgm_read_word(&fast_sound[i][1])); 
-    timer_sound = millis() + pgm_read_word(&fast_sound[i][2]); 
-    i++;
-  }
+    if (i != SAMPLS_FAST && millis() > timer_sound) { //играем волшебную мелодию
+      buzz_pulse(pgm_read_word(&fast_sound[i][0]), pgm_read_word(&fast_sound[i][1]));
+      timer_sound = millis() + pgm_read_word(&fast_sound[i][2]);
+      i++;
+    }
 #endif
     //==================================================================
-    
+
     pump(); //накачка по обратной связи с АЦП
     data_convert(); //преобразование данных
 
@@ -2422,19 +2421,17 @@ void setings_read(void) //чтение настроек
   alarm_level_dose = eeprom_read_word(68);
   wdt_period = eeprom_read_word(110);
 }
-//------------------------------------Чтение статистики----------------------------------------------
+//---------------------------------------Чтение статистики--------------------------------------------------
 void statistic_read(void) //чтение статистики
 {
   time_save = eeprom_read_dword(114);
   rad_dose_save = eeprom_read_dword(118);
 }
-//-----------------------------Чтение настроек преобразователя---------------------------------------
+//--------------------------------Чтение настроек преобразователя-------------------------------------------
 void pump_read(void) //чтение настроек преобразователя
 {
   puls = eeprom_read_byte(52);
   opornoe = eeprom_read_float(53);
-  ADC_value = eeprom_read_byte(102);
-  k_delitel = eeprom_read_word(104);
 }
 //------------------------------------Чтение состояния щелчков----------------------------------------------
 void buzz_read(void) //чтение состояния щелчков
@@ -2445,6 +2442,12 @@ void buzz_read(void) //чтение состояния щелчков
 void rad_flash_read(void) //чтение состояния вспышек
 {
   rad_flash = eeprom_read_byte(59);
+}
+//-----------------------------Обновление настроек преобразователя------------------------------------------
+void pump_update(void) //обновление настроек преобразователя
+{
+  eeprom_update_byte(52, puls);
+  eeprom_update_float(53, opornoe);
 }
 //--------------------------------Обновление состояния подсветки--------------------------------------------
 void light_update(void) //обновление состояния подсветки
