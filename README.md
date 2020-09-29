@@ -1,4 +1,4 @@
-# <p align="center">Страница [проекта ArDos](http://arduino.ru/forum/proekty/delaem-dozimetr) с [общими рекомендациями](http://arduino.ru/forum/proekty/delaem-dozimetr#comment-263653) и [прошивки "RADON"](http://arduino.ru/forum/proekty/delaem-dozimetr?page=84#comment-526157).</p> 
+# <p align="center">Страница [проекта ArDos](http://arduino.ru/forum/proekty/delaem-dozimetr) с [общими рекомендациями](http://arduino.ru/forum/proekty/delaem-dozimetr#comment-263653) и [прошивкой "RADON"](http://arduino.ru/forum/proekty/delaem-dozimetr?page=84#comment-526157).</p> 
 
 Для сброса настроек необходимо зажать клавишу "ОК" и включить питание, появится сообщение об успешном сбросе.
   Если что-то идет или работает не так, в первую очередь пробуйте сброс настроек хот-кеем как описано выше!!!
