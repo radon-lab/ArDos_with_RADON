@@ -414,22 +414,8 @@ int main(void)  //инициализация
   buzz_time = (TIME_BUZZ / float(1.00 / FREQ_BUZZ * 1000)); //пересчитываем частоту и время щелчков в циклы таймера
   buzz_freq = (65536 - (F_CPU / TMR1_PRESCALER) / FREQ_BUZZ); //устанавливаем частоту таймера щелчков
 
-#if PUMP_SET_IGNOR
   if (eeprom_read_byte(101) == 101) pump_read(); //считываение параметров преобразователя из памяти
   start_pump(); //первая накачка преобразователя
-#else
-  if (eeprom_read_byte(101) == 101) {
-    pump_read(); //считываение параметров преобразователя из памяти
-    start_pump(); //первая накачка преобразователя
-  }
-  else {
-    print("ghtj,hfpjdfn.", CENTER, 24); //преобразоват.
-    print("yt yfcnhjty!", CENTER, 32); //не настроен!
-    for (uint32_t t = millis() + FONT_TIME; t > millis() && !check_keys();); //ждём
-    clrRow(3); //очистка строки 4
-    CYCLE_OVERFLOW = 0; //запрещаем накачку
-  }
-#endif
 
   WDT_enable(); //запускаем WatchDog с пределителем 2
 
