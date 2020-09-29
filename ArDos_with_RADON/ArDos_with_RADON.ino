@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.0.3 low_pwr 28.09.20 специально для проекта ArDos
+  Версия программы RADON v3.0.4 low_pwr 29.09.20 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr
   Желательна установка лёгкого ядра https://alexgyver.github.io/package_GyverCore_index.json и загрузчика OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -438,7 +438,7 @@ int main(void)  //инициализация
 
   setFont(RusFont); //установка шрифта
   print("-=HFLJY=-", CENTER, 32); //-=РАДОН=-
-  print("3.0.3", CENTER, 40); //версия по
+  print("3.0.4", CENTER, 40); //версия по
 
   bat_check(); //опрос батареи
 
@@ -1031,12 +1031,15 @@ void _melody_chart(uint16_t arr[][3], uint8_t n, uint8_t s) //воспроизв
   static uint8_t i; //переключатель мелодии
   static uint8_t signature; //переключатель мелодии
   static uint32_t timer_sound; //таймер мелодии
+  
   if (signature != s) {
     i = 0;
     signature = s;
   }
   if (millis() > timer_sound) {
-    buzz_pulse(pgm_read_word(&arr[i][0]), pgm_read_word(&arr[i][1])); timer_sound = millis() + pgm_read_word(&arr[i][2]); if (i < n - 1) i++; else i = 0;
+    buzz_pulse(pgm_read_word(&arr[i][0]), pgm_read_word(&arr[i][1])); 
+    timer_sound = millis() + pgm_read_word(&arr[i][2]); 
+    if (++i > n - 1) i = 0;
   }
 }
 //-------------------------------Оостановка замера----------------------------------------------------------
@@ -1101,7 +1104,7 @@ void measur_warning(void) //окончание замера
       pump();//накачка по обратной связи с АЦП
       data_convert(); //преобразование данных
 #if MEASUR_SOUND
-      _melody_chart(measur_sound, SAMPLS_MEASUR, 0); //играем волшебную мклодию
+      _melody_chart(measur_sound, SAMPLS_MEASUR, 0); //играем волшебную мелодию
 #endif
     }
     switch (measur) {
@@ -1309,7 +1312,7 @@ void alarm_messege(boolean set, boolean sound, char *mode) //тревога
 
     //==================================================================
     if (!sound) { //пиликаем волшебную мелодию
-      _melody_chart(alarm_sound, SAMPLS_ALARM, 1); //играем волшебную мклодию
+      _melody_chart(alarm_sound, SAMPLS_ALARM, 1); //играем волшебную мелодию
     }
     _vibro_on(); //включаем вибрацию
     //==================================================================
@@ -1413,7 +1416,7 @@ void warn_messege(boolean set, boolean sound) //предупреждение
   }
   //==================================================================
   if (!sound) { //пиликаем волшебную мелодию
-    _melody_chart(warn_sound, SAMPLS_WARN, 2); //играем волшебную мклодию
+    _melody_chart(warn_sound, SAMPLS_WARN, 2); //играем волшебную мелодию
   }
   _vibro_on(); //включаем вибрацию
   //==================================================================
@@ -1548,7 +1551,7 @@ void stat_bat(void) //заряд батареи
         data_convert(); //преобразование данных
         //--------------------------------------------------------------------------------------
 #if BAT_LOW_SOUND
-        _melody_chart(bat_low_sound, SAMPLS_BAT_LOW, 3); //играем волшебную мклодию
+        _melody_chart(bat_low_sound, SAMPLS_BAT_LOW, 3); //играем волшебную мелодию
 #endif
         //--------------------------------------------------------------------------------------
       }
@@ -1575,7 +1578,7 @@ void stat_bat(void) //заряд батареи
         data_convert(); //преобразование данных
         //--------------------------------------------------------------------------------------
 #if BAT_SLEEP_LOW_SOUND
-        _melody_chart(bat_sleep_low_sound, SAMPLS_BAT_SLEEP_LOW, 4); //играем волшебную мклодию
+        _melody_chart(bat_sleep_low_sound, SAMPLS_BAT_SLEEP_LOW, 4); //играем волшебную мелодию
 #endif
         //--------------------------------------------------------------------------------------
       }
@@ -2194,6 +2197,8 @@ void setings(void) //настройки
 void fast_menu(void) //быстрое меню
 {
   uint8_t time_out = 0; //счетчик тайм-аута
+  uint8_t i = 0; //переключатель мелодии
+  uint32_t timer_sound = millis(); //таймер мелодии
   scr = 0; //разрешаем обновление экрана
 
   clrScr(); //очистка экрана
@@ -2211,12 +2216,16 @@ void fast_menu(void) //быстрое меню
 
   while (1) {
 
-    //--------------------------------------------------------------------------------------
+    //==================================================================
 #if FAST_SOUND
-   _melody_chart(fast_sound, SAMPLS_FAST, 5); //играем волшебную мклодию
+  if (i != SAMPLS_FAST && millis() > timer_sound) { //играем волшебную мелодию
+    buzz_pulse(pgm_read_word(&fast_sound[i][0]), pgm_read_word(&fast_sound[i][1])); 
+    timer_sound = millis() + pgm_read_word(&fast_sound[i][2]); 
+    i++;
+  }
 #endif
-    //--------------------------------------------------------------------------------------
-
+    //==================================================================
+    
     pump(); //накачка по обратной связи с АЦП
     low_pwr(); //отключение дисплея и подсветки, уход в сон для экономии энергии
     data_convert(); //преобразование данных
@@ -2363,7 +2372,7 @@ void error_messege(void) //сообщение об ошибке
       data_convert(); //преобразование данных
 
       //==================================================================
-      _melody_chart(error_sound, SAMPLS_ERROR, 6); //играем волшебную мклодию
+      _melody_chart(error_sound, SAMPLS_ERROR, 5); //играем волшебную мелодию
       //==================================================================
 
       if (check_keys()) break;
