@@ -414,13 +414,15 @@ int main(void)  //инициализация
   buzz_time = (TIME_BUZZ / float(1.00 / FREQ_BUZZ * 1000)); //пересчитываем частоту и время щелчков в циклы таймера
   buzz_freq = (65536 - (F_CPU / TMR1_PRESCALER) / FREQ_BUZZ); //устанавливаем частоту таймера щелчков
 
+#if DEBUG_RETURN
   if (eeprom_read_byte(101) != 101) {
     pump_update(); //считываение параметров преобразователя из памяти
     eeprom_update_byte(101, 101); //делаем метку
   }
   else pump_read(); //считываение параметров преобразователя из памяти
-  start_pump(); //первая накачка преобразователя
+#endif
 
+  start_pump(); //первая накачка преобразователя
   WDT_enable(); //запускаем WatchDog с пределителем 2
 
   clrRow(4); //очистка строки 4
@@ -435,7 +437,10 @@ int main(void)  //инициализация
   EICRA = 0b00001010; //настраиваем внешнее прерывание по спаду импульса на INT0 и INT1
   EIMSK = 0b00000001; //разрешаем внешнее прерывание INT0
 
-  for (uint32_t t = millis() + FONT_TIME; t > millis() && !check_keys();) pump(); //накачка по обратной связи с АЦП //ждём
+  for (uint32_t t = millis() + FONT_TIME; t > millis() && !check_keys();) { //ждём
+    pump(); //накачка по обратной связи с АЦП
+    data_convert(); //преобразование данных
+  }
 
   clrScr(); //очистка экрана
 
@@ -1851,7 +1856,7 @@ void debug(void) //отладка
       case 3: //Up key //нажатие
         switch (n) {
           case 0: if ((opornoe += 0.01) > 1.50) opornoe = 1.50; break; //прибавляем опорное напряжение
-          case 1: if (++puls > 30) puls = 30; break; //прибавляем длинну импульса 
+          case 1: if (++puls > 30) puls = 30; break; //прибавляем длинну импульса
           case 2: if (++k_delitel > 999) k_delitel = 999; break; //прибавляем коэффициент делителя
           case 3: if (++ADC_value > 254) ADC_value = 254; break; //прибавляем значение АЦП для преобразователя
         }
