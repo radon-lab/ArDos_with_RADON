@@ -611,7 +611,7 @@ void data_convert(void) //преобразование данных
 
           if (geiger_time_now < MAX_GEIGER_TIME) geiger_time_now++; //прибавляем указатель заполненности буффера
 
-#if (GEIGER_COUNT == 1)
+#if GEIGER_DEAD_TIME
           if (rad_buff[1] >= COUNT_RATE) rad_buff[1] = rad_buff[1] / (1 - rad_buff[1] * DEAD_TIME); //если скорость счета больше 100имп/с, учитываем мертвое время счетчика
 #endif
 
@@ -679,10 +679,6 @@ void data_convert(void) //преобразование данных
         case TIME_FACT_7: //расчет текущего фона этап-5
           if (geiger_time_now > 1) rad_back = tmp_buff * ((float)GEIGER_TIME / geiger_time_now); //расчет фона мкР/ч
 
-#if (GEIGER_COUNT != 1)
-          rad_back = rad_back / GEIGER_COUNT; //если счетчиков больше 1, делим результат на количество счетчиков
-#endif
-
           for (uint8_t k = MAX_GEIGER_TIME; k > 1; k--) rad_buff[k] = rad_buff[k - 1]; //перезапись массива
           break;
 
@@ -702,12 +698,9 @@ void data_convert(void) //преобразование данных
           break;
 
         case TIME_FACT_9: //расчет текущей дозы
-          if ((rad_sum += rad_buff[1]) > 99999999 * GEIGER_COUNT) rad_sum = 99999999 * GEIGER_COUNT; //переполнение суммы импульсов
+          if ((rad_sum += rad_buff[1]) > 99999999) rad_sum = 99999999; //переполнение суммы импульсов
           rad_dose = (rad_sum * GEIGER_TIME / 3600); //расчитаем дозу
 
-#if (GEIGER_COUNT != 1)
-          rad_dose = rad_dose / GEIGER_COUNT; //если счетчиков больше 1, делим результат на количество счетчиков
-#endif
           break;
 
         case TIME_FACT_10: //расчет данных для графика
