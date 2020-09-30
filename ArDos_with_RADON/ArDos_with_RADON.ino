@@ -616,7 +616,7 @@ void data_convert(void) //преобразование данных
 #endif
 
           for (uint8_t i = 0; i < geiger_time_now; i++) tmp_buff += rad_buff[i + 1]; //суммирование всех импульсов для расчета фона
-          if (tmp_buff > 999999) tmp_buff = 999999; //переполнение
+          if (tmp_buff > 9999999) tmp_buff = 9999999; //переполнение буфера импульсов
 
           break;
 
@@ -680,7 +680,7 @@ void data_convert(void) //преобразование данных
           if (geiger_time_now > 1) rad_back = tmp_buff * ((float)GEIGER_TIME / geiger_time_now); //расчет фона мкР/ч
 
 #if (GEIGER_COUNT != 1)
-          rad_back = rad_back / GEIGER_COUNT;
+          rad_back = rad_back / GEIGER_COUNT; //если счетчиков больше 1, делим результат на количество счетчиков
 #endif
 
           for (uint8_t k = MAX_GEIGER_TIME; k > 1; k--) rad_buff[k] = rad_buff[k - 1]; //перезапись массива
@@ -701,12 +701,12 @@ void data_convert(void) //преобразование данных
           }
           break;
 
-        case TIME_FACT_9: //расчет текущей и накопленной дозы
-          if ((rad_sum += rad_buff[1]) > 999999UL * 3600 / GEIGER_TIME) rad_sum = 999999UL * 3600 / GEIGER_TIME; //сумма импульсов
+        case TIME_FACT_9: //расчет текущей дозы
+          if ((rad_sum += rad_buff[1]) > 99999999 * GEIGER_COUNT) rad_sum = 99999999 * GEIGER_COUNT; //переполнение суммы импульсов
           rad_dose = (rad_sum * GEIGER_TIME / 3600); //расчитаем дозу
 
 #if (GEIGER_COUNT != 1)
-          rad_dose = rad_dose / GEIGER_COUNT;
+          rad_dose = rad_dose / GEIGER_COUNT; //если счетчиков больше 1, делим результат на количество счетчиков
 #endif
           break;
 
@@ -1049,14 +1049,14 @@ void _melody_chart(uint16_t arr[][3], uint8_t n, uint8_t s) //воспроизв
   static uint8_t signature; //переключатель мелодии
   static uint32_t timer_sound; //таймер мелодии
 
-  if (signature != s) {
-    i = 0;
-    signature = s;
+  if (signature != s) { //если сигнатура мелодии не равна старой
+    i = 0; //сбрасываем переключатель
+    signature = s; //устанавливаем новую сигнатуру
   }
-  if (millis() > timer_sound) {
-    buzz_pulse(pgm_read_word(&arr[i][0]), pgm_read_word(&arr[i][1]));
-    timer_sound = millis() + pgm_read_word(&arr[i][2]);
-    if (++i > n - 1) i = 0;
+  if (millis() > timer_sound) { //если пришло время
+    buzz_pulse(pgm_read_word(&arr[i][0]), pgm_read_word(&arr[i][1])); //запускаем звук с задоной частотой и временем
+    timer_sound = millis() + pgm_read_word(&arr[i][2]); //устанавливаем паузу перед воспроизведением нового звука
+    if (++i > n - 1) i = 0; //переключпем на следующий семпл
   }
 }
 //-------------------------------Оостановка замера----------------------------------------------------------
