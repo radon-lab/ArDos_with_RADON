@@ -100,7 +100,7 @@
                    добавлена защита от "спантанных" скачков, тревога по фону начинает работать только если набран минимальный массив или превышен порог фона "RAD_PRE_WARN".
   3.0.4 29.09.20 - новый алгоритм обработки мелодий, позволяет более гибко настраивать мелодии пользователю и занимает на 1Кб памяти меньше.
   3.0.4 30.09.20 - добавлена возможность настройки "ADC_value" и "k_delitel" в меню отладки, оптимизация отображения единиц, изменен алгоритм обработки энергосбережения,
-                   теперь зависимость от "имп/с" вместо "мкР", настроить можно в "config" параметры - "IMP_PWR_MANAGER", "IMP_PWR_DOWN" и "IMP_PWR_GIST".
+                   теперь зависимость от "имп/с" вместо "мкР", настроить можно в "config" параметры - "IMP_PWR_MANAGER", "IMP_PWR_DOWN" и "IMP_PWR_GIST", удален выбор количества счетчиков, добавлено отключение мертвого времени.
 
   Внимание!!! При выключении пункта "СОН" в меню настроек влечет увеличением энергопотребления, но тем самым увеличивается производительность устройства.
 
@@ -958,6 +958,23 @@ void buzz_click(void) //щелчок пищалкой
   buzz_on = true; //поднимаем флаг работы бузера
   TIMER1_START; //запускаем таймер
 }
+//---------------------------------Воспроизведение мелодии---------------------------------------
+void _melody_chart(uint16_t arr[][3], uint8_t n, uint8_t s) //воспроизведение мелодии
+{
+  static uint8_t i; //переключатель мелодии
+  static uint8_t signature; //переключатель мелодии
+  static uint32_t timer_sound; //таймер мелодии
+
+  if (signature != s) { //если сигнатура мелодии не равна старой
+    i = 0; //сбрасываем переключатель
+    signature = s; //устанавливаем новую сигнатуру
+  }
+  if (millis() > timer_sound) { //если пришло время
+    buzz_pulse(pgm_read_word(&arr[i][0]), pgm_read_word(&arr[i][1])); //запускаем звук с задоной частотой и временем
+    timer_sound = millis() + pgm_read_word(&arr[i][2]); //устанавливаем паузу перед воспроизведением нового звука
+    if (++i > n - 1) i = 0; //переключпем на следующий семпл
+  }
+}
 //-----------------------------Проверка кнопок----------------------------------------------------
 uint8_t check_keys(void) //проверить клавиатуру
 {
@@ -1033,23 +1050,6 @@ uint8_t check_keys(void) //проверить клавиатуру
         case 3: return 4; //up hold, возвращаем 4
       }
       break;
-  }
-}
-//---------------------------------Воспроизведение мелодии---------------------------------------
-void _melody_chart(uint16_t arr[][3], uint8_t n, uint8_t s) //воспроизведение мелодии
-{
-  static uint8_t i; //переключатель мелодии
-  static uint8_t signature; //переключатель мелодии
-  static uint32_t timer_sound; //таймер мелодии
-
-  if (signature != s) { //если сигнатура мелодии не равна старой
-    i = 0; //сбрасываем переключатель
-    signature = s; //устанавливаем новую сигнатуру
-  }
-  if (millis() > timer_sound) { //если пришло время
-    buzz_pulse(pgm_read_word(&arr[i][0]), pgm_read_word(&arr[i][1])); //запускаем звук с задоной частотой и временем
-    timer_sound = millis() + pgm_read_word(&arr[i][2]); //устанавливаем паузу перед воспроизведением нового звука
-    if (++i > n - 1) i = 0; //переключпем на следующий семпл
   }
 }
 //-------------------------------Оостановка замера----------------------------------------------------------
@@ -1155,7 +1155,7 @@ void measur_menu(void) //режим замера
           if (first_froze > second_froze) result = (first_froze - second_froze) / ((60.0 / GEIGER_TIME) * diff_measuring[pos_measur]);
           else result = (second_froze - first_froze) / ((60.0 / GEIGER_TIME) * diff_measuring[pos_measur]);
 
-          init_rads_unit(1, result, 1, 4, 1, 8, 0, 54, 16); //результат
+          _init_rads_unit(1, result, 1, 4, 1, 8, 0, 54, 16); //результат
 
           if (next_measur) {
             switch (n) {
@@ -1283,7 +1283,45 @@ void measur_menu(void) //режим замера
     }
   }
 }
-//-------------------------------Тревога----------------------------------------------------------
+//-------------------------------Выбор тревоги----------------------------------------------------------
+void alarm_warning(void) //выбор тревоги
+{
+  switch (alarm_switch) {
+    case 1: alarm_messege(0, alarm_back_sound_disable, "Ajy"); break; //фон 2
+    case 2: alarm_messege(1, alarm_dose_sound_disable, "Ljpf"); break; //доза 2
+    case 3: warn_messege(0, alarm_back_sound_disable); break; //фон 1
+    case 4: warn_messege(1, alarm_dose_sound_disable); break; //доза 1
+  }
+}
+//-------------------------------Предупреждение----------------------------------------------------------
+void warn_messege(boolean set, boolean sound) //предупреждение
+{
+  buzz_switch = 0; //запрещаем щелчки
+  cnt_pwr = 0; //обнуляем счетчик сна
+
+  switch (set) { //переключаемся на экран тревоги
+    case 0: switch (scr_mode) { //фон
+        case 1:
+        case 2:
+          scr_mode = 0;
+          return;
+      }
+      break;
+    case 1: switch (scr_mode) { //доза
+        case 0:
+        case 2:
+          scr_mode = 1;
+          dose_mode = 0;
+          return;
+      }
+      break;
+  }
+  //==================================================================
+  if (!sound) _melody_chart(warn_sound, SAMPLS_WARN, 2); //играем волшебную мелодию
+  _vibro_on(); //включаем вибрацию
+  //==================================================================
+}
+//-------------------------------Тревога-----------------------------------------------------
 void alarm_messege(boolean set, boolean sound, char *mode) //тревога
 {
   uint8_t pos = 21 + (6 * set); //определяем позицию
@@ -1317,7 +1355,7 @@ void alarm_messege(boolean set, boolean sound, char *mode) //тревога
         case 1: rad_set = rad_dose; break;
       }
       print(mode, LEFT, 40); //фон
-      init_rads_unit(0, rad_set, 1, 5, pos, 40, set, RIGHT, 40); //результат
+      _init_rads_unit(0, rad_set, 1, 5, pos, 40, set, RIGHT, 40); //результат
     }
 
     //==================================================================
@@ -1344,8 +1382,8 @@ void alarm_messege(boolean set, boolean sound, char *mode) //тревога
     }
   }
 }
-//-------------------------------Предупреждение----------------------------------------------------------
-void _vibro_on(void) //предупреждение
+//--------------------------Вибрация и световая индикация тревоги---------------------------------
+void _vibro_on(void) //вибрация и световая индикация тревоги
 {
   static uint8_t n; //переключатель вибрации
   static uint32_t timer_vibro; //таймер вибрации
@@ -1385,8 +1423,8 @@ void _vibro_on(void) //предупреждение
   }
 #endif
 }
-//-------------------------------Предупреждение----------------------------------------------------------
-void _vibro_off(void) //предупреждение
+//-----------------------Выключение вибрация и световой индикаци--------------------------------
+void _vibro_off(void) //выключение вибрация и световой индикаци
 {
 #if (TYPE_ALARM_IND == 1)
   FLASH_OFF; //выключаем фонарик
@@ -1398,44 +1436,6 @@ void _vibro_off(void) //предупреждение
 #else
   VIBRO_OFF; //выключаем вибрацию
 #endif
-}
-//-------------------------------Предупреждение----------------------------------------------------------
-void warn_messege(boolean set, boolean sound) //предупреждение
-{
-  buzz_switch = 0; //запрещаем щелчки
-  cnt_pwr = 0; //обнуляем счетчик сна
-
-  switch (set) { //переключаемся на экран тревоги
-    case 0: switch (scr_mode) { //фон
-        case 1:
-        case 2:
-          scr_mode = 0;
-          return;
-      }
-      break;
-    case 1: switch (scr_mode) { //доза
-        case 0:
-        case 2:
-          scr_mode = 1;
-          dose_mode = 0;
-          return;
-      }
-      break;
-  }
-  //==================================================================
-  if (!sound) _melody_chart(warn_sound, SAMPLS_WARN, 2); //играем волшебную мелодию
-  _vibro_on(); //включаем вибрацию
-  //==================================================================
-}
-//-------------------------------Выбор тревоги----------------------------------------------------------
-void alarm_warning(void) //выбор тревоги
-{
-  switch (alarm_switch) {
-    case 1: alarm_messege(0, alarm_back_sound_disable, "Ajy"); break; //фон 2
-    case 2: alarm_messege(1, alarm_dose_sound_disable, "Ljpf"); break; //доза 2
-    case 3: warn_messege(0, alarm_back_sound_disable); break; //фон 1
-    case 4: warn_messege(1, alarm_dose_sound_disable); break; //доза 1
-  }
 }
 //-----------------------------------Первая накачка--------------------------------------------
 void start_pump(void) //первая накачка
@@ -2730,54 +2730,15 @@ void choice_menu(boolean n) //меню выбора
 // -----------------------------Отрисовка линий точности---------------------------------------
 void _screen_line(uint8_t up_bar, uint8_t down_bar, boolean rent_bar, uint8_t start_bar, uint8_t pos_bar) //отрисовка линий
 {
-  for (uint8_t i = 0; i < down_bar; i++) {
+  for (uint8_t i = 0; i < down_bar; i++) { //рисуем верхнюю шкалу
     drawBitmap(i + start_bar, pos_bar, (uint8_t*)pgm_read_word(&_scale[rent_bar]), 1, 8); //шкала готовности общая
   }
-  for (uint8_t i = down_bar; i < up_bar; i++) {
+  for (uint8_t i = down_bar; i < up_bar; i++) { //рисуем нижнюю шкалу
     drawBitmap(i + start_bar, pos_bar, (uint8_t*)pgm_read_word(&_scale[2]), 1, 8); //шкала готовности верхняя
   }
 }
-//----------------------------------Шапка экрана------------------------------------------------
-void task_bar(void) //шапка экрана
-{
-  drawBitmap(0, 0, font_alt_img, 84, 8); //устанавлваем фон
-  drawBitmap(70, 0, bat_alt_img, bat * 2, 8); //отображаем состояние батареи
-
-  if (alarm_back_disable) //если тревога запрещена
-  {
-    if (alarm_back_wait) drawBitmap(60, 0, beep_alt_waint_img, 7, 8); //если ждем понижения фона
-    else drawBitmap(60, 0, beep_alt_off_img, 7, 8); //иначе тревога выключена
-  }
-  else if (alarm_back_sound_disable) drawBitmap(60, 0, beep_alt_vibro_img, 7, 8); //иначе если звук выключен
-  else drawBitmap(60, 0, beep_alt_img, 8, 8);
-
-  if (buzz_switch && !knock_disable) drawBitmap(47, 0, buzz_alt_on_img, 7, 8); //если щелчки и зв.кнопок включен
-  else if (buzz_switch) drawBitmap(47, 0, buzz_alt_img, 7, 8); //если щелчки включены и зв.кнопок выключен
-  else if (!knock_disable) drawBitmap(47, 0, beep_alt_waint_img, 7, 8); //если щелчки выключены и зв.кнопок включен
-  else drawBitmap(47, 0, buzz_alt_off_img, 7, 8); //иначе выключено все
-
-  switch (scr_mode)
-  {
-    case 0: drawBitmap(0, 0, backgr_img, 17, 8); break;  //режим текущего фона
-    case 1: drawBitmap(0, 0, dose_img, 22, 8); break;  //режим накопленной дозы
-#if SEARCH_RETURN
-    case 2: drawBitmap(0, 0, serch_img, 26, 8); break;  //режим поиска
-#endif
-  }
-#if COEF_DEBUG //отладка коэффициента
-  switch (scr_mode)
-  {
-    case 0: setFont(TinyNumbersUp); //установка шрифта
-      invertText(true);
-      printNumF(now, 2, 19, 0, 46, 5, 43); //строка 1
-      invertText(false);
-      printNumF(debug_coef, 2, 57, 8, 46, 5, 43); //строка 2
-      break;
-  }
-#endif
-}
 //----------------------------------Инициализация значений большим шрифтом------------------------------------------------------
-void init_rads_unit(boolean smb, uint32_t num, uint8_t divisor, uint8_t char_all, uint8_t num_x, uint8_t num_y, boolean unit, uint8_t unit_x, uint8_t unit_y) //инициализация значений большим шрифтом
+void _init_rads_unit(boolean smb, uint32_t num, uint8_t divisor, uint8_t char_all, uint8_t num_x, uint8_t num_y, boolean unit, uint8_t unit_x, uint8_t unit_y) //инициализация значений большим шрифтом
 {
   uint8_t _ptr;
 
@@ -2787,21 +2748,21 @@ void init_rads_unit(boolean smb, uint32_t num, uint8_t divisor, uint8_t char_all
   if (smb) setFont(MediumNumbers); //установка шрифта
   else setFont(RusFont); //установка шрифта
 
-  for (uint8_t i = 0; i < _ptr; i++) {
-    if (num < pgm_read_dword(&patern_all[rad_mode][i][0]) * divisor) {
+  for (uint8_t i = 0; i < _ptr; i++) { //перебираем патерны
+    if (num < pgm_read_dword(&patern_all[rad_mode][i][0]) * divisor) { //если есть совпадение
       if (smb) printNumF(float(num) / pgm_read_dword(&patern_all[rad_mode][i][2]), pgm_read_dword(&patern_all[rad_mode][i][1]), num_x, num_y, 46, char_all, TYPE_CHAR_FILL); //строка 1
 #if (TYPE_CHAR_FILL > 44)
       else printNumF(float(num) / pgm_read_dword(&patern_all[rad_mode][i][2]), pgm_read_dword(&patern_all[rad_mode][i][1]), num_x, num_y, 46, char_all, TYPE_CHAR_FILL); //строка 1
 #else
       else printNumF(float(num) / pgm_read_dword(&patern_all[rad_mode][i][2]), pgm_read_dword(&patern_all[rad_mode][i][1]), num_x, num_y, 46, char_all, 32); //строка 1
 #endif
-      rads_unit(pgm_read_dword(&patern_all[rad_mode][i][3]), unit, unit_x, unit_y); //устанавливаем единицы измерения
+      _rads_unit(pgm_read_dword(&patern_all[rad_mode][i][3]), unit, unit_x, unit_y); //устанавливаем единицы измерения
       break;
     }
   }
 }
 //----------------------------------Единицы измерения------------------------------------------------------
-void rads_unit(boolean set, boolean unit, uint8_t unit_x, uint8_t unit_y) //Единицы измерения
+void _rads_unit(boolean set, boolean unit, uint8_t unit_x, uint8_t unit_y) //Единицы измерения
 {
   setFont(RusFont); //установка шрифта
   switch (rad_mode)
@@ -2845,6 +2806,45 @@ void rads_unit(boolean set, boolean unit, uint8_t unit_x, uint8_t unit_y) //Ед
       break;
   }
 }
+//----------------------------------Шапка экрана------------------------------------------------
+void task_bar(void) //шапка экрана
+{
+  drawBitmap(0, 0, font_alt_img, 84, 8); //устанавлваем фон
+  drawBitmap(70, 0, bat_alt_img, bat * 2, 8); //отображаем состояние батареи
+
+  if (alarm_back_disable) //если тревога запрещена
+  {
+    if (alarm_back_wait) drawBitmap(60, 0, beep_alt_waint_img, 7, 8); //если ждем понижения фона
+    else drawBitmap(60, 0, beep_alt_off_img, 7, 8); //иначе тревога выключена
+  }
+  else if (alarm_back_sound_disable) drawBitmap(60, 0, beep_alt_vibro_img, 7, 8); //иначе если звук выключен
+  else drawBitmap(60, 0, beep_alt_img, 8, 8);
+
+  if (buzz_switch && !knock_disable) drawBitmap(47, 0, buzz_alt_on_img, 7, 8); //если щелчки и зв.кнопок включен
+  else if (buzz_switch) drawBitmap(47, 0, buzz_alt_img, 7, 8); //если щелчки включены и зв.кнопок выключен
+  else if (!knock_disable) drawBitmap(47, 0, beep_alt_waint_img, 7, 8); //если щелчки выключены и зв.кнопок включен
+  else drawBitmap(47, 0, buzz_alt_off_img, 7, 8); //иначе выключено все
+
+  switch (scr_mode)
+  {
+    case 0: drawBitmap(0, 0, backgr_img, 17, 8); break;  //режим текущего фона
+    case 1: drawBitmap(0, 0, dose_img, 22, 8); break;  //режим накопленной дозы
+#if SEARCH_RETURN
+    case 2: drawBitmap(0, 0, serch_img, 26, 8); break;  //режим поиска
+#endif
+  }
+#if COEF_DEBUG //отладка коэффициента
+  switch (scr_mode)
+  {
+    case 0: setFont(TinyNumbersUp); //установка шрифта
+      invertText(true);
+      printNumF(now, 2, 19, 0, 46, 5, 43); //строка 1
+      invertText(false);
+      printNumF(debug_coef, 2, 57, 8, 46, 5, 43); //строка 2
+      break;
+  }
+#endif
+}
 //----------------------------------Главные экраны------------------------------------------------------
 void main_screen(void)
 {
@@ -2869,11 +2869,10 @@ void main_screen(void)
 
     task_bar(); //рисуем шапку экрана
 
-    //---------------------------------------------------------------------------------------//
+    //===========================================================//
     switch (scr_mode)
     {
       case 0: //режим измерения текущего фона
-
         switch (alarm_switch) {
           case 0: _screen_line(map(constrain(geiger_time_now, 0, GEIGER_TIME), 0, GEIGER_TIME, 5, 82), map(constrain(geiger_time_now, 0, MAX_GEIGER_TIME), 0, MAX_GEIGER_TIME, 5, 82), 1, 1, 24); break; //шкалы точности и усреднения
           case 3:
@@ -2889,10 +2888,10 @@ void main_screen(void)
         drawBitmap(0, 32, dose_mid_img, 26, 8);       //строка 2 сред.
         drawBitmap(0, 40, dose_max_img, 26, 8);       //строка 3 макс.
 
-        init_rads_unit(0, rad_mid, 1, 4, 29, 32, 0, 54, 32); //строка 2 средний
+        _init_rads_unit(0, rad_mid, 1, 4, 29, 32, 0, 54, 32); //строка 2 средний
         if (!first_mid) print("----", 29, 32); //если первый средний замер не готов
 
-        init_rads_unit(0, rad_max, 1, 4, 29, 40, 0, 54, 40); //строка 3 максимальный
+        _init_rads_unit(0, rad_max, 1, 4, 29, 40, 0, 54, 40); //строка 3 максимальный
 #else //иначе отрисовываем график в режиме фон
         switch (f) {
           case 0:
@@ -2912,18 +2911,18 @@ void main_screen(void)
             drawBitmap(0, 32, dose_mid_img, 26, 8);       //строка 2 сред.
             drawBitmap(0, 40, dose_max_img, 26, 8);       //строка 3 макс.
 
-            init_rads_unit(0, rad_mid, 1, 4, 29, 32, 0, 54, 32); //строка 2 средний
+            _init_rads_unit(0, rad_mid, 1, 4, 29, 32, 0, 54, 32); //строка 2 средний
             if (!first_mid) print("----", 29, 32); //если первый средний замер не готов
 
-            init_rads_unit(0, rad_max, 1, 4, 29, 40, 0, 54, 40); //строка 3 максимальный
+            _init_rads_unit(0, rad_max, 1, 4, 29, 40, 0, 54, 40); //строка 3 максимальный
             break;
         }
 #endif
 
-        init_rads_unit(1, rad_back, 1, 4, 1, 8, 0, 54, 16); //строка 1 основной фон
+        _init_rads_unit(1, rad_back, 1, 4, 1, 8, 0, 54, 16); //строка 1 основной фон
 
         break;
-      //---------------------------------------------------------------------------------------//
+      //===========================================================//
       case 1: //режим накопленной дозы
 
         switch (dose_mode)
@@ -2948,9 +2947,9 @@ void main_screen(void)
                 break;
             }
 
-            init_rads_unit(1, rad_dose, 10, 5, 1, 8, 1, 62, 16); //строка 1 текущая доза
+            _init_rads_unit(1, rad_dose, 10, 5, 1, 8, 1, 62, 16); //строка 1 текущая доза
             drawBitmap(0, 40, dose_all_img, 24, 8);       //строка 2 всего
-            init_rads_unit(0, rad_dose_save, 10, 5, 32, 40, 1, 66, 40); //строка 2 сохранённая доза
+            _init_rads_unit(0, rad_dose_save, 10, 5, 32, 40, 1, 66, 40); //строка 2 сохранённая доза
             break;
 
           case 1: //общая накопленная доза и время
@@ -2964,13 +2963,13 @@ void main_screen(void)
 
             print("Dctuj pf&", CENTER, 32);          //строка всего за:
 
-            init_rads_unit(1, rad_dose_save, 10, 5, 1, 8, 1, 62, 16); //строка 1 сохранённая доза
+            _init_rads_unit(1, rad_dose_save, 10, 5, 1, 8, 1, 62, 16); //строка 1 сохранённая доза
             break;
         }
         break;
     }
   }
-
+  //===========================================================//
 #if SEARCH_RETURN
   switch (scr_mode)
   {
@@ -2982,8 +2981,7 @@ void main_screen(void)
   switch (check_keys())
   {
     case 1: //Down key hold //сброс
-      switch (scr_mode)
-      {
+      switch (scr_mode) { //основные экраны
         case 0: //сбрасываем максимальный фон и средний фон
 #if SEARCH_RETURN
           rad_mid = 0; //сбрасываем среднее значение фона
@@ -3032,7 +3030,7 @@ void main_screen(void)
       break;
 
     case 2: //Down key //выбор режима
-      switch (alarm_switch) {
+      switch (alarm_switch) { //режим тревоги
         case 0: if (scr_mode > 0) scr_mode--; else scr_mode = MAX_SCREENS; break; //назад
         case 3: warn_back_wait = 1; alarm_switch = 0; _vibro_off(); buzz_read(); break; //фон
         case 4: warn_dose_wait = rad_dose; alarm_switch = 0; _vibro_off(); buzz_read(); break; //доза
@@ -3041,7 +3039,7 @@ void main_screen(void)
       break;
 
     case 3: //Up key  //выбор режима
-      switch (alarm_switch) {
+      switch (alarm_switch) { //режим тревоги
         case 0: if (scr_mode < MAX_SCREENS) scr_mode++; else scr_mode = 0; break; //вперёд
         case 3: warn_back_wait = 1; alarm_switch = 0; _vibro_off(); buzz_read(); break; //фон
         case 4: warn_dose_wait = rad_dose; alarm_switch = 0; _vibro_off(); buzz_read(); break; //доза
@@ -3055,10 +3053,9 @@ void main_screen(void)
       break;
 
     case 5: //select key // доп.действие
-      switch (alarm_switch) {
+      switch (alarm_switch) { //режим тревоги
         case 0:
-          switch (scr_mode)
-          {
+          switch (scr_mode) { //основные экраны
             case 0: //сбрасываем текущий фон
 #if SEARCH_RETURN
               for (uint8_t i = 0; i < GEIGER_TIME; i++) rad_buff[i] = 0; //очищаем буфер фона
@@ -3066,19 +3063,18 @@ void main_screen(void)
               rad_back = 0; //сбрасываем фон
 #else
               switch (f) {
-                case 0: f = 1; break;
-                case 1: f = 0; break;
+                case 0: f = 1; break; //переключаем в режим средн/макс
+                case 1: f = 0; break; //переключаем в режим графика
               }
 #endif
               break;
 
             case 1://перключение режимов дозы
-              if (++dose_mode > 1) dose_mode = 0;
+              if (++dose_mode > 1) dose_mode = 0; //переключаем экраны дозы
               break;
 #if SEARCH_RETURN
             case 2://пауза графика
-              if (serch_disable) serch_disable = 0; else serch_disable = 1;
-              graf_init();
+              if (serch_disable) serch_disable = 0; else serch_disable = 1; //запрещаем обновление графика
               break;
 #endif
           }
@@ -3089,8 +3085,8 @@ void main_screen(void)
       scr = 0; //разрешаем обновления экрана
       break;
 
-    case 6: //hold select key //меню
-      if (!alarm_switch) setings();
+    case 6: //hold select key //настройки
+      if (!alarm_switch) setings(); //если нет тревоги
       scr = 0; //разрешаем обновления экрана
       break;
   }
