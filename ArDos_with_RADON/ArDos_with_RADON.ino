@@ -99,6 +99,7 @@
   3.0.3 29.09.20 - новый алгоритм обработки тревоги фона/дозы, добавлено синхронное управление вибрацией и отключением звука 1-х уровней тревоги, тревога по дозе теперь будет срабатывать каждый раз когда установленный порог будет превышен от текущей дозы,
                    добавлена защита от "спантанных" скачков, тревога по фону начинает работать только если набран минимальный массив или превышен порог фона "RAD_PRE_WARN".
   3.0.4 29.09.20 - новый алгоритм обработки мелодий, позволяет более гибко настраивать мелодии пользователю и занимает на 1Кб памяти меньше.
+  3.0.4 30.09.20 - изменен алгоритм обработки энергосбережения, теперь зависимость от "имп/с" вместо "мкР", настроить можно в "config" параметры - "IMP_PWR_MANAGER", "IMP_PWR_DOWN" и "IMP_PWR_GIST".
 
   Внимание!!! При выключении пункта "СОН" в меню настроек влечет увеличением энергопотребления, но тем самым увеличивается производительность устройства.
 
@@ -205,6 +206,7 @@
 
 //-------------Для разработчиков-------------
 #define ALARM_AUTO_GISTERESIS  (1.00 - (ALARM_AUTO_GIST / 100.00)) //инвертируем проценты
+#define IMP_PWR_GISTERESIS  (1.00 - (IMP_PWR_GIST / 100.00)) //инвертируем проценты
 
 #define GRAF_MAX (GRAF_MAX_MS / (wdt_period / 100.0)) //максимальное время обновления графика
 #define GRAF_MIN (GRAF_MIN_MS / (wdt_period / 100.0)) //минимальное время обновления графика
@@ -241,6 +243,7 @@ uint8_t TIME_FACT_1; //секундные интервалы 1
 #define TIME_FACT_13 38 //секундные интервалы 13
 #define TIME_FACT_14 39 //секундные интервалы 14
 #define TIME_FACT_15 40 //секундные интервалы 15
+#define TIME_FACT_16 41 //секундные интервалы 16
 
 uint16_t stat_upd_tmr; //таймер записи статистики в память
 uint16_t tmr_mid; //таймер расчета среднего фона
@@ -321,6 +324,7 @@ uint8_t rad_flash = 1; //индикация попадания частиц
 uint8_t TIME_SLEEP = 10; //время до ухода в сон(должно быть больше чем время подсветки) (10..250)(s)
 uint8_t TIME_BRIGHT = 5; //время до отключения подсветки (5..250)(s)
 uint8_t sleep_switch = 0; //флаг запрет ухода в сон(0 - сон выкл | 1 - только подсветка | 2 - сон вкл)
+uint8_t power_manager = 2; //переключатель режимов сна
 boolean sleep = 0; //флаг активного сна
 boolean light = 0; //флаг выключенной подсветки
 
@@ -785,8 +789,8 @@ void data_convert(void) //преобразование данных
     }
 
     switch (time_wdt) {
-      case TIME_FACT_13:
 #if !MESSUR_OR_PWR
+      case TIME_FACT_13:
         switch (measur) { //разностный замер
           case 1: if (time_switch < (diff_measuring[pos_measur] * 60)) time_switch ++; //прибавляем секунду
             else next_measur = 1; //иначе время вышло
@@ -799,15 +803,26 @@ void data_convert(void) //преобразование данных
             rad_buff[0] = 0; //сбрасывает счетчик частиц
             break;
         }
+        break;
 #endif
+
+      case TIME_FACT_14: //управление энергосбережением
+        switch (power_manager) {
+          case 0: if (rad_buff[1] <= (IMP_PWR_MANAGER * IMP_PWR_GISTERESIS)) power_manager = 1; break; //если текущее количество импульсов меньше установленного порога включения энергосбережения
+          case 1:
+            if (rad_buff[1] > IMP_PWR_MANAGER) power_manager = 0; //если текущее количество импульсов больше установленного порога отключения энергосбережения
+            else if (rad_buff[1] <= (IMP_PWR_DOWN * IMP_PWR_GISTERESIS)) power_manager = 2; //если текущее количество импульсов меньше установленного порога включения глубокого энергосбережения
+            break;
+          case 2: if (rad_buff[1] > IMP_PWR_DOWN) power_manager = 1; break; //если текущее количество импульсов больше установленного порога отключения глубокого энергосбережения
+        }
         break;
 
-      case TIME_FACT_14:
+      case TIME_FACT_15:
         bat_update = 0; //устанавливаем флаг для обновления батареи
         time_sec = time_micros / 100000; //считаем секунды
         break;
 
-      case TIME_FACT_15:
+      case TIME_FACT_16:
         if (!sleep) scr = 0; //устанавливаем флаг для обновления экрана
         break;
     }
@@ -816,9 +831,9 @@ void data_convert(void) //преобразование данных
 //-------------------------Режим пониженного энергопотребления----------------------------------------------------
 void low_pwr(void)
 {
-  if (sleep_switch == 2 && rad_back < RAD_PWR_MANAGER) { //если сон разрешен
+  if (sleep_switch == 2 && power_manager) { //если сон разрешен и и разрешено энергосбережение
     if (buzz_on || alarm_switch) waint_pwr(); //если включен бузер или тревога - режим ожидания
-    else if (sleep && rad_back < RAD_PWR_DOWN) sleep_pwr(); //если спим и фон меньше установленного - глубокий сон
+    else if (sleep && power_manager == 2) sleep_pwr(); //если спим и разрешено глубокое энергосбережение
     else save_pwr(); //иначе - режим энергосбережения
   }
   else waint_pwr(); //иначе - режим ожидания
@@ -2767,10 +2782,10 @@ void task_bar(void) //шапка экрана
 void init_rads_unit(boolean smb, uint32_t num, uint8_t divisor, uint8_t char_all, uint8_t num_x, uint8_t num_y, boolean unit, uint8_t unit_x, uint8_t unit_y) //инициализация значений большим шрифтом
 {
   uint8_t _ptr;
-  
+
   if (rad_mode) _ptr = PATERNS_SVH;
   else _ptr = PATERNS_RH;
-  
+
   if (smb) setFont(MediumNumbers); //установка шрифта
   else setFont(RusFont); //установка шрифта
 
