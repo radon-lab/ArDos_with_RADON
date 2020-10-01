@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.0.4 low_pwr 30.09.20 специально для проекта ArDos
+  Версия программы RADON v3.0.5 low_pwr 01.10.20 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr
   Желательна установка лёгкого ядра https://alexgyver.github.io/package_GyverCore_index.json и загрузчика OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -101,6 +101,7 @@
   3.0.4 29.09.20 - новый алгоритм обработки мелодий, позволяет более гибко настраивать мелодии пользователю и занимает на 1Кб памяти меньше.
   3.0.4 30.09.20 - добавлена возможность настройки "ADC_value" и "k_delitel" в меню отладки, оптимизация отображения единиц, изменен алгоритм обработки энергосбережения,
                    теперь зависимость от "имп/с" вместо "мкР", настроить можно в "config" параметры - "IMP_PWR_MANAGER", "IMP_PWR_DOWN" и "IMP_PWR_GIST", удален выбор количества счетчиков, добавлено отключение мертвого времени.
+  3.0.5 01.10.20 - добавлен учет собственного фона счетчика, параметр в "config" - "OWN_BACK".
 
   Внимание!!! При выключении пункта "СОН" в меню настроек влечет увеличением энергопотребления, но тем самым увеличивается производительность устройства.
 
@@ -432,7 +433,7 @@ int main(void)  //инициализация
 
   setFont(RusFont); //установка шрифта
   print("-=HFLJY=-", CENTER, 32); //-=РАДОН=-
-  print("3.0.4", CENTER, 40); //версия по
+  print("3.0.5", CENTER, 40); //версия по
 
   bat_check(); //опрос батареи
 
@@ -674,6 +675,8 @@ void data_convert(void) //преобразование данных
           break;
 
         case TIME_FACT_7: //расчет текущего фона этап-5
+          tmp_buff = tmp_buff - geiger_time_now * OWN_BACK; //убираем собственный фон счетчика
+          
           if (geiger_time_now > 1) rad_back = tmp_buff * ((float)GEIGER_TIME / geiger_time_now); //расчет фона мкР/ч
 
           for (uint8_t k = MAX_GEIGER_TIME; k > 1; k--) rad_buff[k] = rad_buff[k - 1]; //перезапись массива
@@ -696,7 +699,7 @@ void data_convert(void) //преобразование данных
 
         case TIME_FACT_9: //расчет текущей дозы
           if ((rad_sum += rad_buff[1]) > 99999999) rad_sum = 99999999; //переполнение суммы импульсов
-          rad_dose = (rad_sum * GEIGER_TIME / 3600); //расчитаем дозу
+          rad_dose = ((rad_sum - time_sec * OWN_BACK) * GEIGER_TIME / 3600); //расчитаем дозу с учетом собственного фона счетчика
 
           break;
 
@@ -1151,9 +1154,9 @@ void measur_menu(void) //режим замера
 
       switch (measur) {
         case 0: //результат
-          if (first_froze > second_froze) result = (first_froze - second_froze) / ((60.0 / GEIGER_TIME) * diff_measuring[pos_measur]);
-          else result = (second_froze - first_froze) / ((60.0 / GEIGER_TIME) * diff_measuring[pos_measur]);
-
+          if (first_froze > second_froze) result = ((first_froze - second_froze) - (diff_measuring[pos_measur] * 60) * OWN_BACK) / ((60.0 / GEIGER_TIME) * diff_measuring[pos_measur]); //рассчитываем результат замера и убираем собственный фон счетчика
+          else result = ((second_froze - first_froze) - (diff_measuring[pos_measur] * 60) * OWN_BACK) / ((60.0 / GEIGER_TIME) * diff_measuring[pos_measur]); //рассчитываем результат замера и убираем собственный фон счетчика
+        
           _init_rads_unit(1, result, 1, 4, 1, 8, 0, 54, 16); //результат
 
           if (next_measur) {
@@ -2980,13 +2983,14 @@ void main_screen(void)
           first_mid = 0; //сбрасываем флаг первого среднего замера фона
           rad_mid_buff = 0; //сбрасываем буфер среднего замера фона
 #else
-          for (uint8_t i = 0; i < GEIGER_TIME; i++) rad_buff[i] = 0; //очищаем буфер фона
+          for (uint8_t i = 0; i < geiger_time_now; i++) rad_buff[i + 1] = 0; //очищаем буфер фона
+          rad_buff[0] = 0; //очищаем буфер счета
           geiger_time_now = 0; //сбрасываем счетчик накопления импульсов в буфере
           rad_back = 0; //сбрасываем фон
 
           switch (f) {
             case 0:
-              for (uint8_t i = 0; i < 84; i++) graf_buff[i] = 0; //очищаем буфер графика
+              for (uint8_t i = 0; i < 76; i++) graf_buff[i] = 0; //очищаем буфер графика
               rad_scan_buff = 0; //очищаем счетный буфер графика
               break;
 
@@ -3006,11 +3010,11 @@ void main_screen(void)
         case 2://сбрасываем счетчик частиц или счетчик импульсов и график
 #if TYPE_SERCH_UNIT
           rad_imp = 0;
-          for (uint8_t i = 0; i < 84; i++) graf_buff[i] = 0; //очищаем буфер нрафика
+          for (uint8_t i = 0; i < 76; i++) graf_buff[i] = 0; //очищаем буфер графика
           graf_init(); //инициализируем график
 #else
           rad_scan = 0;
-          for (uint8_t i = 0; i < 84; i++) graf_buff[i] = 0; //очищаем буфер нрафика
+          for (uint8_t i = 0; i < 76; i++) graf_buff[i] = 0; //очищаем буфер графика
           graf_init(); //инициализируем график
 #endif
           break;
@@ -3048,7 +3052,8 @@ void main_screen(void)
           switch (scr_mode) { //основные экраны
             case 0: //сбрасываем текущий фон
 #if SEARCH_RETURN
-              for (uint8_t i = 0; i < GEIGER_TIME; i++) rad_buff[i] = 0; //очищаем буфер фона
+              for (uint8_t i = 0; i < geiger_time_now; i++) rad_buff[i + 1] = 0; //очищаем буфер фона
+              rad_buff[0] = 0; //очищаем буфер счета
               geiger_time_now = 0; //сбрасываем счетчик накопления импульсов в буфере
               rad_back = 0; //сбрасываем фон
 #else
