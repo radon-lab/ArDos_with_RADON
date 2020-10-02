@@ -283,9 +283,9 @@ uint32_t time_sec = 0; //секунды
 uint8_t geiger_time_now = 0; //текущий номер набранной секунды счета
 
 uint8_t scr_mode = 0; //текущий режим
-uint8_t dose_mode = 0; //режим отображения дозы(текущая/общая)
-uint8_t rad_mode = 0; //единицы измерения дозы/фона(мкР/мкЗв)
 uint8_t measur = 0; //текущий статус замера
+boolean dose_mode = 0; //режим отображения дозы(текущая/общая)
+boolean rad_mode = 0; //единицы измерения дозы/фона(мкР/мкЗв)
 
 uint8_t bat = 5; //текущий заряд батареи
 uint8_t adc_result = MAX_BAT; //результат опроса акб
@@ -3057,15 +3057,12 @@ void main_screen(void)
               geiger_time_now = 0; //сбрасываем счетчик накопления импульсов в буфере
               rad_back = 0; //сбрасываем фон
 #else
-              switch (f) {
-                case 0: f = 1; break; //переключаем в режим средн/макс
-                case 1: f = 0; break; //переключаем в режим графика
-              }
+              if (f) f = 0; else f = 1; //переключаем экраны фона
 #endif
               break;
 
             case 1://перключение режимов дозы
-              if (++dose_mode > 1) dose_mode = 0; //переключаем экраны дозы
+              if (dose_mode) dose_mode = 0; else dose_mode = 1; //переключаем экраны дозы
               break;
 #if SEARCH_RETURN
             case 2://пауза графика
