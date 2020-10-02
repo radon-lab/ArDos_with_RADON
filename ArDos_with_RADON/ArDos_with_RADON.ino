@@ -1154,8 +1154,8 @@ void measur_menu(void) //режим замера
 
       switch (measur) {
         case 0: //результат
-          if (first_froze > second_froze) result = ((first_froze - second_froze) - (diff_measuring[pos_measur] * 60) * OWN_BACK) / ((60.0 / GEIGER_TIME) * diff_measuring[pos_measur]); //рассчитываем результат замера и убираем собственный фон счетчика
-          else result = ((second_froze - first_froze) - (diff_measuring[pos_measur] * 60) * OWN_BACK) / ((60.0 / GEIGER_TIME) * diff_measuring[pos_measur]); //рассчитываем результат замера и убираем собственный фон счетчика
+          if (first_froze > second_froze) result = (first_froze - second_froze) / ((60.0 / GEIGER_TIME) * diff_measuring[pos_measur]); //рассчитываем результат замера
+          else result = (second_froze - first_froze) / ((60.0 / GEIGER_TIME) * diff_measuring[pos_measur]); //рассчитываем результат замера
         
           _init_rads_unit(1, result, 1, 4, 1, 8, 0, 54, 16); //результат
 
@@ -2479,7 +2479,7 @@ void pump_update(void) //обновление настроек преобраз�
   eeprom_update_byte(52, puls);
   eeprom_update_float(53, opornoe);
   eeprom_update_byte(102, ADC_value);
-  eeprom_update_float(104, k_delitel);
+  eeprom_update_word(104, k_delitel);
 }
 //--------------------------------Обновление состояния подсветки--------------------------------------------
 void light_update(void) //обновление состояния подсветки
