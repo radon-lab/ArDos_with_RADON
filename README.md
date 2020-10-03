@@ -90,5 +90,5 @@
 
   
  <p align="center">
-  <img src="http://arduino.ru/sites/default/files/u52103/ardos_with_radon_3.0.3_.png" alt=""/>
+  <img src="http://arduino.ru/sites/default/files/u52103/ardos_with_radon_3.0.5__1.png" alt=""/>
 </p>
