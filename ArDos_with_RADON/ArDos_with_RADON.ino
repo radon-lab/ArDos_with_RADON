@@ -576,7 +576,6 @@ void data_convert(void) //преобразование данных
   for (; tick_wdt > 0; tick_wdt--) { //если был тик, обрабатываем данные
 
     if (++time_wdt >= TIME_FACT_1) time_wdt = 0; //расчет времени один раз в секунду
-
     time_micros += wdt_period; //микросекунды * 10
 
 #if SEARCH_RETURN
@@ -2449,49 +2448,6 @@ void setings_read(void) //чтение настроек
   alarm_level_dose = eeprom_read_word(68);
   wdt_period = eeprom_read_word(110);
 }
-//---------------------------------------Чтение статистики--------------------------------------------------
-void statistic_read(void) //чтение статистики
-{
-  time_save = eeprom_read_dword(114);
-  rad_dose_save = eeprom_read_dword(118);
-}
-//--------------------------------Чтение настроек преобразователя-------------------------------------------
-void pump_read(void) //чтение настроек преобразователя
-{
-  puls = eeprom_read_byte(52);
-  opornoe = eeprom_read_float(53);
-  ADC_value = eeprom_read_byte(102);
-  k_delitel = eeprom_read_word(104);
-}
-//------------------------------------Чтение состояния щелчков----------------------------------------------
-void buzz_read(void) //чтение состояния щелчков
-{
-  buzz_switch = eeprom_read_byte(44);
-}
-//------------------------------------Чтение состояния вспышек----------------------------------------------
-void rad_flash_read(void) //чтение состояния вспышек
-{
-  rad_flash = eeprom_read_byte(59);
-}
-//-----------------------------Обновление настроек преобразователя------------------------------------------
-void pump_update(void) //обновление настроек преобразователя
-{
-  eeprom_update_byte(52, puls);
-  eeprom_update_float(53, opornoe);
-  eeprom_update_byte(102, ADC_value);
-  eeprom_update_word(104, k_delitel);
-}
-//--------------------------------Обновление состояния подсветки--------------------------------------------
-void light_update(void) //обновление состояния подсветки
-{
-  eeprom_update_byte(40, light_lcd);
-}
-//--------------------------------------Обновление статистики-----------------------------------------------
-void statistic_update(void) //обновление статистики
-{
-  eeprom_update_dword(114, time_save);
-  eeprom_update_dword(118, rad_dose_save);
-}
 //---------------------------------------Обновление настроек------------------------------------------------
 void setings_update(void) //обновление настроек
 {
@@ -2515,6 +2471,49 @@ void setings_update(void) //обновление настроек
   eeprom_update_word(64, alarm_level_back);
   eeprom_update_word(66, warn_level_dose);
   eeprom_update_word(68, alarm_level_dose);
+}
+//---------------------------------------Чтение статистики--------------------------------------------------
+void statistic_read(void) //чтение статистики
+{
+  time_save = eeprom_read_dword(114);
+  rad_dose_save = eeprom_read_dword(118);
+}
+//--------------------------------------Обновление статистики-----------------------------------------------
+void statistic_update(void) //обновление статистики
+{
+  eeprom_update_dword(114, time_save);
+  eeprom_update_dword(118, rad_dose_save);
+}
+//--------------------------------Чтение настроек преобразователя-------------------------------------------
+void pump_read(void) //чтение настроек преобразователя
+{
+  puls = eeprom_read_byte(52);
+  opornoe = eeprom_read_float(53);
+  ADC_value = eeprom_read_byte(102);
+  k_delitel = eeprom_read_word(104);
+}
+//-----------------------------Обновление настроек преобразователя------------------------------------------
+void pump_update(void) //обновление настроек преобразователя
+{
+  eeprom_update_byte(52, puls);
+  eeprom_update_float(53, opornoe);
+  eeprom_update_byte(102, ADC_value);
+  eeprom_update_word(104, k_delitel);
+}
+//------------------------------------Чтение состояния щелчков----------------------------------------------
+void buzz_read(void) //чтение состояния щелчков
+{
+  buzz_switch = eeprom_read_byte(44);
+}
+//------------------------------------Чтение состояния вспышек----------------------------------------------
+void rad_flash_read(void) //чтение состояния вспышек
+{
+  rad_flash = eeprom_read_byte(59);
+}
+//--------------------------------Обновление состояния подсветки--------------------------------------------
+void light_update(void) //обновление состояния подсветки
+{
+  eeprom_update_byte(40, light_lcd);
 }
 //---------------------------------------Сброс текущей дозы--------------------------------------------
 void dose_reset(void) //сброс текущей дозы
