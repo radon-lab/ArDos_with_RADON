@@ -674,9 +674,9 @@ void data_convert(void) //преобразование данных
           break;
 
         case TIME_FACT_7: //расчет текущего фона этап-5
-          //tmp_buff -= geiger_time_now * OWN_BACK; //убираем собственный фон счетчика
+          tmp_buff -= geiger_time_now * OWN_BACK; //убираем собственный фон счетчика
 
-          if (geiger_time_now > 1) rad_back = tmp_buff * (((float)GEIGER_TIME + (tmp_buff / geiger_time_now) / 13.00) / geiger_time_now); //расчет фона мкР/ч
+          if (geiger_time_now > 1) rad_back = tmp_buff * ((float)GEIGER_TIME / geiger_time_now); //расчет фона мкР/ч
 
           for (uint8_t k = MAX_GEIGER_TIME; k > 1; k--) rad_buff[k] = rad_buff[k - 1]; //перезапись массива
           break;
