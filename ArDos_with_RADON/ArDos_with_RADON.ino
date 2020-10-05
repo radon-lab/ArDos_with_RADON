@@ -674,8 +674,9 @@ void data_convert(void) //преобразование данных
           break;
 
         case TIME_FACT_7: //расчет текущего фона этап-5
+#if GEIGER_OWN_BACK
           tmp_buff -= geiger_time_now * OWN_BACK; //убираем собственный фон счетчика
-
+#endif
           if (geiger_time_now > 1) rad_back = tmp_buff * ((float)GEIGER_TIME / geiger_time_now); //расчет фона мкР/ч
 
           for (uint8_t k = MAX_GEIGER_TIME; k > 1; k--) rad_buff[k] = rad_buff[k - 1]; //перезапись массива
@@ -698,8 +699,11 @@ void data_convert(void) //преобразование данных
 
         case TIME_FACT_9: //расчет текущей дозы
           if ((rad_sum += rad_buff[1]) > 99999999) rad_sum = 99999999; //переполнение суммы импульсов
+#if GEIGER_OWN_BACK
           rad_dose = ((rad_sum - time_sec * OWN_BACK) * GEIGER_TIME / 3600); //расчитаем дозу с учетом собственного фона счетчика
-
+#else
+          rad_dose = (rad_sum * GEIGER_TIME / 3600); //расчитаем дозу
+#endif
           break;
 
         case TIME_FACT_10: //расчет данных для графика
@@ -1155,7 +1159,7 @@ void measur_menu(void) //режим замера
         case 0: //результат
           if (first_froze > second_froze) result = (first_froze - second_froze) / ((60.0 / GEIGER_TIME) * diff_measuring[pos_measur]); //рассчитываем результат замера
           else result = (second_froze - first_froze) / ((60.0 / GEIGER_TIME) * diff_measuring[pos_measur]); //рассчитываем результат замера
-        
+
           _init_rads_unit(1, result, 1, 4, 1, 8, 0, 54, 16); //результат
 
           if (next_measur) {
