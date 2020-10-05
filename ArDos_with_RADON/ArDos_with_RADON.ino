@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.0.5 low_pwr 04.10.20 специально для проекта ArDos
+  Версия программы RADON v3.0.5 low_pwr 05.10.20 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr
   Желательна установка лёгкого ядра https://alexgyver.github.io/package_GyverCore_index.json и загрузчика OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -627,9 +627,9 @@ void data_convert(void) //преобразование данных
             time_2 = pgm_read_byte(&time_mass[mass_switch][1]); //получаем количество секундных замеров для второго плеча
 
             coef_back = 1.00; //устанавливаем первичный коэффициент
-            for (uint8_t i = MASS_BACK; i > 0; i--) {
-              if (rad_back >= pgm_read_word(&back_mass[i - 1]) && rad_back < pgm_read_word(&back_mass[i])) {
-                coef_back = pgm_read_float(&coef_back_mass[i - 1]); //пересчитывем фон для коррекции по заданным коэффициентам в массиве
+            for (uint8_t i = 0; i < MASS_BACK; i++) {
+              if (rad_back <= pgm_read_word(&back_mass[i])) {
+                coef_back = pgm_read_float(&coef_back_mass[i]); //пересчитывем фон для коррекции по заданным коэффициентам в массиве
                 break;
               }
             }
@@ -2749,7 +2749,7 @@ void _init_rads_unit(boolean smb, uint32_t num, uint8_t divisor, uint8_t char_al
   else setFont(RusFont); //установка шрифта
 
   for (uint8_t i = 0; i < _ptr; i++) { //перебираем патерны
-    if (num < pgm_read_dword(&patern_all[rad_mode][i][0]) * divisor) { //если есть совпадение
+    if (num <= pgm_read_dword(&patern_all[rad_mode][i][0]) * divisor) { //если есть совпадение
       if (smb) printNumF(float(num) / pgm_read_dword(&patern_all[rad_mode][i][2]), pgm_read_dword(&patern_all[rad_mode][i][1]), num_x, num_y, 46, char_all, TYPE_CHAR_FILL); //строка 1
 #if (TYPE_CHAR_FILL > 44)
       else printNumF(float(num) / pgm_read_dword(&patern_all[rad_mode][i][2]), pgm_read_dword(&patern_all[rad_mode][i][1]), num_x, num_y, 46, char_all, TYPE_CHAR_FILL); //строка 1
