@@ -65,7 +65,7 @@ void  print(String st, uint8_t x, uint8_t y, uint8_t length = 0, char filler = '
 void  printNumI(uint32_t num, uint8_t x, uint8_t y, uint8_t length = 0, char filler = ' ');
 void  printNumF(float num, uint8_t dec, uint8_t x, uint8_t y, char divider = '.', uint8_t length = 0, char filler = ' ');
 void  setFont(uint8_t* font);
-void  drawBitmap(uint8_t x, uint8_t y, bitmapdatatype bitmap, uint8_t sx, uint8_t sy, uint8_t orient = 1, uint8_t breik = 0);
+void  drawBitmap(uint8_t x, uint8_t y, bitmapdatatype bitmap, uint8_t sx, uint8_t sy,  boolean inv = 0);
 
 void  _LCD_Write(unsigned char data, unsigned char mode);
 void  _print_char(unsigned char c, uint8_t x, uint8_t row);
@@ -293,9 +293,8 @@ void setFont(uint8_t* font)
   cfont.inverted = 0;
 }
 
-void drawBitmap(uint8_t x, uint8_t y, bitmapdatatype bitmap, uint8_t sx, uint8_t sy, uint8_t orient, uint8_t breik)
+void drawBitmap(uint8_t x, uint8_t y, bitmapdatatype bitmap, uint8_t sx, uint8_t sy, boolean inv)
 {
-  boolean remap = 1;
   uint8_t steps = sx;
   uint8_t starty, rows;
 
@@ -306,18 +305,13 @@ void drawBitmap(uint8_t x, uint8_t y, bitmapdatatype bitmap, uint8_t sx, uint8_t
   else
     rows = (sy / 8) + 1;
 
-  switch (orient) {
-    case 0: remap = 1; steps = sx - breik; break; //left
-    case 255: remap = 0; steps = sx - breik; breik = 0; break; //right
-  }
-
   for (uint8_t cy = 0; cy < rows; cy++)
   {
     _LCD_Write(PCD8544_SETYADDR | (starty + cy), LCD_COMMAND);
     _LCD_Write(PCD8544_SETXADDR | x, LCD_COMMAND);
-    switch (remap) {
-      case 0: for (uint8_t cx = 0; cx < steps; cx++) _LCD_Write(bitmapbyte(cx), LCD_DATA); remap = 1; break;
-      case 1: for (uint8_t cx = 0; cx < steps; cx++) _LCD_Write(bitmapbyte(cx + breik + (cy * sx)), LCD_DATA); break;
+    switch (inv) {
+      case 0: for (uint8_t cx = 0; cx < steps; cx++) _LCD_Write(bitmapbyte(cx + (cy * sx)), LCD_DATA); break;
+      case 1: for (uint8_t cx = 0; cx < steps; cx++) _LCD_Write(~(bitmapbyte(cx + (cy * sx))), LCD_DATA); break;
     }
   }
   _LCD_Write(PCD8544_SETYADDR, LCD_COMMAND);

@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.0.5 low_pwr 05.10.20 специально для проекта ArDos
+  Версия программы RADON v3.0.5 low_pwr 08.10.20 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr
   Желательна установка лёгкого ядра https://alexgyver.github.io/package_GyverCore_index.json и загрузчика OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -219,7 +219,7 @@
 #define GEIGER_MASS (pgm_read_byte(&time_mass[MASS_TIME_FACT][0]) + pgm_read_byte(&time_mass[MASS_TIME_FACT][1])) //максимум секунд для окончания смещения коэффициентов
 
 #define MAX_GEIGER_TIME (BUFF_LENGTHY - 1) //максимальное время счета
-#define MIN_GEIGER_TIME (pgm_read_byte(&time_mass[MASS_TIME_FACT][0]) + pgm_read_byte(&time_mass[MASS_TIME_FACT][1])) //минимальное время счета
+#define MIN_GEIGER_TIME 2 //минимальное время счета
 
 #define MAX_SCREENS (SEARCH_RETURN + 1) //максимальное количество главных экранов
 
@@ -2740,25 +2740,40 @@ void _screen_line(uint8_t up_bar, uint8_t down_bar, boolean rent_bar, uint8_t st
 //----------------------------------Инициализация значений большим шрифтом------------------------------------------------------
 void _init_rads_unit(boolean smb, uint32_t num, uint8_t divisor, uint8_t char_all, uint8_t num_x, uint8_t num_y, boolean unit, uint8_t unit_x, uint8_t unit_y) //инициализация значений большим шрифтом
 {
-  uint8_t _ptr;
-
-  if (rad_mode) _ptr = PATERNS_SVH;
-  else _ptr = PATERNS_RH;
-
   if (smb) setFont(MediumNumbers); //установка шрифта
   else setFont(RusFont); //установка шрифта
 
-  for (uint8_t i = 0; i < _ptr; i++) { //перебираем патерны
-    if (num <= pgm_read_dword(&patern_all[rad_mode][i][0]) * divisor) { //если есть совпадение
-      if (smb) printNumF(float(num) / pgm_read_dword(&patern_all[rad_mode][i][2]), pgm_read_dword(&patern_all[rad_mode][i][1]), num_x, num_y, 46, char_all, TYPE_CHAR_FILL); //строка 1
+  switch (rad_mode)
+  {
+    case 0:
+      //мкР
+      for (uint8_t i = 0; i < 3; i++) {
+        if (num <= pgm_read_dword(&patern_Rh[i][0]) * divisor) { //если есть совпадение
+          if (smb) printNumF(float(num) / pgm_read_dword(&patern_Rh[i][0]), pgm_read_dword(&patern_Rh[i][0]), num_x, num_y, 46, char_all, TYPE_CHAR_FILL); //строка 1
 #if (TYPE_CHAR_FILL > 44)
-      else printNumF(float(num) / pgm_read_dword(&patern_all[rad_mode][i][2]), pgm_read_dword(&patern_all[rad_mode][i][1]), num_x, num_y, 46, char_all, TYPE_CHAR_FILL); //строка 1
+          else printNumF(float(num) / pgm_read_dword(&patern_Rh[i][0]), pgm_read_dword(&patern_Rh[i][0]), num_x, num_y, 46, char_all, TYPE_CHAR_FILL); //строка 1
 #else
-      else printNumF(float(num) / pgm_read_dword(&patern_all[rad_mode][i][2]), pgm_read_dword(&patern_all[rad_mode][i][1]), num_x, num_y, 46, char_all, 32); //строка 1
+          else printNumF(float(num) / pgm_read_dword(&patern_Rh[i][0]), pgm_read_dword(&patern_Rh[i][0]), num_x, num_y, 46, char_all, 32); //строка 1
 #endif
-      _rads_unit(pgm_read_dword(&patern_all[rad_mode][i][3]), unit, unit_x, unit_y); //устанавливаем единицы измерения
+          _rads_unit(pgm_read_dword(&patern_Rh[i][0]), unit, unit_x, unit_y); //устанавливаем единицы измерения
+        }
+      }
       break;
-    }
+
+    case 1:
+      //мкЗв
+      for (uint8_t i = 0; i < 5; i++) {
+        if (num <= pgm_read_dword(&patern_Svh[i][0]) * divisor) { //если есть совпадение
+          if (smb) printNumF(float(num) / pgm_read_dword(&patern_Svh[i][0]), pgm_read_dword(&patern_Svh[i][0]), num_x, num_y, 46, char_all, TYPE_CHAR_FILL); //строка 1
+#if (TYPE_CHAR_FILL > 44)
+          else printNumF(float(num) / pgm_read_dword(&patern_Svh[i][0]), pgm_read_dword(&patern_Svh[i][0]), num_x, num_y, 46, char_all, TYPE_CHAR_FILL); //строка 1
+#else
+          else printNumF(float(num) / pgm_read_dword(&patern_Svh[i][0]), pgm_read_dword(&patern_Svh[i][0]), num_x, num_y, 46, char_all, 32); //строка 1
+#endif
+          _rads_unit(pgm_read_dword(&patern_Svh[i][0]), unit, unit_x, unit_y); //устанавливаем единицы измерения
+        }
+      }
+      break;
   }
 }
 //----------------------------------Единицы измерения------------------------------------------------------
