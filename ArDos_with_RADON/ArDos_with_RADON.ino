@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.0.5 low_pwr 08.10.20 специально для проекта ArDos
+  Версия программы RADON v3.1.1 low_pwr 09.10.20 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr
   Желательна установка лёгкого ядра https://alexgyver.github.io/package_GyverCore_index.json и загрузчика OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -21,7 +21,7 @@
                  добавлен отдельный файл конфигурации прошивки "config", теперь можно подстроить некоторые аспекты прошивки под свои нужды,
                  добавлена возможность выбора выхода из сна по нажатию на любую клавишу, параметр в "SETUP" - "TYPE_SLEEP_OUT",
                  добавлена возможность выбора типа индикации при тревоге, параметр в "SETUP" - "TYPE_ALARM_IND",
-                 добавлена возможность выбора типа выхода из быстрого меню, параметр в "SETUP" - "TYPE_FAST_MENU",
+                 добавлена возможность выбора типа выхода из быстрого меню, параметр в "SETUP" - "TYPE_fast_flash",
                  если у вас есть сохранненый файл с настройками, его необходимо обновить на новый!
   1.6.4 24.05.20 - добавлен альтернативный главный экран, параметр в "SETUP" - "TYPE_MAIN_SCREEN",
                  добавлено усреднение показаний фона, параметр в "config" - "mid_rad_time",
@@ -102,6 +102,7 @@
   3.0.4 30.09.20 - добавлена возможность настройки "ADC_value" и "k_delitel" в меню отладки, оптимизация отображения единиц, изменен алгоритм обработки энергосбережения,
                    теперь зависимость от "имп/с" вместо "мкР", настроить можно в "config" параметры - "IMP_PWR_MANAGER", "IMP_PWR_DOWN" и "IMP_PWR_GIST", удален выбор количества счетчиков, добавлено отключение мертвого времени.
   3.0.5 01.10.20 - добавлен учет собственного фона счетчика, параметр в "config" - "OWN_BACK".
+  3.1.1 01.10.20 - исправлены едицы измерения, добавлено меню, быстрое меню удалено.
 
   Внимание!!! При выключении пункта "СОН" в меню настроек влечет увеличением энергопотребления, но тем самым увеличивается производительность устройства.
 
@@ -131,44 +132,44 @@
   -Действия клавиш-
 
   - На экране ФОН
-  Вверх - следующий экран, удерж. - быстрое меню
+  Вверх - следующий экран, удерж. - вкл/выкл фонарик
   Вниз - предыдущий экран, удерж. - сброс показаний среднего и максимального фона(сбросить текущий фон и график/средн. и макс.)
   Ок - сбросить текущий фон(выбор - график или средн. и макс. фон), удерж. - настройки
 
   - На экране ДОЗА
-  Вверх - следующий экран, удерж. - быстрое меню
+  Вверх - следующий экран, удерж. - вкл/выкл фонарик
   Вниз - предыдущий экран, удерж. - сброс показаний текущей дозы / дозы за все время
   Ок - смена подрежима(текущая доза / доза за все время), удерж. - настройки
 
   - На экране ПОИСК
-  Вверх - следующий экран, удерж. - быстрое меню
+  Вверх - следующий экран, удерж. - вкл/выкл фонарик
   Вниз - предыдущий экран, удерж. - сброс графика и показателей
   Ок - пауза графика и показателей, удерж. - настройки
 
   - На экране БЕТА
-  Вверх - остановить замер, удерж. - нет действия
+  Вверх - остановить замер, удерж. - вкл/выкл фонарик
   Вниз - остановить замер, удерж. - принудительный сброс при замере
   Ок - начать замер / следующий замер, удерж. - выход
 
   - На экране НАСТРОЙКИ
-  Вверх - позиция выше/прибавить показания, удерж. - отладка(если выбрано настройками)
-  Вниз - позиция ниже/убавить показания, удерж. - параметры(если выбрано настройками)
+  Вверх - позиция выше/прибавить показания, удерж. - нет действия
+  Вниз - позиция ниже/убавить показания, удерж. - нет действия
   Ок - перейти к настройкам/перйти к выбору позиции, удерж. - выход из настроек
-
-  - На экране БЫСТРОЕ МЕНЮ
-  Вверх - режим замера бета, удерж. - выход
-  Вниз - подсветка экрана вкл/выкл, удерж. - нет действия
-  Ок - фонарик вкл/выкл, удерж. - нет действия
+  
+   - На экране МЕНЮ
+  Вверх - позиция выше, удерж. - нет действия
+  Вниз - позиция ниже, удерж. - нет действия
+  Ок - выбор позиции, удерж. - выключить питание
 
   - На экранах ПАРАМЕТРЫ
-  Вверх - нет действия, удерж. - нет действия
-  Вниз - нет действия, удерж. - нет действия
-  Ок - выход из статистики, удерж. - нет действия
+  Вверх - выход из параметров, удерж. - нет действия
+  Вниз - выход из параметров, удерж. - нет действия
+  Ок - выход из параметров, удерж. - отладка
 
   - На экране ОТЛАДКА
   Вверх - прибавить показания, удерж. - нет действия
   Вниз - убавить показания, удерж. - нет действия
-  Ок - выбор позиции, удерж. - выход из debug menu
+  Ок - выбор позиции, удерж. - выход из отладки
 
   - На экране ОШИБКА
   Вверх - выход, удерж. - выход
@@ -433,7 +434,7 @@ int main(void)  //инициализация
 
   setFont(RusFont); //установка шрифта
   print("-=HFLJY=-", CENTER, 32); //-=РАДОН=-
-  print("3.0.5", CENTER, 40); //версия по
+  print("3.1.1", CENTER, 40); //версия по
 
   bat_check(); //опрос батареи
 
@@ -1259,7 +1260,7 @@ void measur_menu(void) //режим замера
         break;
 
       case 4: //Up key hold
-        //здесь что-то должно было быть :)
+        fast_flash(); //быстрое включение фонарика
         break;
 
       case 5: //select key
@@ -1795,13 +1796,15 @@ void parameters(void) //параметры
       case 2: //Down key
       case 3: //Up key
       case 5: //select key
-        time_out = 0; //сбрасывает авто-выход
-        break;
-
-      case 6: //hold select key //выход
         sthv = 0; //запрещаем проверку скорости
         scr = 0; //разрешаем обновление экрана
         return;
+
+      case 6: //hold select key //выход
+        debug();
+        time_out = 0; //сбрасывает авто-выход
+        speed_nak = 0; //сбрасываем скорость накачки
+        break;
     }
   }
 }
@@ -2132,10 +2135,10 @@ void setings(void) //настройки
 #endif
 
       clrScr(); // Очистка экрана
-      drawBitmap(0, 0, setings_img, 84, 16); //отрисовываем фон
+      drawBitmap(0, 0, setings_img, 84, 8); //отрисовываем фон
       setFont(RusFont); //установка шрифта
 
-      for (uint8_t i = 0; i < 4; i++) { //отсчет строк
+      for (uint8_t i = 0; i < 5; i++) { //отсчет строк
         for (uint8_t r = 0; r < 2; r++) { //отсчет позиции
           boolean inv = 0; //инверсия
           if (i == c) if (r == set) inv = 1; //если курсор на нужной строке
@@ -2145,16 +2148,12 @@ void setings(void) //настройки
     }
     //+++++++++++++++++++++  опрос кнопок  +++++++++++++++++++++++++++
     switch (check_keys()) {
-#if PARAM_RETURN
-      case 1: if (!set) parameters(); break; //Down key hold //удержание вниз
-#endif
-
       case 2: //Down key //вниз
         switch (set) {
           case 0:
             if (n < 15) { //изменяем позицию
               n++;
-              if (c < 3) c++; //изменяем положение курсора
+              if (c < 4) c++; //изменяем положение курсора
             }
             else { //иначе начало списка
               n = 0;
@@ -2176,7 +2175,7 @@ void setings(void) //настройки
             }
             else { //иначе конец списка
               n = 15;
-              c = 3;
+              c = 4;
             }
             break;
           case 1: _setings_data_up(n); break; //прибавление данных
@@ -2184,10 +2183,6 @@ void setings(void) //настройки
         time_out = 0; //сбрасываем авто-выход
         scr = 0; //разрешаем обновления экрана
         break;
-
-#if DEBUG_RETURN
-      case 4: if (!set) debug(); break; //Up key hold //удержание вверх
-#endif
 
       case 5: //select key //выбор
         switch (set) {
@@ -2205,132 +2200,104 @@ void setings(void) //настройки
     }
   }
 }
-//-----------------------------------быстрое меню---------------------------------
-void fast_menu(void) //быстрое меню
+//------------------------------------Отрисовка пунктов------------------------------------------------------
+void _menu_item_switch(boolean inv, uint8_t num, uint8_t pos) //отрисовка пунктов
 {
-  uint8_t i = 0; //переключатель мелодии
-  uint8_t time_out = 0; //счетчик тайм-аута
-  uint32_t timer_sound = millis(); //таймер мелодии
-  scr = 0; //разрешаем обновление экрана
+  uint8_t pos_row = pos * 8 + 8; //переводим позицию в номер строки
 
-  clrScr(); //очистка экрана
-  setFont(RusFont); //установка шрифта
+  if (inv) invertText(true); //включаем инверсию
 
-  drawBitmap(0, 0, fast_up_img, 84, 8); //устанавлваем фон
-  drawBitmap(0, 40, fast_down_img, 84, 8); //устанавлваем фон
-  drawBitmap(0, 8, fast_light_img, 28, 32); //устанавлваем фон
-#if MESSUR_OR_PWR
-  drawBitmap(28, 8, fast_power_img, 28, 32); //устанавлваем фон
-#else
-  drawBitmap(28, 8, fast_beta_img, 28, 32); //устанавлваем фон
-#endif
-  drawBitmap(56, 8, fast_flash_img, 28, 32); //устанавлваем фон
+  switch (num) {
+    case 0: print("Ntreobq ajy", CENTER, pos_row); break; //Текущий фон
+
+    case 1: print("Ntreofz ljpf", CENTER, pos_row); break; //Текущая доза
+
+    case 2: print("Gjbcr bcnjxybr", CENTER, pos_row); break; //Поиск источник
+
+    case 3: print("Bpvthtybt ,tnf", CENTER, pos_row); break; //Измерение бета
+
+    case 4: print("Yfcnhjqrb", CENTER, pos_row); break; //Настройки
+
+    case 5: print("Gfhfvtnhs", CENTER, pos_row); break; //Параметры
+
+      break;
+  }
+  if (inv) invertText(false); //выключаем инверсию
+}
+//------------------------------------Меню------------------------------------------------------
+void menu(void) //меню
+{
+  uint8_t n = 0; //позиция
+  uint8_t c = 0; //курсор
+  scr = 0; //разрешаем обновления экрана
 
   while (1) {
-
-    //==================================================================
-#if FAST_SOUND
-    if (i != SAMPLS_FAST && millis() > timer_sound) { //играем волшебную мелодию
-      buzz_pulse(pgm_read_word(&fast_sound[i][0]), pgm_read_word(&fast_sound[i][1]));
-      timer_sound = millis() + pgm_read_word(&fast_sound[i][2]);
-      i++;
-    }
-#endif
-    //==================================================================
-
     pump(); //накачка по обратной связи с АЦП
+    low_pwr(); //уход в сон для экономии энергии
     data_convert(); //преобразование данных
 
-#if TIME_OUT_FAST
+    //+++++++++++++++++++   вывод информации на экран  +++++++++++++++++++++++++
     if (!scr) {
-      scr = 1; //запрещаем обновление экрана
-      if (++time_out > TIME_OUT_FAST) {
-        light_update(); //сохранение подсветки
-        scr = 0; //разрешаем обновления экрана
-        return;
-      }
-    }
-#endif
+      scr = 1; //запрещаем обновления экрана
 
-#if TYPE_FAST_MENU //если выбран автоматический выход
-    //---------------------------//
+      clrScr(); // Очистка экрана
+      drawBitmap(0, 0, menu_img, 84, 8); //отрисовываем фон
+      setFont(RusFont); //установка шрифта
+
+      for (uint8_t i = 0; i < 5; i++) _menu_item_switch((i == c) ? 1 : 0, n - c + i, i); //отрисовываем пункты настроек
+    }
+    //+++++++++++++++++++++  опрос кнопок  +++++++++++++++++++++++++++
     switch (check_keys()) {
 
-      case 2: //Downt key
-        if (!sleep_switch) { //если сон выключен
-          if (light_lcd) { //выключаем подсветку
-            LIGHT_OFF;
-            light_lcd = 0;
-          }
-          else { //иначе включаем подсветку
-            LIGHT_ON;
-            light_lcd = 1;
-          }
-          light_update(); //сохранение подсветки
+      case 2: //Down key //вниз
+        if (n < 6) { //изменяем позицию
+          n++;
+          if (c < 4) c++; //изменяем положение курсора
         }
-        return;
-
-      case 3: //Up key
-#if MESSUR_OR_PWR
-        power_down(); //выключение питания
-#else
-        measur_menu(); //режим разностного замера(бета)
-#endif
-        scr = 0; //разрешаем обновления экрана
-        return;
-
-      case 4: //Up key hold
-        return;
-
-      case 5: //select key
-        if (is_FLASH_ON) FLASH_OFF;
-        else FLASH_ON;
-        return;
-    }
-    //---------------------------//
-#else //иначе выход только в ручную
-    //---------------------------//
-    switch (check_keys()) {
-
-      case 2: //Downt key
-        if (!sleep_switch) {
-          if (light_lcd) {
-            LIGHT_OFF;
-            light_lcd = 0;
-          }
-          else {
-            LIGHT_ON;
-            light_lcd = 1;
-          }
+        else { //иначе начало списка
+          n = 0;
+          c = 0;
         }
         scr = 0; //разрешаем обновления экрана
-        time_out = 0; //сбрасывает авто-выход
         break;
 
-      case 3: //Up key
-#if MESSUR_OR_PWR
+      case 3: //Up key  //вверх
+        if (n > 0) { //изменяем позицию
+          n--;
+          if (c > 0) c--; //изменяем положение курсора
+        }
+        else { //иначе конец списка
+          n = 6;
+          c = 4;
+        }
+        scr = 0; //разрешаем обновления экрана
+        break;
+
+      case 5: //select key //выбор
+        switch (n) {
+          case 0: scr_mode = 0; scr = 0; return;
+          case 1: scr_mode = 1; scr = 0; return;
+          case 2: scr_mode = 2; scr = 0; return;
+          case 3: measur_menu(); scr = 0; return;
+          case 4: setings(); scr = 0; return;
+          case 5: parameters(); scr = 0; return;
+        }
+        scr = 0; //разрешаем обновления экрана
+        break;
+
+      case 6: //hold select key //выключение питания
         power_down(); //выключение питания
-#else
-        measur_menu(); //режим разностного замера(бета)
-#endif
         scr = 0; //разрешаем обновления экрана
-        time_out = 0; //сбрасывает авто-выход
-        break;
-
-      case 4: //Up key hold
-        light_update(); //сохранение подсветки
         return;
-
-      case 5: //select key
-        if (is_FLASH_ON) FLASH_OFF;
-        else FLASH_ON;
-        time_out = 0; //сбрасывает авто-выход
-        scr = 0; //разрешаем обновления экрана
-        break;
     }
-    //---------------------------//
-#endif
   }
+}
+//-----------------------------------быстрое меню---------------------------------
+void fast_flash(void) //быстрое меню
+{
+  if (is_FLASH_ON) FLASH_OFF;
+  else FLASH_ON;
+  return;
 }
 //---------------------------------Сообщение об ошибке---------------------------------------
 void error_messege(void) //сообщение об ошибке
@@ -2747,30 +2714,32 @@ void _init_rads_unit(boolean smb, uint32_t num, uint8_t divisor, uint8_t char_al
   {
     case 0:
       //мкР
-      for (uint8_t i = 0; i < 3; i++) {
+      for (uint8_t i = 0; i < PATERNS_RH; i++) {
         if (num <= pgm_read_dword(&patern_Rh[i][0]) * divisor) { //если есть совпадение
-          if (smb) printNumF(float(num) / pgm_read_dword(&patern_Rh[i][0]), pgm_read_dword(&patern_Rh[i][0]), num_x, num_y, 46, char_all, TYPE_CHAR_FILL); //строка 1
+          if (smb) printNumF(float(num) / pgm_read_dword(&patern_Rh[i][2]), pgm_read_dword(&patern_Rh[i][1]), num_x, num_y, 46, char_all, TYPE_CHAR_FILL); //строка 1
 #if (TYPE_CHAR_FILL > 44)
-          else printNumF(float(num) / pgm_read_dword(&patern_Rh[i][0]), pgm_read_dword(&patern_Rh[i][0]), num_x, num_y, 46, char_all, TYPE_CHAR_FILL); //строка 1
+          else printNumF(float(num) / pgm_read_dword(&patern_Rh[i][2]), pgm_read_dword(&patern_Rh[i][1]), num_x, num_y, 46, char_all, TYPE_CHAR_FILL); //строка 1
 #else
-          else printNumF(float(num) / pgm_read_dword(&patern_Rh[i][0]), pgm_read_dword(&patern_Rh[i][0]), num_x, num_y, 46, char_all, 32); //строка 1
+          else printNumF(float(num) / pgm_read_dword(&patern_Rh[i][2]), pgm_read_dword(&patern_Rh[i][1]), num_x, num_y, 46, char_all, 32); //строка 1
 #endif
-          _rads_unit(pgm_read_dword(&patern_Rh[i][0]), unit, unit_x, unit_y); //устанавливаем единицы измерения
+          _rads_unit(pgm_read_dword(&patern_Rh[i][3]), unit, unit_x, unit_y); //устанавливаем единицы измерения
+          break;
         }
       }
       break;
 
     case 1:
       //мкЗв
-      for (uint8_t i = 0; i < 5; i++) {
+      for (uint8_t i = 0; i < PATERNS_SVH; i++) {
         if (num <= pgm_read_dword(&patern_Svh[i][0]) * divisor) { //если есть совпадение
-          if (smb) printNumF(float(num) / pgm_read_dword(&patern_Svh[i][0]), pgm_read_dword(&patern_Svh[i][0]), num_x, num_y, 46, char_all, TYPE_CHAR_FILL); //строка 1
+          if (smb) printNumF(float(num) / pgm_read_dword(&patern_Svh[i][2]), pgm_read_dword(&patern_Svh[i][1]), num_x, num_y, 46, char_all, TYPE_CHAR_FILL); //строка 1
 #if (TYPE_CHAR_FILL > 44)
-          else printNumF(float(num) / pgm_read_dword(&patern_Svh[i][0]), pgm_read_dword(&patern_Svh[i][0]), num_x, num_y, 46, char_all, TYPE_CHAR_FILL); //строка 1
+          else printNumF(float(num) / pgm_read_dword(&patern_Svh[i][2]), pgm_read_dword(&patern_Svh[i][1]), num_x, num_y, 46, char_all, TYPE_CHAR_FILL); //строка 1
 #else
-          else printNumF(float(num) / pgm_read_dword(&patern_Svh[i][0]), pgm_read_dword(&patern_Svh[i][0]), num_x, num_y, 46, char_all, 32); //строка 1
+          else printNumF(float(num) / pgm_read_dword(&patern_Svh[i][2]), pgm_read_dword(&patern_Svh[i][1]), num_x, num_y, 46, char_all, 32); //строка 1
 #endif
-          _rads_unit(pgm_read_dword(&patern_Svh[i][0]), unit, unit_x, unit_y); //устанавливаем единицы измерения
+          _rads_unit(pgm_read_dword(&patern_Svh[i][3]), unit, unit_x, unit_y); //устанавливаем единицы измерения
+          break;
         }
       }
       break;
@@ -3060,7 +3029,7 @@ void main_screen(void)
       break;
 
     case 4: //Up key hold //быстрое меню
-      if (!alarm_switch) fast_menu(); //быстрое меню
+      if (!alarm_switch) fast_flash(); //быстрое включение фонарика
       scr = 0; //разрешаем обновления экрана
       break;
 
@@ -3096,7 +3065,7 @@ void main_screen(void)
       break;
 
     case 6: //hold select key //настройки
-      if (!alarm_switch) setings(); //если нет тревоги
+      if (!alarm_switch) menu(); //если нет тревоги
       scr = 0; //разрешаем обновления экрана
       break;
   }
