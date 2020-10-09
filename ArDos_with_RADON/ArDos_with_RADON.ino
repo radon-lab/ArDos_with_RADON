@@ -2740,40 +2740,25 @@ void _screen_line(uint8_t up_bar, uint8_t down_bar, boolean rent_bar, uint8_t st
 //----------------------------------Инициализация значений большим шрифтом------------------------------------------------------
 void _init_rads_unit(boolean smb, uint32_t num, uint8_t divisor, uint8_t char_all, uint8_t num_x, uint8_t num_y, boolean unit, uint8_t unit_x, uint8_t unit_y) //инициализация значений большим шрифтом
 {
+  uint8_t _ptr;
+
+  if (rad_mode) _ptr = PATTERNS_SVH;
+  else _ptr = PATTERNS_RH;
+
   if (smb) setFont(MediumNumbers); //установка шрифта
   else setFont(RusFont); //установка шрифта
 
-  switch (rad_mode)
-  {
-    case 0:
-      //мкР
-      for (uint8_t i = 0; i < 3; i++) {
-        if (num <= pgm_read_dword(&patern_Rh[i][0]) * divisor) { //если есть совпадение
-          if (smb) printNumF(float(num) / pgm_read_dword(&patern_Rh[i][0]), pgm_read_dword(&patern_Rh[i][0]), num_x, num_y, 46, char_all, TYPE_CHAR_FILL); //строка 1
+  for (uint8_t i = 0; i < _ptr; i++) { //перебираем патерны
+    if (num <= pgm_read_dword(&pattern_all[rad_mode][i][0]) * divisor) { //если есть совпадение
+      if (smb) printNumF(float(num) / pgm_read_dword(&pattern_all[rad_mode][i][2]), pgm_read_dword(&pattern_all[rad_mode][i][1]), num_x, num_y, 46, char_all, TYPE_CHAR_FILL); //строка 1
 #if (TYPE_CHAR_FILL > 44)
-          else printNumF(float(num) / pgm_read_dword(&patern_Rh[i][0]), pgm_read_dword(&patern_Rh[i][0]), num_x, num_y, 46, char_all, TYPE_CHAR_FILL); //строка 1
+      else printNumF(float(num) / pgm_read_dword(&pattern_all[rad_mode][i][2]), pgm_read_dword(&pattern_all[rad_mode][i][1]), num_x, num_y, 46, char_all, TYPE_CHAR_FILL); //строка 1
 #else
-          else printNumF(float(num) / pgm_read_dword(&patern_Rh[i][0]), pgm_read_dword(&patern_Rh[i][0]), num_x, num_y, 46, char_all, 32); //строка 1
+      else printNumF(float(num) / pgm_read_dword(&pattern_all[rad_mode][i][2]), pgm_read_dword(&pattern_all[rad_mode][i][1]), num_x, num_y, 46, char_all, 32); //строка 1
 #endif
-          _rads_unit(pgm_read_dword(&patern_Rh[i][0]), unit, unit_x, unit_y); //устанавливаем единицы измерения
-        }
-      }
+      _rads_unit(pgm_read_dword(&pattern_all[rad_mode][i][3]), unit, unit_x, unit_y); //устанавливаем единицы измерения
       break;
-
-    case 1:
-      //мкЗв
-      for (uint8_t i = 0; i < 5; i++) {
-        if (num <= pgm_read_dword(&patern_Svh[i][0]) * divisor) { //если есть совпадение
-          if (smb) printNumF(float(num) / pgm_read_dword(&patern_Svh[i][0]), pgm_read_dword(&patern_Svh[i][0]), num_x, num_y, 46, char_all, TYPE_CHAR_FILL); //строка 1
-#if (TYPE_CHAR_FILL > 44)
-          else printNumF(float(num) / pgm_read_dword(&patern_Svh[i][0]), pgm_read_dword(&patern_Svh[i][0]), num_x, num_y, 46, char_all, TYPE_CHAR_FILL); //строка 1
-#else
-          else printNumF(float(num) / pgm_read_dword(&patern_Svh[i][0]), pgm_read_dword(&patern_Svh[i][0]), num_x, num_y, 46, char_all, 32); //строка 1
-#endif
-          _rads_unit(pgm_read_dword(&patern_Svh[i][0]), unit, unit_x, unit_y); //устанавливаем единицы измерения
-        }
-      }
-      break;
+    }
   }
 }
 //----------------------------------Единицы измерения------------------------------------------------------
