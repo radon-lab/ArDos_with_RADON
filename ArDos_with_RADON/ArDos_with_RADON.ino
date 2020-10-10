@@ -2430,7 +2430,6 @@ void setings_read(void) //чтение настроек
   sleep_switch = eeprom_read_byte(48);
   TIME_BRIGHT = eeprom_read_byte(49);
   TIME_SLEEP = eeprom_read_byte(50);
-  GEIGER_TIME = eeprom_read_byte(51);
   rad_mode = eeprom_read_byte(57);
   alarm_back_sound_disable = eeprom_read_byte(58);
   rad_flash = eeprom_read_byte(59);
@@ -2455,7 +2454,6 @@ void setings_update(void) //обновление настроек
   eeprom_update_byte(48, sleep_switch);
   eeprom_update_byte(49, TIME_BRIGHT);
   eeprom_update_byte(50, TIME_SLEEP);
-  eeprom_update_byte(51, GEIGER_TIME);
   eeprom_update_byte(57, rad_mode);
   eeprom_update_byte(58, alarm_back_sound_disable);
   eeprom_update_byte(59, rad_flash);
@@ -2480,6 +2478,7 @@ void statistic_update(void) //обновление статистики
 //--------------------------------Чтение настроек преобразователя-------------------------------------------
 void pump_read(void) //чтение настроек преобразователя
 {
+  GEIGER_TIME = eeprom_read_byte(51);
   puls = eeprom_read_byte(52);
   opornoe = eeprom_read_float(53);
   ADC_value = eeprom_read_byte(102);
@@ -2488,6 +2487,7 @@ void pump_read(void) //чтение настроек преобразовате�
 //-----------------------------Обновление настроек преобразователя------------------------------------------
 void pump_update(void) //обновление настроек преобразователя
 {
+  eeprom_update_byte(51, GEIGER_TIME);
   eeprom_update_byte(52, puls);
   eeprom_update_float(53, opornoe);
   eeprom_update_byte(102, ADC_value);
@@ -2629,7 +2629,6 @@ void setings_save(void) //сохранить настройки
     sleep_switch == eeprom_read_byte(48) &&
     TIME_BRIGHT == eeprom_read_byte(49) &&
     TIME_SLEEP == eeprom_read_byte(50) &&
-    GEIGER_TIME == eeprom_read_byte(51) &&
     rad_mode == eeprom_read_byte(57) &&
     alarm_back_sound_disable == eeprom_read_byte(58) &&
     rad_flash == eeprom_read_byte(59) &&
