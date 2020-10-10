@@ -3079,7 +3079,7 @@ void main_screen(void)
 
     case 5: //Select key //выбор режима
       switch (alarm_switch) { //режим тревоги
-        case 0: if (scr_mode < MAX_SCREENS) scr_mode++; else scr_mode = 0; break; //вперёд
+        case 0: if (scr_mode < 1) scr_mode++; else scr_mode = 0; break; //вперёд
         case 3: warn_back_wait = 1; alarm_switch = 0; _vibro_off(); buzz_read(); break; //фон
         case 4: warn_dose_wait = rad_dose; alarm_switch = 0; _vibro_off(); buzz_read(); break; //доза
       }
