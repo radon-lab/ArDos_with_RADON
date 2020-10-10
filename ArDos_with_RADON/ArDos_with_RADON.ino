@@ -1401,43 +1401,38 @@ void alarm_messege(boolean set, boolean sound, char *mode) //тревога
 //--------------------------Вибрация и световая индикация тревоги---------------------------------
 void _vibro_on(void) //вибрация и световая индикация тревоги
 {
-  static uint8_t n; //переключатель вибрации
+  static uint8_t i; //переключатель вибрации
   static uint32_t timer_vibro; //таймер вибрации
 
+  if (millis() > timer_vibro) { //если пришло время
+    switch (pgm_read_word(&alarm_vibro[i][0])) {
+      case 0:
 #if (TYPE_ALARM_IND == 1)
-  if (millis() > timer_vibro) { //вибрируем танго и мигаем фонариком
-    switch (n) {
-      case 0: VIBRO_ON; FLASH_ON; n++; timer_vibro = millis() + VIBRO_TIME_ON; break;
-      case 1: VIBRO_OFF; FLASH_OFF; n++; timer_vibro = millis() + VIBRO_TIME_OFF; break;
-      case 2: VIBRO_ON; FLASH_ON; n++; timer_vibro = millis() + VIBRO_TIME_ON; break;
-      case 3: VIBRO_OFF; FLASH_OFF; n++; timer_vibro = millis() + VIBRO_TIME_OFF; break;
-      case 4: VIBRO_ON; FLASH_ON; n++; timer_vibro = millis() + VIBRO_TIME_ON; break;
-      case 5: VIBRO_OFF; FLASH_OFF; n = 0; timer_vibro = millis() + VIBRO_TIME_WAINT; break;
-    }
-  }
+        VIBRO_ON;
+        FLASH_ON;
 #elif (TYPE_ALARM_IND == 2)
-  if (millis() > timer_vibro) { //вибрируем танго и мигаем подсветкой
-    switch (n) {
-      case 0: VIBRO_ON; LIGHT_ON; n++; timer_vibro = millis() + VIBRO_TIME_ON; break;
-      case 1: VIBRO_OFF; LIGHT_OFF; n++; timer_vibro = millis() + VIBRO_TIME_OFF; break;
-      case 2: VIBRO_ON; LIGHT_ON; n++; timer_vibro = millis() + VIBRO_TIME_ON; break;
-      case 3: VIBRO_OFF; LIGHT_OFF; n++; timer_vibro = millis() + VIBRO_TIME_OFF; break;
-      case 4: VIBRO_ON; LIGHT_ON; n++; timer_vibro = millis() + VIBRO_TIME_ON; break;
-      case 5: VIBRO_OFF; LIGHT_OFF; n = 0; timer_vibro = millis() + VIBRO_TIME_WAINT; break;
-    }
-  }
+        VIBRO_ON;
+        LIGHT_ON;
 #else
-  if (millis() > timer_vibro) { //вибрируем танго
-    switch (n) {
-      case 0: VIBRO_ON; n++; timer_vibro = millis() + VIBRO_TIME_ON; break;
-      case 1: VIBRO_OFF; n++; timer_vibro = millis() + VIBRO_TIME_OFF; break;
-      case 2: VIBRO_ON; n++; timer_vibro = millis() + VIBRO_TIME_ON; break;
-      case 3: VIBRO_OFF; n++; timer_vibro = millis() + VIBRO_TIME_OFF; break;
-      case 4: VIBRO_ON; n++; timer_vibro = millis() + VIBRO_TIME_ON; break;
-      case 5: VIBRO_OFF; n = 0; timer_vibro = millis() + VIBRO_TIME_WAINT; break;
-    }
-  }
+        VIBRO_ON;
 #endif
+        break;
+
+      case 1:
+#if (TYPE_ALARM_IND == 1)
+        VIBRO_OFF;
+        FLASH_OFF;
+#elif (TYPE_ALARM_IND == 2)
+        VIBRO_OFF;
+        LIGHT_OFF;
+#else
+        VIBRO_OFF;
+#endif
+        break;
+    }
+    timer_vibro = millis() + pgm_read_word(&alarm_vibro[i][1]); //устанавливаем паузу перед воспроизведением нового семпла
+    if (++i > SAMPLS_VIBRO - 1) i = 0; //переключпем на следующий семпл
+  }
 }
 //-----------------------Выключение вибрация и световой индикаци--------------------------------
 void _vibro_off(void) //выключение вибрация и световой индикаци
