@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.1.1 low_pwr 09.10.20 специально для проекта ArDos
+  Версия программы RADON v3.1.1 low_pwr 10.10.20 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr
   Желательна установка лёгкого ядра https://alexgyver.github.io/package_GyverCore_index.json и загрузчика OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -132,34 +132,34 @@
   -Действия клавиш-
 
   - На экране ФОН
-  Вверх - следующий экран, удерж. - вкл/выкл фонарик
-  Вниз - предыдущий экран, удерж. - сброс показаний среднего и максимального фона(сбросить текущий фон и график/средн. и макс.)
-  Ок - сбросить текущий фон(выбор - график или средн. и макс. фон), удерж. - настройки
+  Вверх - сбросить текущий фон(выбор - график или средн. и макс. фон), удерж. - вкл/выкл фонарик
+  Вниз - сброс показаний среднего и максимального фона(сбросить текущий фон и график/средн. и макс.), удерж. - вкл/выкл подсветку 
+  Ок - переключить экран, удерж. - выход в меню
 
   - На экране ДОЗА
-  Вверх - следующий экран, удерж. - вкл/выкл фонарик
-  Вниз - предыдущий экран, удерж. - сброс показаний текущей дозы / дозы за все время
-  Ок - смена подрежима(текущая доза / доза за все время), удерж. - настройки
+  Вверх - смена подрежима(текущая доза / доза за все время), удерж. - вкл/выкл фонарик
+  Вниз - сброс показаний текущей дозы / дозы за все время, удерж. - вкл/выкл подсветку
+  Ок - переключить экран, удерж. - выход в меню
 
   - На экране ПОИСК
-  Вверх - следующий экран, удерж. - вкл/выкл фонарик
-  Вниз - предыдущий экран, удерж. - сброс графика и показателей
-  Ок - пауза графика и показателей, удерж. - настройки
+  Вверх - пауза графика и показателей, удерж. - вкл/выкл фонарик
+  Вниз - сброс графика и показателей, удерж. - вкл/выкл подсветку
+  Ок - переключить экран, удерж. - выход в меню
 
   - На экране БЕТА
   Вверх - остановить замер, удерж. - вкл/выкл фонарик
   Вниз - остановить замер, удерж. - принудительный сброс при замере
-  Ок - начать замер / следующий замер, удерж. - выход
+  Ок - начать замер / следующий замер, удерж. - выход в меню
 
   - На экране НАСТРОЙКИ
   Вверх - позиция выше/прибавить показания, удерж. - нет действия
   Вниз - позиция ниже/убавить показания, удерж. - нет действия
-  Ок - перейти к настройкам/перйти к выбору позиции, удерж. - выход из настроек
+  Ок - перейти к настройкам/перйти к выбору позиции, удерж. - выход в меню
 
    - На экране МЕНЮ
   Вверх - позиция выше, удерж. - нет действия
   Вниз - позиция ниже, удерж. - нет действия
-  Ок - выбор позиции, удерж. - выключить питание
+  Ок - выбор позиции, удерж. - выход в основные экраны
 
   - На экранах ПАРАМЕТРЫ
   Вверх - выход из параметров, удерж. - нет действия
@@ -289,7 +289,7 @@ boolean dose_mode = 0; //режим отображения дозы(текуща
 boolean rad_mode = 0; //единицы измерения дозы/фона(мкР/мкЗв)
 
 uint8_t bat = 5; //текущий заряд батареи
-uint8_t adc_result = MAX_BAT; //результат опроса акб
+uint8_t bat_adc = MAX_BAT; //результат опроса акб
 uint16_t hv_adc; //результат опроса АЦП преобразователя
 
 volatile boolean power_off = 0; //флаг выключения питания
@@ -516,7 +516,7 @@ ISR(INT1_vect) //внешнее прерывание на пине INT1 - вкл
   if (!OK_OUT) { //если кнопка не отжата
     ADC_enable(); //включаем питание АЦП
     bat_check(); //опрос батареи
-    if (adc_result < LOW_BAT_POWER) { //если батарея не разряжена
+    if (bat_adc < LOW_BAT_POWER) { //если батарея не разряжена
       disableSleep(contrast); //включаем дисплей
       if (light_lcd) LIGHT_ON; //включаем подсветку, если была включена настройками
 
@@ -1516,7 +1516,7 @@ uint16_t VCC_read(void)  //чтение напряжения батареи
 {
   ADMUX = 0b01101110; //выбор внешнего опорного+BG
   ADCSRA = 0b11100111; //настройка АЦП
-  _delay_ms(1);
+  _delay_ms(5);
   while ((ADCSRA & 0x10) == 0); //ждем флага прерывания АЦП
   ADCSRA |= 0x10; //сбрасываем флаг прерывания
   uint8_t resu = ADCH; //результат опроса АЦП
@@ -1525,13 +1525,13 @@ uint16_t VCC_read(void)  //чтение напряжения батареи
 //-----------------------------------Опрос батареи-----------------------------------------------
 void bat_check(void) //опрос батареи
 {
-  adc_result = VCC_read(); //состояние батареи
-  if (adc_result == 255) adc_result = 60; //защита от ложных данных
+  bat_adc = VCC_read(); //состояние батареи
+  if (bat_adc == 255) bat_adc = 60; //защита от ложных данных
 
-  if (adc_result < MIN_BAT) { //мин.напр. 3v макс.нап. 4,2v
-    if (adc_result < MAX_BAT) bat = 5;  //если батарея заряжена
+  if (bat_adc < MIN_BAT) { //мин.напр. 3v макс.нап. 4,2v
+    if (bat_adc < MAX_BAT) bat = 5;  //если батарея заряжена
     else { //иначе расчитывает указатель заряда батареи
-      bat = map(adc_result, MIN_BAT, MAX_BAT, 0, 5); //переводим значение в полосы акб
+      bat = map(bat_adc, MIN_BAT, MAX_BAT, 0, 5); //переводим значение в полосы акб
       bat = constrain(bat, 0, 5); //ограничиваем
     }
   }
@@ -1557,7 +1557,7 @@ void stat_bat(void) //заряд батареи
     }
 
     //--------------------------------------------------------------------------------------
-    if (++low_bat_tmr >= LOW_BAT_TIME && adc_result >= LOW_BAT_STAT) { //Если таймер истек и заряд ниже 3v, то выводим предупреждение
+    if (++low_bat_tmr >= LOW_BAT_TIME && bat_adc >= LOW_BAT_STAT) { //Если таймер истек и заряд ниже 3v, то выводим предупреждение
 
       buzz_switch = 0; //запретить звуковую индикацию импульсов
 
@@ -1583,7 +1583,7 @@ void stat_bat(void) //заряд батареи
       if (!bat) power_down(); //выключение устройства
       //--------------------------------------------------------------------------------------
     }
-    else if (sleep && adc_result >= LOW_BAT_STAT_SLEEP) { //если спим и батарея разрядилась
+    else if (sleep && bat_adc >= LOW_BAT_STAT_SLEEP) { //если спим и батарея разрядилась
 
       cnt_pwr = 0; //обнуление счетчика сна
       low_pwr(); //просыпаемся
@@ -1780,8 +1780,8 @@ void parameters(void) //параметры
       }
 #endif
 
-      uint8_t vcc_adc = VCC_read(); //считываем значение акб
-      float vcc_bat = (opornoe * 255.0) / vcc_adc; //состояние батареи
+      bat_check(); //опрос батареи
+      float vcc_bat = (opornoe * 255.0) / bat_adc; //состояние батареи
       uint16_t vcc_hv = hv_adc * opornoe * k_delitel / 255; //считем высокое перед выводом
 
       clrScr(); //очистка экрана
@@ -1791,7 +1791,7 @@ void parameters(void) //параметры
       print("<fnfhtz&", LEFT, 8);
       printNumF(vcc_bat, 2, RIGHT, 8, 46, 4, 48); //напряжение акб
       print("Pyfx.FWG&", LEFT, 16);
-      printNumI(vcc_adc, RIGHT, 16); //значение ацп акб
+      printNumI(bat_adc, RIGHT, 16); //значение ацп акб
 
       print("Yfrfxrf&", LEFT, 24); //напряжение высокого и скорость накачки
       printNumI(vcc_hv, RIGHT, 24);
@@ -1849,16 +1849,14 @@ void debug(void) //отладка
       setFont(RusFont); //установка шрифта
       drawBitmap(0, 0, debug_img, 84, 8); //устанавлваем фон
 
-      uint8_t vcc_adc = VCC_read(); //читаем состояние батареи
-      float vcc_bat = (opornoe * 255.0) / vcc_adc; //состояние батареи
+      bat_check(); //опрос батареи
+      float vcc_bat = (opornoe * 255.0) / bat_adc; //состояние батареи
       uint16_t vcc_hv = hv_adc * opornoe * k_delitel / 255; //считем высокое перед выводом
 
-      print("Gthbjl&", LEFT, 8); //Период:
-      printNumI(wdt_period, RIGHT, 8); //переод тика ВДТ
       print("<FN", LEFT, 16); //БАТ
       printNumF(vcc_bat, 2, 20, 16, 46, 4, 48); //напряжение акб
       print("FWG", 46, 16); //АЦП
-      printNumI(vcc_adc, RIGHT, 16); //значение ацп акб
+      printNumI(bat_adc, RIGHT, 16); //значение ацп акб
       print("DD", 0, 24); //ВВ
       printNumI(vcc_hv, 18, 24); //напряжение высокого
       print("CRH", 46, 24); //СКР
@@ -1866,17 +1864,19 @@ void debug(void) //отладка
 
       speed_nak = 0; //сбрасываем скорость накачки
 
-      for (uint8_t i = 0; i < 8; i++) {
+      for (uint8_t i = 0; i < 10; i++) {
         if (n == i) invertText(true); //включаем инверсию
         switch (i) {
-          case 0: print("JGH", LEFT, 32); break; //ОПР
-          case 1: print("BVG", LEFT, 40); break; //ИМП
-          case 2: print("RLK", 46, 32); break; //КДЛ
-          case 3: print("FWG", 46, 40); break; //АЦП
-          case 4: printNumF(opornoe, 2, 20, 32, 46, 4, 48); break; //опорное напряжение
-          case 5: printNumI(puls, 20, 40); break; //длинна импульса
-          case 6: printNumI(k_delitel, RIGHT, 32); break; //коэффициент делителя
-          case 7: printNumI(ADC_value, RIGHT, 40); break; //значение АЦП для преобразователя
+          case 0: print("Cxtn&", LEFT, 8); break; //Счёт:
+          case 1: print("JGH", LEFT, 32); break; //ОПР
+          case 2: print("BVG", LEFT, 40); break; //ИМП
+          case 3: print("RLK", 46, 32); break; //КДЛ
+          case 4: print("FWG", 46, 40); break; //АЦП
+          case 5: printNumI(GEIGER_TIME, RIGHT, 8); break; //счёт
+          case 6: printNumF(opornoe, 2, 20, 32, 46, 4, 48); break; //опорное напряжение
+          case 7: printNumI(puls, 20, 40); break; //длинна импульса
+          case 8: printNumI(k_delitel, RIGHT, 32); break; //коэффициент делителя
+          case 9: printNumI(ADC_value, RIGHT, 40); break; //значение АЦП для преобразователя
         }
         if (n == i) invertText(false); //выключаем инверсию
       }
@@ -1886,10 +1886,11 @@ void debug(void) //отладка
 
       case 3: //Up key //нажатие
         switch (n) {
-          case 0: if ((opornoe += 0.01) > 1.50) opornoe = 1.50; break; //прибавляем опорное напряжение
-          case 1: if (++puls > 30) puls = 30; break; //прибавляем длинну импульса
-          case 2: if (++k_delitel > 999) k_delitel = 999; break; //прибавляем коэффициент делителя
-          case 3: if (++ADC_value > 254) ADC_value = 254; break; //прибавляем значение АЦП для преобразователя
+          case 0: if (GEIGER_TIME < MAX_GEIGER_TIME) GEIGER_TIME++; break; //Счет
+          case 1: if ((opornoe += 0.01) > 1.50) opornoe = 1.50; break; //прибавляем опорное напряжение
+          case 2: if (++puls > 30) puls = 30; break; //прибавляем длинну импульса
+          case 3: if (++k_delitel > 999) k_delitel = 999; break; //прибавляем коэффициент делителя
+          case 4: if (++ADC_value > 254) ADC_value = 254; break; //прибавляем значение АЦП для преобразователя
         }
         time_out = 0; //сбрасывает авто-выход
         scr = 0; //разрешаем обновление экрана
@@ -1897,10 +1898,11 @@ void debug(void) //отладка
 
       case 2: //Down key //нажатие
         switch (n) {
-          case 0: if ((opornoe -= 0.01) < 0.50) opornoe = 0.50; break; //убавляем опорное напряжение
-          case 1: if (--puls < 1) puls = 1; break; //убавляем длинну импульса
-          case 2: if (--k_delitel < 10) k_delitel = 10; break; //убавляем коэффициент делителя
-          case 3: if (--ADC_value < 10) ADC_value = 10; break; //убавляем значение АЦП для преобразователя
+          case 0: if (GEIGER_TIME > MIN_GEIGER_TIME) GEIGER_TIME--; break; //Счет
+          case 1: if ((opornoe -= 0.01) < 0.50) opornoe = 0.50; break; //убавляем опорное напряжение
+          case 2: if (--puls < 1) puls = 1; break; //убавляем длинну импульса
+          case 3: if (--k_delitel < 10) k_delitel = 10; break; //убавляем коэффициент делителя
+          case 4: if (--ADC_value < 10) ADC_value = 10; break; //убавляем значение АЦП для преобразователя
         }
         time_out = 0; //сбрасывает авто-выход
         scr = 0; //разрешаем обновление экрана
@@ -1929,33 +1931,34 @@ void _setings_item_switch(boolean set, boolean inv, uint8_t num, uint8_t pos) //
   if (inv) invertText(true); //включаем инверсию
 
   switch (num) {
-    case 0: //Вспышки
-      switch (set) {
-        case 0: print("Dcgsirb&", LEFT, pos_row); break; //Вспышки:
-        case 1: if (!rad_flash) print("DSRK", RIGHT, pos_row); else if (rad_flash == 2) print("RH.CYF", RIGHT, pos_row); else print("DRK", RIGHT, pos_row); break;
-      }
-      break;
-
-    case 1: //Контраст
-      switch (set) {
-        case 0: print("Rjynhfcn&", LEFT, pos_row); break; //Контраст:
-        case 1: printNumI(contrast, RIGHT, pos_row); break;
-      }
-      break;
-
-    case 2: //Сон
+    case 0: //Сон
       switch (set) {
         case 0: print("Cjy&", LEFT, pos_row); break; //Сон:
         case 1: if (sleep_switch < 2) print("DSRK", RIGHT, pos_row); else printNumI(TIME_SLEEP, RIGHT, pos_row); break;
       }
       break;
 
-    case 3: //Подсветка
+    case 1: //Подсветка
       switch (set) {
         case 0: print("Gjlcdtnrf&", LEFT, pos_row); break; //Подсветка:
         case 1: if (!sleep_switch) print("HEXY", RIGHT, pos_row); else printNumI(TIME_BRIGHT, RIGHT, pos_row); break;
       }
       break;
+
+    case 2: //Контраст
+      switch (set) {
+        case 0: print("Rjynhfcn&", LEFT, pos_row); break; //Контраст:
+        case 1: printNumI(contrast, RIGHT, pos_row); break;
+      }
+      break;
+
+    case 3: //Вспышки
+      switch (set) {
+        case 0: print("Dcgsirb&", LEFT, pos_row); break; //Вспышки:
+        case 1: if (!rad_flash) print("DSRK", RIGHT, pos_row); else if (rad_flash == 2) print("RH.CYF", RIGHT, pos_row); else print("DRK", RIGHT, pos_row); break;
+      }
+      break;
+
     case 4: //Щелчки
       switch (set) {
         case 0: print("Otkxrb&", LEFT, pos_row); break; //Щелчки:
@@ -1970,70 +1973,63 @@ void _setings_item_switch(boolean set, boolean inv, uint8_t num, uint8_t pos) //
       }
       break;
 
-    case 6: //Счёт
-      switch (set) {
-        case 0: print("Cxtn&", LEFT, pos_row); break; //Счёт:
-        case 1: printNumI(GEIGER_TIME, RIGHT, pos_row); break;
-      }
-      break;
-
-    case 7: //Разн.зам
+    case 6: //Разн.зам
       switch (set) {
         case 0: print("Hfpy.pfv&", LEFT, pos_row); break; //Разн.зам:
         case 1: printNumI(diff_measuring[pos_measur], RIGHT, pos_row); break;
       }
       break;
 
-    case 8: //Средн.зам
+    case 7: //Средн.зам
       switch (set) {
         case 0: print("Chtly.pfv&", LEFT, pos_row); break; //Средн.зам:
         case 1: printNumI(mid_rad_time[mid_level], RIGHT, pos_row); break;
       }
       break;
 
-    case 9: //Ед.измер
+    case 8: //Ед.измер
       switch (set) {
         case 0: print("Tl.bpvth&", LEFT, pos_row); break; //Ед.измер:
         case 1: if (!rad_mode) print("vrH", RIGHT, pos_row); else print("vrPd", RIGHT, pos_row); break;
       }
       break;
 
-    case 10: //Тревога Ф
+    case 9: //Тревога Ф
       switch (set) {
         case 0: print("Nhtdjuf A&", LEFT, pos_row); break; //Тревога Ф:
         case 1: if (alarm_back_disable) print("DSRK", RIGHT, pos_row); else if (alarm_back_sound_disable) print("DB<H", RIGHT, pos_row); else print("D+PD", RIGHT, pos_row); break;
       }
       break;
 
-    case 11: //Порог Ф1
+    case 10: //Порог Ф1
       switch (set) {
         case 0: print("Gjhju A1&", LEFT, pos_row); break; //Порог Ф1:
         case 1: printNumI(warn_level_back, RIGHT, pos_row); break;
       }
       break;
 
-    case 12: //Порог Ф2
+    case 11: //Порог Ф2
       switch (set) {
         case 0: print("Gjhju A2&", LEFT, pos_row); break; //Порог Ф2:
         case 1: printNumI(alarm_level_back, RIGHT, pos_row); break;
       }
       break;
 
-    case 13: //Тревога Д
+    case 12: //Тревога Д
       switch (set) {
         case 0: print("Nhtdjuf L&", LEFT, pos_row); break; //Тревога Д:
         case 1: if (alarm_dose_disable) print("DSRK", RIGHT, pos_row); else if (alarm_dose_sound_disable) print("DB<H", RIGHT, pos_row); else print("D+PD", RIGHT, pos_row); break;
       }
       break;
 
-    case 14: //Порог Д1
+    case 13: //Порог Д1
       switch (set) {
         case 0: print("Gjhju L1&", LEFT, pos_row); break; //Порог Д1:
         case 1: printNumI(warn_level_dose, RIGHT, pos_row); break;
       }
       break;
 
-    case 15: //Порог Д2
+    case 14: //Порог Д2
       switch (set) {
         case 0: print("Gjhju L2&", LEFT, pos_row); break; //Порог Д2:
         case 1: printNumI(alarm_level_dose, RIGHT, pos_row); break;
@@ -2047,24 +2043,24 @@ void _setings_data_up(uint8_t pos) //прибавление данных
 {
   switch (pos)
   {
-    case 0: switch (rad_flash) { //Вспышки
-        case 0: rad_flash = 1; break;
-        case 1: rad_flash = 2; break;
-      }
-      break;
-    case 1: if (contrast < 127) contrast++; setContrast(contrast); break; //Контраст
-    case 2: //Сон
+    case 0: //Сон
       switch (sleep_switch) {
         case 0: sleep_switch = 2; LIGHT_ON; light_lcd = 1; break;
         case 1: sleep_switch = 2; TIME_BRIGHT = 5; break;
         case 2: if (TIME_SLEEP < 250) TIME_SLEEP += 5; break;
       }
       break;
-    case 3: //Подсветка
+    case 1: //Подсветка
       switch (sleep_switch) {
         case 0: sleep_switch = 1; LIGHT_ON; light_lcd = 1; break;
         case 1: if (TIME_BRIGHT < 250) TIME_BRIGHT += 5; break;
         case 2: if (TIME_BRIGHT < TIME_SLEEP - 5) TIME_BRIGHT += 5; break;
+      }
+      break;
+    case 2: if (contrast < 127) contrast++; setContrast(contrast); break; //Контраст
+    case 3: switch (rad_flash) { //Вспышки
+        case 0: rad_flash = 1; break;
+        case 1: rad_flash = 2; break;
       }
       break;
     case 4: switch (buzz_switch) { //Щелчки
@@ -2073,16 +2069,15 @@ void _setings_data_up(uint8_t pos) //прибавление данных
       }
       break;
     case 5: knock_disable = 0; break; //Зв.кнопок
-    case 6: if (GEIGER_TIME < MAX_GEIGER_TIME) GEIGER_TIME++; break; //Счет
-    case 7: if (pos_measur < 9) pos_measur++; break; //Разн.зам
-    case 8: if (mid_level < 9) mid_level ++; else mid_level = 0; break; //Средн.зам
-    case 9: rad_mode = 1; break; //Ед.измер
-    case 10: if (alarm_back_disable) alarm_back_disable = 0; else alarm_back_sound_disable = 0; break; //Тревога Ф
-    case 11: if (warn_level_back < 300) warn_level_back += 5; else warn_level_back = 30; break; //Порог Ф1
-    case 12: if (alarm_level_back < 500) alarm_level_back += 10; else if (alarm_level_back < 1000) alarm_level_back += 50; else if (alarm_level_back < 65000) alarm_level_back += 100; else alarm_level_back = 300; break; //Порог Ф2
-    case 13: if (alarm_dose_disable) alarm_dose_disable = 0; else alarm_dose_sound_disable = 0; break; //Тревога Д
-    case 14: if (warn_level_dose < 300) warn_level_dose += 5; else warn_level_dose = 10; break; //Порог Д1
-    case 15: if (alarm_level_dose < 500) alarm_level_dose += 10; else if (alarm_level_dose < 1000) alarm_level_dose += 50; else if (alarm_level_dose < 65000) alarm_level_dose += 100; else alarm_level_dose = 300; break; //Порог Д2
+    case 6: if (pos_measur < 9) pos_measur++; break; //Разн.зам
+    case 7: if (mid_level < 9) mid_level ++; else mid_level = 0; break; //Средн.зам
+    case 8: rad_mode = 1; break; //Ед.измер
+    case 9: if (alarm_back_disable) alarm_back_disable = 0; else alarm_back_sound_disable = 0; break; //Тревога Ф
+    case 10: if (warn_level_back < 300) warn_level_back += 5; else warn_level_back = 30; break; //Порог Ф1
+    case 11: if (alarm_level_back < 500) alarm_level_back += 10; else if (alarm_level_back < 1000) alarm_level_back += 50; else if (alarm_level_back < 65000) alarm_level_back += 100; else alarm_level_back = 300; break; //Порог Ф2
+    case 12: if (alarm_dose_disable) alarm_dose_disable = 0; else alarm_dose_sound_disable = 0; break; //Тревога Д
+    case 13: if (warn_level_dose < 300) warn_level_dose += 5; else warn_level_dose = 10; break; //Порог Д1
+    case 14: if (alarm_level_dose < 500) alarm_level_dose += 10; else if (alarm_level_dose < 1000) alarm_level_dose += 50; else if (alarm_level_dose < 65000) alarm_level_dose += 100; else alarm_level_dose = 300; break; //Порог Д2
   }
 }
 //------------------------------------Убавление данных------------------------------------------------------
@@ -2090,34 +2085,33 @@ void _setings_data_down(uint8_t pos) //убавление данных
 {
   switch (pos)
   {
-    case 0: switch (rad_flash) { //Вспышки
-        case 1: rad_flash = 0; break;
-        case 2: rad_flash = 1; break;
-      }
-      break;
-    case 1: if (contrast > 0) contrast--; setContrast(contrast); break; //Контраст
-    case 2: if (TIME_SLEEP > 10) { //Сон
+    case 0: if (TIME_SLEEP > 10) { //Сон
         TIME_SLEEP -= 5;
         if (TIME_BRIGHT == TIME_SLEEP) TIME_BRIGHT -= 5;
       }
       else if (sleep_switch == 2) sleep_switch = 1; break;
-    case 3: if (TIME_BRIGHT > 5) TIME_BRIGHT -= 5; else sleep_switch = 0; break; //Подсветка
+    case 1: if (TIME_BRIGHT > 5) TIME_BRIGHT -= 5; else sleep_switch = 0; break; //Подсветка
+    case 2: if (contrast > 0) contrast--; setContrast(contrast); break; //Контраст
+    case 3: switch (rad_flash) { //Вспышки
+        case 1: rad_flash = 0; break;
+        case 2: rad_flash = 1; break;
+      }
+      break;
     case 4: switch (buzz_switch) { //Щелчки
         case 1: buzz_switch = 0; break;
         case 2: buzz_switch = 1; break;
       }
       break;
     case 5: knock_disable = 1; break; //Зв.кнопок
-    case 6: if (GEIGER_TIME > MIN_GEIGER_TIME) GEIGER_TIME--; break; //Счет
-    case 7: if (pos_measur > 0) pos_measur--;  break; //Разн.зам
-    case 8: if (mid_level > 0) mid_level --; else mid_level = 9; break; //Средн.зам
-    case 9: rad_mode = 0; break; //Ед.измер
-    case 10: if (!alarm_back_sound_disable) alarm_back_sound_disable = 1; else alarm_back_disable = 1; break; //Тревога Ф
-    case 11: if (warn_level_back > 30) warn_level_back -= 5; else warn_level_back = 300; break; //Порог Ф1
-    case 12: if (alarm_level_back > 1000) alarm_level_back -= 100; else if (alarm_level_back > 500) alarm_level_back -= 50; else if (alarm_level_back > 300) alarm_level_back -= 10; else alarm_level_back = 65000; break; //Порог Ф2
-    case 13: if (!alarm_dose_sound_disable) alarm_dose_sound_disable = 1; else alarm_dose_disable = 1; break; //Тревога Д
-    case 14: if (warn_level_dose > 10) warn_level_dose -= 5; else warn_level_dose = 300; break; //Порог Д1
-    case 15: if (alarm_level_dose > 1000) alarm_level_dose -= 100; else if (alarm_level_dose > 500) alarm_level_dose -= 50; else if (alarm_level_dose > 300) alarm_level_dose -= 10; else alarm_level_dose = 65000; break; //Порог Д2
+    case 6: if (pos_measur > 0) pos_measur--;  break; //Разн.зам
+    case 7: if (mid_level > 0) mid_level --; else mid_level = 9; break; //Средн.зам
+    case 8: rad_mode = 0; break; //Ед.измер
+    case 9: if (!alarm_back_sound_disable) alarm_back_sound_disable = 1; else alarm_back_disable = 1; break; //Тревога Ф
+    case 10: if (warn_level_back > 30) warn_level_back -= 5; else warn_level_back = 300; break; //Порог Ф1
+    case 11: if (alarm_level_back > 1000) alarm_level_back -= 100; else if (alarm_level_back > 500) alarm_level_back -= 50; else if (alarm_level_back > 300) alarm_level_back -= 10; else alarm_level_back = 65000; break; //Порог Ф2
+    case 12: if (!alarm_dose_sound_disable) alarm_dose_sound_disable = 1; else alarm_dose_disable = 1; break; //Тревога Д
+    case 13: if (warn_level_dose > 10) warn_level_dose -= 5; else warn_level_dose = 300; break; //Порог Д1
+    case 14: if (alarm_level_dose > 1000) alarm_level_dose -= 100; else if (alarm_level_dose > 500) alarm_level_dose -= 50; else if (alarm_level_dose > 300) alarm_level_dose -= 10; else alarm_level_dose = 65000; break; //Порог Д2
   }
 }
 //------------------------------------Настройки------------------------------------------------------
@@ -2163,7 +2157,7 @@ void setings(void) //настройки
       case 2: //Down key //вниз
         switch (set) {
           case 0:
-            if (n < 15) { //изменяем позицию
+            if (n < 14) { //изменяем позицию
               n++;
               if (c < 4) c++; //изменяем положение курсора
             }
@@ -2186,7 +2180,7 @@ void setings(void) //настройки
               if (c > 0) c--; //изменяем положение курсора
             }
             else { //иначе конец списка
-              n = 15;
+              n = 14;
               c = 4;
             }
             break;
@@ -2217,20 +2211,19 @@ void _menu_item_switch(boolean inv, uint8_t num, uint8_t pos) //отрисовк
 {
   uint8_t pos_row = pos * 8 + 8; //переводим позицию в номер строки
 
-  if (inv) invertText(true); //включаем инверсию
+  if (inv) {
+    _screen_line(0, 84, 0, 0, pos_row); //рисуем линию
+    invertText(true); //включаем инверсию
+  }
 
   switch (num) {
     case 0: print("Ntreobq ajy", CENTER, pos_row); break; //Текущий фон
-
     case 1: print("Ntreofz ljpf", CENTER, pos_row); break; //Текущая доза
-
-    case 2: print("Gjbcr bcnjxybr", CENTER, pos_row); break; //Поиск источник
-
-    case 3: print("Bpvthtybt ,tnf", CENTER, pos_row); break; //Измерение бета
-
+    case 2: print("Ht;bv gjbcrf", CENTER, pos_row); break; //Режим поиска
+    case 3: print("Pfvth ,tnf", CENTER, pos_row); break; //Замер бета
     case 4: print("Yfcnhjqrb", CENTER, pos_row); break; //Настройки
-
     case 5: print("Gfhfvtnhs", CENTER, pos_row); break; //Параметры
+    case 6: print("Dsrk/xtybt", CENTER, pos_row); break; //Выключение
 
       break;
   }
@@ -2262,7 +2255,7 @@ void menu(void) //меню
     switch (check_keys()) {
 
       case 2: //Down key //вниз
-        if (n < 5) { //изменяем позицию
+        if (n < 6) { //изменяем позицию
           n++;
           if (c < 4) c++; //изменяем положение курсора
         }
@@ -2279,7 +2272,7 @@ void menu(void) //меню
           if (c > 0) c--; //изменяем положение курсора
         }
         else { //иначе конец списка
-          n = 5;
+          n = 6;
           c = 4;
         }
         scr = 0; //разрешаем обновления экрана
@@ -2296,22 +2289,38 @@ void menu(void) //меню
           case 3: measur_menu(); break;
           case 4: setings(); break;
           case 5: parameters(); break;
+          case 6: power_down(); scr = 0; return;
         }
         scr = 0; //разрешаем обновления экрана
         break;
 
       case 6: //hold select key //выключение питания
-        power_down(); //выключение питания
         scr = 0; //разрешаем обновления экрана
         return;
     }
   }
 }
-//-----------------------------------быстрое меню---------------------------------
-void fast_flash(void) //быстрое меню
+//-----------------------------------Вкл/выкл фонарика---------------------------------
+void fast_flash(void) //вкл/выкл фонарика
 {
   if (is_FLASH_ON) FLASH_OFF;
   else FLASH_ON;
+  return;
+}
+//-----------------------------------Вкл/выкл подсветки---------------------------------
+void fast_light(void) //вкл/выкл подсветки
+{
+  if (!sleep_switch) { //если сон выключен
+    if (light_lcd) { //выключаем подсветку
+      LIGHT_OFF;
+      light_lcd = 0;
+    }
+    else { //иначе включаем подсветку
+      LIGHT_ON;
+      light_lcd = 1;
+    }
+    light_update(); //сохранение подсветки
+  }
   return;
 }
 //---------------------------------Сообщение об ошибке---------------------------------------
@@ -2973,80 +2982,71 @@ void main_screen(void)
 
   //+++++++++++++++++++++  опрос кнопок  +++++++++++++++++++++++++++
   switch (check_keys()) {
-    case 1: //Down key hold //сброс
-      switch (scr_mode) { //основные экраны
-        case 0: //сбрасываем максимальный фон и средний фон
+    case 1: //Down key hold //вкл/выкл посветки
+      if (!alarm_switch) fast_light(); //быстрое включение посветки
+      break;
+
+    case 2: //Down key //сброс
+      switch (alarm_switch) { //режим тревоги
+        case 0:
+          switch (scr_mode) { //основные экраны
+            case 0: //сбрасываем максимальный фон и средний фон
 #if SEARCH_RETURN
-          rad_mid = 0; //сбрасываем среднее значение фона
-          rad_max = 0; //сбрасываем максимальное значение фона
-          tmr_mid = 0; //сбрасываем счетчик среднего фона
-          first_mid = 0; //сбрасываем флаг первого среднего замера фона
-          rad_mid_buff = 0; //сбрасываем буфер среднего замера фона
-#else
-          for (uint8_t i = 0; i < geiger_time_now; i++) rad_buff[i + 1] = 0; //очищаем буфер фона
-          rad_buff[0] = 0; //очищаем буфер счета
-          geiger_time_now = 0; //сбрасываем счетчик накопления импульсов в буфере
-          rad_back = 0; //сбрасываем фон
-
-          switch (f) {
-            case 0:
-              for (uint8_t i = 0; i < 76; i++) graf_buff[i] = 0; //очищаем буфер графика
-              rad_scan_buff = 0; //очищаем счетный буфер графика
-              break;
-
-            case 1:
               rad_mid = 0; //сбрасываем среднее значение фона
               rad_max = 0; //сбрасываем максимальное значение фона
               tmr_mid = 0; //сбрасываем счетчик среднего фона
               first_mid = 0; //сбрасываем флаг первого среднего замера фона
               rad_mid_buff = 0; //сбрасываем буфер среднего замера фона
-              break;
-          }
-#endif
-          break;
-
-        case 1: dose_reset(); break; //сбрасываем дозу и время
-#if SEARCH_RETURN
-        case 2://сбрасываем счетчик частиц или счетчик импульсов и график
-#if TYPE_SERCH_UNIT
-          rad_imp = 0;
-          for (uint8_t i = 0; i < 76; i++) graf_buff[i] = 0; //очищаем буфер графика
-          graf_init(); //инициализируем график
 #else
-          rad_scan = 0;
-          for (uint8_t i = 0; i < 76; i++) graf_buff[i] = 0; //очищаем буфер графика
-          graf_init(); //инициализируем график
+              for (uint8_t i = 0; i < geiger_time_now; i++) rad_buff[i + 1] = 0; //очищаем буфер фона
+              rad_buff[0] = 0; //очищаем буфер счета
+              geiger_time_now = 0; //сбрасываем счетчик накопления импульсов в буфере
+              rad_back = 0; //сбрасываем фон
+
+              switch (f) {
+                case 0:
+                  for (uint8_t i = 0; i < 76; i++) graf_buff[i] = 0; //очищаем буфер графика
+                  rad_scan_buff = 0; //очищаем счетный буфер графика
+                  break;
+
+                case 1:
+                  rad_mid = 0; //сбрасываем среднее значение фона
+                  rad_max = 0; //сбрасываем максимальное значение фона
+                  tmr_mid = 0; //сбрасываем счетчик среднего фона
+                  first_mid = 0; //сбрасываем флаг первого среднего замера фона
+                  rad_mid_buff = 0; //сбрасываем буфер среднего замера фона
+                  break;
+              }
 #endif
+              break;
+
+            case 1: dose_reset(); break; //сбрасываем дозу и время
+#if SEARCH_RETURN
+            case 2://сбрасываем счетчик частиц или счетчик импульсов и график
+#if TYPE_SERCH_UNIT
+              rad_imp = 0;
+              for (uint8_t i = 0; i < 76; i++) graf_buff[i] = 0; //очищаем буфер графика
+              graf_init(); //инициализируем график
+#else
+              rad_scan = 0;
+              for (uint8_t i = 0; i < 76; i++) graf_buff[i] = 0; //очищаем буфер графика
+              graf_init(); //инициализируем график
+#endif
+              break;
+#endif
+          }
           break;
-#endif
-      }
-      scr = 0; //разрешаем обновления экрана
-      break;
-
-    case 2: //Down key //выбор режима
-      switch (alarm_switch) { //режим тревоги
-        case 0: break; //назад
         case 3: warn_back_wait = 1; alarm_switch = 0; _vibro_off(); buzz_read(); break; //фон
         case 4: warn_dose_wait = rad_dose; alarm_switch = 0; _vibro_off(); buzz_read(); break; //доза
       }
       scr = 0; //разрешаем обновления экрана
       break;
 
-    case 3: //Up key  //выбор режима
-      switch (alarm_switch) { //режим тревоги
-        case 0: break; //вперёд
-        case 3: warn_back_wait = 1; alarm_switch = 0; _vibro_off(); buzz_read(); break; //фон
-        case 4: warn_dose_wait = rad_dose; alarm_switch = 0; _vibro_off(); buzz_read(); break; //доза
-      }
-      scr = 0; //разрешаем обновления экрана
-      break;
-
-    case 4: //Up key hold //быстрое меню
+    case 4: //Up key hold //вкл/выкл фонарика
       if (!alarm_switch) fast_flash(); //быстрое включение фонарика
-      scr = 0; //разрешаем обновления экрана
       break;
 
-    case 5: //select key // доп.действие
+    case 3: //Up key //доп.действие
       switch (alarm_switch) { //режим тревоги
         case 0:
           switch (scr_mode) { //основные экраны
@@ -3071,6 +3071,15 @@ void main_screen(void)
 #endif
           }
           break;
+        case 3: warn_back_wait = 1; alarm_switch = 0; _vibro_off(); buzz_read(); break; //фон
+        case 4: warn_dose_wait = rad_dose; alarm_switch = 0; _vibro_off(); buzz_read(); break; //доза
+      }
+      scr = 0; //разрешаем обновления экрана
+      break;
+
+    case 5: //Select key //выбор режима
+      switch (alarm_switch) { //режим тревоги
+        case 0: if (scr_mode < MAX_SCREENS) scr_mode++; else scr_mode = 0; break; //вперёд
         case 3: warn_back_wait = 1; alarm_switch = 0; _vibro_off(); buzz_read(); break; //фон
         case 4: warn_dose_wait = rad_dose; alarm_switch = 0; _vibro_off(); buzz_read(); break; //доза
       }
