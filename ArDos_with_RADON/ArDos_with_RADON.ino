@@ -155,7 +155,7 @@
   Вверх - позиция выше/прибавить показания, удерж. - нет действия
   Вниз - позиция ниже/убавить показания, удерж. - нет действия
   Ок - перейти к настройкам/перйти к выбору позиции, удерж. - выход из настроек
-  
+
    - На экране МЕНЮ
   Вверх - позиция выше, удерж. - нет действия
   Вниз - позиция ниже, удерж. - нет действия
@@ -496,14 +496,27 @@ void WDT_disable(void) //выключение WDT
   WDTCSR = 0x00; //Выключаем собаку
   SREG = sregCopy; //Восстанавливаем глобальные прерывания
 }
+//-------------------------------Включение ADC----------------------------------------------------
+void ADC_enable(void) //включение ADC
+{
+  PRR &= ~ lowByte(_BV(0)); //включаем питание АЦП
+  ADCSRA |= (1 << ADEN); // включаем ацп
+}
+//-------------------------------Выключение ADC---------------------------------------------------
+void ADC_disable(void) //выключение ADC
+{
+  ADCSRA &= ~ (1 << ADEN); // выключаем ацп
+  PRR |= lowByte(_BV(0)); //выключаем питание ацп
+}
 //-------------------------------Включение питания----------------------------------------------------
 #if PWR_ON_RETURN
 ISR(INT1_vect) //внешнее прерывание на пине INT1 - включение питания
 {
   _delay_ms(2000); //ждем 2 секунды
   if (!OK_OUT) { //если кнопка не отжата
-    PRR &= ~ lowByte(_BV(0)); //включаем питание АЦП
-    if (VCC_read() < LOW_BAT_POWER) { //если батарея не разряжена
+    ADC_enable(); //включаем питание АЦП
+    bat_check(); //опрос батареи
+    if (adc_result < LOW_BAT_POWER) { //если батарея не разряжена
       disableSleep(contrast); //включаем дисплей
       if (light_lcd) LIGHT_ON; //включаем подсветку, если была включена настройками
 
@@ -530,7 +543,7 @@ ISR(INT1_vect) //внешнее прерывание на пине INT1 - вкл
       print("hfphz;tyf!", CENTER, 40); //разряжена!
       for (uint32_t t = millis() + POWER_TIME; t > millis();); //ждём
       enableSleep(); //выключаем дисплей
-      PRR |= lowByte(_BV(0)); //выключаем питание ацп
+      ADC_disable(); //выключаем питание ацп
     }
   }
 }
@@ -921,14 +934,13 @@ void power_down(void) //выключение устройства
   FLASH_OFF; //выключаем фонарь
 
   WDT_disable();  //выключаем watchdog
+  ADC_disable(); //выключаем питание АЦП
 
 #if PWR_ON_RETURN
   EIMSK = 0b00000010; //разрешаем внешнее прерывание INT2
 #else
   EIMSK = 0b00000000; //запрещаем внешние прерывание
 #endif
-
-  PRR |= lowByte(_BV(0)); //выключаем питание АЦП
 
   while (power_off) sleep_pwr();
 }
@@ -1912,7 +1924,7 @@ void debug(void) //отладка
 //------------------------------------Отрисовка пунктов------------------------------------------------------
 void _setings_item_switch(boolean set, boolean inv, uint8_t num, uint8_t pos) //отрисовка пунктов
 {
-  uint8_t pos_row = pos * 8 + 16; //переводим позицию в номер строки
+  uint8_t pos_row = pos * 8 + 8; //переводим позицию в номер строки
 
   if (inv) invertText(true); //включаем инверсию
 
@@ -2227,8 +2239,8 @@ void _menu_item_switch(boolean inv, uint8_t num, uint8_t pos) //отрисовк
 //------------------------------------Меню------------------------------------------------------
 void menu(void) //меню
 {
-  uint8_t n = 0; //позиция
-  uint8_t c = 0; //курсор
+  uint8_t n = scr_mode; //позиция
+  uint8_t c = scr_mode; //курсор
   scr = 0; //разрешаем обновления экрана
 
   while (1) {
@@ -2250,7 +2262,7 @@ void menu(void) //меню
     switch (check_keys()) {
 
       case 2: //Down key //вниз
-        if (n < 6) { //изменяем позицию
+        if (n < 5) { //изменяем позицию
           n++;
           if (c < 4) c++; //изменяем положение курсора
         }
@@ -2267,7 +2279,7 @@ void menu(void) //меню
           if (c > 0) c--; //изменяем положение курсора
         }
         else { //иначе конец списка
-          n = 6;
+          n = 5;
           c = 4;
         }
         scr = 0; //разрешаем обновления экрана
@@ -2275,12 +2287,15 @@ void menu(void) //меню
 
       case 5: //select key //выбор
         switch (n) {
-          case 0: scr_mode = 0; scr = 0; return;
-          case 1: scr_mode = 1; scr = 0; return;
-          case 2: scr_mode = 2; scr = 0; return;
-          case 3: measur_menu(); scr = 0; return;
-          case 4: setings(); scr = 0; return;
-          case 5: parameters(); scr = 0; return;
+          case 0:
+          case 1:
+          case 2:
+            scr_mode = n; //устанавливаем основной режим
+            scr = 0; //разрешаем обновления экрана
+            return;
+          case 3: measur_menu(); break;
+          case 4: setings(); break;
+          case 5: parameters(); break;
         }
         scr = 0; //разрешаем обновления экрана
         break;
@@ -2302,8 +2317,6 @@ void fast_flash(void) //быстрое меню
 //---------------------------------Сообщение об ошибке---------------------------------------
 void error_messege(void) //сообщение об ошибке
 {
-  boolean i = 0; //переключатель мелодии
-  uint32_t timer_sound = millis(); //таймер мелодии
   static uint32_t time_out; //тайм-аут ошибки
 
   if (error && time_out < time_sec) { //если время вышло, выводим ошибку
@@ -3012,7 +3025,7 @@ void main_screen(void)
 
     case 2: //Down key //выбор режима
       switch (alarm_switch) { //режим тревоги
-        case 0: if (scr_mode > 0) scr_mode--; else scr_mode = MAX_SCREENS; break; //назад
+        case 0: break; //назад
         case 3: warn_back_wait = 1; alarm_switch = 0; _vibro_off(); buzz_read(); break; //фон
         case 4: warn_dose_wait = rad_dose; alarm_switch = 0; _vibro_off(); buzz_read(); break; //доза
       }
@@ -3021,7 +3034,7 @@ void main_screen(void)
 
     case 3: //Up key  //выбор режима
       switch (alarm_switch) { //режим тревоги
-        case 0: if (scr_mode < MAX_SCREENS) scr_mode++; else scr_mode = 0; break; //вперёд
+        case 0: break; //вперёд
         case 3: warn_back_wait = 1; alarm_switch = 0; _vibro_off(); buzz_read(); break; //фон
         case 4: warn_dose_wait = rad_dose; alarm_switch = 0; _vibro_off(); buzz_read(); break; //доза
       }
