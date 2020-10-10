@@ -1806,18 +1806,17 @@ void parameters(void) //параметры
     }
 
     switch (check_keys()) {
-      case 2: //Down key
-      case 3: //Up key
-      case 5: //select key
-        sthv = 0; //запрещаем проверку скорости
-        scr = 0; //разрешаем обновление экрана
-        return; //выход
-
-      case 6: //hold select key //отладка
-        debug();
+      case 1: //Down key hold
+      case 4: //Up key hold
+        debug(); //отладка
         time_out = 0; //сбрасывает авто-выход
         scr = 0; //разрешаем обновление экрана
         break;
+
+      case 6: //hold select key //выход
+        sthv = 0; //запрещаем проверку скорости
+        scr = 0; //разрешаем обновление экрана
+        return; //выход
     }
   }
 }
@@ -1841,6 +1840,7 @@ void debug(void) //отладка
 
 #if TIME_OUT_DEBUG
       if (++time_out > TIME_OUT_DEBUG) {
+        setings_save(1); //сохраняем настройки преобразователя
         error = 0; //сбрасываем указатель ошибки
         sthv = 0; //запрещаем проверку скорости
         scr = 0; //разрешаем обновления экрана
@@ -1918,7 +1918,7 @@ void debug(void) //отладка
         break;
 
       case 6: //hold select key ///выход в настройки
-        pump_update(); //обновление настроек преобразователя
+        setings_save(1); //сохраняем настройки преобразователя
         error = 0; //сбрасываем указатель ошибки
         sthv = 0; //запрещаем проверку скорости
         scr = 0; //разрешаем обновление экрана
@@ -2137,7 +2137,7 @@ void setings(void) //настройки
 
 #if TIME_OUT_SETTINGS
       if (++time_out > TIME_OUT_SETTINGS) {
-        setings_save(); //сохраняем настройки
+        setings_save(0); //сохраняем настройки
         scr = 0; //разрешаем обновления экрана
         return;
       }
@@ -2203,7 +2203,7 @@ void setings(void) //настройки
         break;
 
       case 6: //hold select key //выход из настроек
-        setings_save(); //сохраняем настройки
+        setings_save(0); //сохраняем настройки
         scr = 0; //разрешаем обновления экрана
         return;
     }
@@ -2627,93 +2627,110 @@ void dose_reset(void) //сброс текущей дозы
   }
 }
 //---------------------------------------Сохранить настройки--------------------------------------------
-void setings_save(void) //сохранить настройки
+void setings_save(boolean sw) //сохранить настройки
 {
   uint8_t n = 0; //курсор
+  switch (sw) {
+    case 0:
+      if (
+        light_lcd == eeprom_read_byte(40) &&
+        contrast == eeprom_read_byte(41) &&
+        mid_level == eeprom_read_byte(42) &&
+        alarm_back_disable == eeprom_read_byte(43) &&
+        buzz_switch == eeprom_read_byte(44) &&
+        knock_disable == eeprom_read_byte(45) &&
+        pos_measur == eeprom_read_byte(46) &&
+        alarm_dose_disable == eeprom_read_byte(47) &&
+        sleep_switch == eeprom_read_byte(48) &&
+        TIME_BRIGHT == eeprom_read_byte(49) &&
+        TIME_SLEEP == eeprom_read_byte(50) &&
+        rad_mode == eeprom_read_byte(57) &&
+        alarm_back_sound_disable == eeprom_read_byte(58) &&
+        rad_flash == eeprom_read_byte(59) &&
+        alarm_dose_sound_disable == eeprom_read_byte(61) &&
+        warn_level_back == eeprom_read_word(62) &&
+        alarm_level_back == eeprom_read_word(64) &&
+        warn_level_dose == eeprom_read_word(66) &&
+        alarm_level_dose == eeprom_read_word(68)
+      ) return;
+      break;
 
-  if (
-    light_lcd == eeprom_read_byte(40) &&
-    contrast == eeprom_read_byte(41) &&
-    mid_level == eeprom_read_byte(42) &&
-    alarm_back_disable == eeprom_read_byte(43) &&
-    buzz_switch == eeprom_read_byte(44) &&
-    knock_disable == eeprom_read_byte(45) &&
-    pos_measur == eeprom_read_byte(46) &&
-    alarm_dose_disable == eeprom_read_byte(47) &&
-    sleep_switch == eeprom_read_byte(48) &&
-    TIME_BRIGHT == eeprom_read_byte(49) &&
-    TIME_SLEEP == eeprom_read_byte(50) &&
-    rad_mode == eeprom_read_byte(57) &&
-    alarm_back_sound_disable == eeprom_read_byte(58) &&
-    rad_flash == eeprom_read_byte(59) &&
-    alarm_dose_sound_disable == eeprom_read_byte(61) &&
-    warn_level_back == eeprom_read_word(62) &&
-    alarm_level_back == eeprom_read_word(64) &&
-    warn_level_dose == eeprom_read_word(66) &&
-    alarm_level_dose == eeprom_read_word(68)
-  )
-    return;
+    case 1:
+      if (
+        GEIGER_TIME == eeprom_read_byte(51) &&
+        puls == eeprom_read_byte(52) &&
+        opornoe == eeprom_read_float(53) &&
+        ADC_value == eeprom_read_byte(102) &&
+        k_delitel == eeprom_read_word(104)
+      ) return;
+      break;
+  }
 
-  else {
-    uint8_t time_out = 0; //таймер автовыхода
+  uint8_t time_out = 0; //таймер автовыхода
 
-    clrScr(); //очистка экрана
-    setFont(RusFont); //установка шрифта
-    print("Cj[hfybnm", CENTER, 8); //Сохранить
-    print("yfcnhjqrb?", CENTER, 16); //настройки?
+  clrScr(); //очистка экрана
+  setFont(RusFont); //установка шрифта
+  print("Cj[hfybnm", CENTER, 8); //Сохранить
+  print("yfcnhjqrb?", CENTER, 16); //настройки?
 
-    while (1) {
-      pump(); //накачка по обратной связи с АЦП
-      low_pwr(); //отключение дисплея и подсветки, уход в сон для экономии энергии
-      data_convert(); //преобразование данных
+  while (1) {
+    pump(); //накачка по обратной связи с АЦП
+    low_pwr(); //отключение дисплея и подсветки, уход в сон для экономии энергии
+    data_convert(); //преобразование данных
 
 #if TIME_OUT_SETTINGS
-      if (!scr) {
-        scr = 1; //сбрасываем флаг
-        if (++time_out > TIME_OUT_SETTINGS) {
-          setings_read(); //считываем настройки из памяти
-          scr = 0; //разрешаем обновления экрана
-          return;
-        }
+    if (!scr) {
+      scr = 1; //сбрасываем флаг
+      if (++time_out > TIME_OUT_SETTINGS) {
+        setings_read(); //считываем настройки из памяти
+        scr = 0; //разрешаем обновления экрана
+        return;
       }
+    }
 #endif
 
-      choice_menu(n); //меню выбора
+    choice_menu(n); //меню выбора
 
-      switch (check_keys()) {
+    switch (check_keys()) {
 
-        case 2: //Down key
-          if (n > 0) n--;
-          time_out = 0; //сбрасывает авто-выход
-          scr = 0; //разрешаем обновления экрана
-          break;
-        case 3: //Up key
-          if (n < 1) n++;
-          time_out = 0; //сбрасывает авто-выход
-          scr = 0; //разрешаем обновления экрана
-          break;
+      case 2: //Down key
+        if (n > 0) n--;
+        time_out = 0; //сбрасывает авто-выход
+        scr = 0; //разрешаем обновления экрана
+        break;
+      case 3: //Up key
+        if (n < 1) n++;
+        time_out = 0; //сбрасывает авто-выход
+        scr = 0; //разрешаем обновления экрана
+        break;
 
-        case 5: //select key
-          switch (n) {
-            case 1:
-              setings_update(); //обновляем настройки
-              clrScr(); //очистка экрана
-              print("Yfcnhjqrb", CENTER, 16); //Настройки
-              print("Cj[hfytys!", CENTER, 24); //Сохранены!
-              for (uint32_t t = millis() + MASSEGE_TIME; t > millis() && !check_keys();) {
-                pump(); //накачка по обратной связи с АЦП
-                data_convert(); //преобразование данных
-              }
-              scr = 0; //разрешаем обновления экрана
-              return;
+      case 5: //select key
+        switch (n) {
+          case 1:
+            clrScr(); //очистка экрана
+            print("Yfcnhjqrb", CENTER, 16); //Настройки
+            print("Cj[hfytys!", CENTER, 24); //Сохранены!
+            switch (sw) {
+              case 0: setings_update(); break; //обновляем настройки
+              case 1: pump_update(); break; //обновляем настройки
+            }
+            for (uint32_t t = millis() + MASSEGE_TIME; t > millis() && !check_keys();) {
+              pump(); //накачка по обратной связи с АЦП
+              data_convert(); //преобразование данных
+            }
+            scr = 0; //разрешаем обновления экрана
+            return;
 
-            case 0:
-              setings_read(); //считываем настройки из памяти
-              scr = 0; //разрешаем обновления экрана
-              return;
-          }
-          break;
-      }
+
+          case 0:
+            switch (sw) {
+              case 0: setings_read(); break; //считываем настройки из памяти
+              case 1: pump_read(); break; //считываем настройки из памяти
+            }
+            scr = 0; //разрешаем обновления экрана
+            return;
+        }
+        break;
     }
   }
 }
