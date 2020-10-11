@@ -103,7 +103,8 @@
                    теперь зависимость от "имп/с" вместо "мкР", настроить можно в "config" параметры - "IMP_PWR_MANAGER", "IMP_PWR_DOWN" и "IMP_PWR_GIST", удален выбор количества счетчиков, добавлено отключение мертвого времени.
   3.0.5 01.10.20 - добавлен учет собственного фона счетчика, параметр в "config" - "OWN_BACK".
   3.1.1 10.10.20 - исправлены едицы измерения, добавлено меню, быстрое меню удалено.
-  3.1.1 11.10.20 - исправлено сохранение в отладке, добавлена возможность сброса настроек преобразователя, для сброса нужно зажать клавиши "ок" и "вверх" затем включить питание.
+  3.1.1 11.10.20 - исправлено сохранение в отладке, добавлена возможность сброса настроек преобразователя, для сброса нужно зажать клавиши "ок" и "вверх" затем включить питание,
+                   основные режимы теперь "фон" и "доза", режим поиска выведен отдельной функцией, график теперь постоянно доступен на экране "фон", отображает содержимое основного буфера.
 
   Внимание!!! При выключении пункта "СОН" в меню настроек влечет увеличением энергопотребления, но тем самым увеличивается производительность устройства.
 
@@ -223,8 +224,6 @@
 #define MAX_GEIGER_TIME (BUFF_LENGTHY - 1) //максимальное время счета
 #define MIN_GEIGER_TIME 2 //минимальное время счета
 
-#define MAX_SCREENS (SEARCH_RETURN + 1) //максимальное количество главных экранов
-
 volatile uint16_t rad_buff[BUFF_LENGTHY]; //массив секундных замеров для расчета фона
 uint16_t graf_buff[76]; //буфер графика
 uint16_t rad_scan_buff; //буфер сканирования
@@ -266,11 +265,8 @@ uint16_t rad_imp; //импульсы в секунду
 uint32_t rad_scan; //общее кол-во частиц
 #endif
 
-#if SEARCH_RETURN
 uint16_t maxLevel = 22; //максимальный уровень маштабирования графика
-#else
-uint16_t maxLevel = 15; //максимальный уровень маштабирования графика
-#endif
+uint16_t maxLevel_back = 15; //максимальный уровень маштабирования графика
 
 boolean serch_disable = 0; //флаг запрета движения графика
 
@@ -596,10 +592,6 @@ void data_convert(void) //преобразование данных
     if (++time_wdt >= TIME_FACT_1) time_wdt = 0; //расчет времени один раз в секунду
     time_micros += wdt_period; //микросекунды * 10
 
-#if SEARCH_RETURN
-    graf_update(); //обновляем график
-#endif
-
     if (!measur) {
       switch (time_wdt) {
         case TIME_FACT_2: //обновление статистики
@@ -619,10 +611,7 @@ void data_convert(void) //преобразование данных
           rad_buff[1] = rad_buff[0]; //смещаем 0-й элемент в 1-й для дальнейшей работы с ним
           rad_buff[0] = 0; //сбрасываем счетчик импульсов
           tmp_buff = 0; //сбрасываем временный буфер
-
-#if SEARCH_RETURN
           part_count = 0; //сбрасываем буфер графика
-#endif
 
           if (geiger_time_now < MAX_GEIGER_TIME) geiger_time_now++; //прибавляем указатель заполненности буффера
 
@@ -725,7 +714,6 @@ void data_convert(void) //преобразование данных
           break;
 
         case TIME_FACT_10: //расчет данных для графика
-#if SEARCH_RETURN //если выбран режим "поиск"
           //--------------------------------------
 #if TYPE_SERCH_UNIT
           if (tm >= TIME_FACT_1 && !serch_disable) rad_imp = rad_buff[1]; //считаем кол-во импульсов в сек.
@@ -734,32 +722,11 @@ void data_convert(void) //преобразование данных
           if (tm >= TIME_FACT_1 && !serch_disable) rad_scan += rad_buff[1]; //считаем общее количество частиц
 #endif
           //--------------------------------------
-#else //иначе отображаем график в режиме "фон"
-          //--------------------------------------
           uint16_t graf_max = 0;
-#if TYPE_GRAF_MOVE //слева-направо
-          for (uint8_t i = 75; i > 0; i--) {
-            graf_buff[i] = graf_buff[i - 1]; //сдвигаем массив
-            if (graf_buff[i] > graf_max) graf_max = graf_buff[i];
-          }
-          graf_buff[0] = rad_buff[1]; //новое значение в последнюю ячейку
-          if (graf_buff[0] > graf_max) graf_max = graf_buff[0];
+          for (uint8_t i = 0; i > 76; i--) if (rad_buff[i + 1] > graf_max) graf_max = rad_buff[i + 1]; //ищем максимум
 
-          if (graf_max > 15) maxLevel = graf_max * GRAF_COEF_MAX; //если текущий замер больше максимума
-          else maxLevel = 15;
-#else //справа-налево
-          for (uint8_t i = 0; i < 75; i++) {
-            graf_buff[i] = graf_buff[i + 1]; //сдвигаем массив
-            f (graf_buff[i] > graf_max) graf_max = graf_buff[i];
-          }
-          graf_buff[75] = rad_buff[1]; //новое значение в последнюю ячейку
-          if (graf_buff[75] > graf_max) graf_max = graf_buff[75];
-
-          if (graf_max > 15) maxLevel = graf_max * GRAF_COEF_MAX; //если текущий замер больше максимума
-          else maxLevel = 15;
-#endif
-          //--------------------------------------
-#endif
+          if (graf_max > 15) maxLevel_back = graf_max * GRAF_COEF_MAX; //если текущий замер больше максимума
+          else maxLevel_back = 15;
           break;
 
         case TIME_FACT_11: //обработка тревоги
@@ -1667,90 +1634,140 @@ void graf_update(void) //обновление графика
 //-------------------------Инициализация графика-----------------------------------------
 void graf_init(void) //инициализация графика
 {
-  if (!sleep) { //если мы не спим
+  clrScr(); //очистка экрана
+  drawBitmap(0, 0, serch_img, 84, 8); //отрисовываем фон
+  scr = 0; //разрешаем обновление экрана
+
+  while (1) {
+    error_messege(); //обработка ошибок
+    pump();//накачка по обратной связи с АЦП
+    low_pwr(); //отключение дисплея и подсветки, уход в сон для экономии энергии
+    graf_update(); //обновляем график
+    data_convert(); //преобразование данных
+    stat_bat(); //обновление состояния батареи
+
+    if (!scr) { //обновление дисплея
+      scr = 1; //сброс флага
+      clrRow(1); //очистка строки 1
+      clrRow(2); //очистка строки 2
+    }
+
+    if (!sleep) { //если мы не спим
 #if TYPE_SERCH_UNIT //если выбраны имп/с
-    drawBitmap(0, 8, scan_ind_scale_img, 55, 8); //рисуем шкалу
-    //--------------------------------------------------------------//
-    static uint16_t n;
-    static uint16_t f;
+      drawBitmap(0, 8, scan_ind_scale_img, 55, 8); //рисуем шкалу
+      //--------------------------------------------------------------//
+      static uint16_t n;
+      static uint16_t f;
 
-    if (rad_imp > GRAF_IND_MAX)n = GRAF_IND_MAX; //устанавливаем точки максимумов
-    else n = rad_imp;
-    n = map(n, 0, GRAF_IND_MAX, 2, 54); //корректируем под коэфициент
-    if (n < f) f--; //добавляем плавности при уменьшении
-    else f = n; //если увеличелось, отображаем сразу
+      if (rad_imp > GRAF_IND_MAX)n = GRAF_IND_MAX; //устанавливаем точки максимумов
+      else n = rad_imp;
+      n = map(n, 0, GRAF_IND_MAX, 2, 54); //корректируем под коэфициент
+      if (n < f) f--; //добавляем плавности при уменьшении
+      else f = n; //если увеличелось, отображаем сразу
 
-    clrRow(2, f + 1, 55); //убираем лишнее
-    drawBitmap(0, 16, scan_ind_img, f, 8); //рисуем полосу
-    //--------------------------------------------------------------//
-    drawBitmap(58, 8, imp_s_img, 26, 8); //имп/с
-    setFont(RusFont); //установка шрифта
+      clrRow(2, f + 1, 55); //убираем лишнее
+      drawBitmap(0, 16, scan_ind_img, f, 8); //рисуем полосу
+      //--------------------------------------------------------------//
+      drawBitmap(58, 8, imp_s_img, 26, 8); //имп/с
+      setFont(RusFont); //установка шрифта
 #if (TYPE_CHAR_FILL > 44)
-    printNumI(rad_imp, 59, 16, 4, TYPE_CHAR_FILL); //строка 1
+      printNumI(rad_imp, 59, 16, 4, TYPE_CHAR_FILL); //строка 1
 #else
-    printNumI(rad_imp, 59, 16, 4, 32); //строка 1
+      printNumI(rad_imp, 59, 16, 4, 32); //строка 1
 #endif
 #else //иначе счет кол-ва частиц
-    drawBitmap(0, 8, scan_ind_scale_img, 55, 8); //рисуем шкалу
-    //--------------------------------------------------------------//
-    static uint16_t n;
-    static uint16_t f;
+      drawBitmap(0, 8, scan_ind_scale_img, 55, 8); //рисуем шкалу
+      //--------------------------------------------------------------//
+      static uint16_t n;
+      static uint16_t f;
 
-    if (rad_imp > GRAF_IND_MAX)n = GRAF_IND_MAX; //устанавливаем точки максимумов
-    else n = rad_imp;
-    n = map(n, 0, GRAF_IND_MAX, 2, 54); //корректируем под коэфициент
-    if (n < f) f--; //добавляем плавности при уменьшении
-    else f = n; //если увеличелось, отображаем сразу
+      if (rad_imp > GRAF_IND_MAX)n = GRAF_IND_MAX; //устанавливаем точки максимумов
+      else n = rad_imp;
+      n = map(n, 0, GRAF_IND_MAX, 2, 54); //корректируем под коэфициент
+      if (n < f) f--; //добавляем плавности при уменьшении
+      else f = n; //если увеличелось, отображаем сразу
 
-    clrRow(2, f + 1, 55); //убираем лишнее
-    drawBitmap(0, 16, scan_ind_img, f, 8); //рисуем полосу
-    //--------------------------------------------------------------//
-    drawBitmap(60, 8, imp_all_img, 21, 8); //всего
-    setFont(TinyNumbersDown); //установка шрифта
-    printNumI(rad_scan, 58, 16, 7, TYPE_CHAR_FILL); //строка 1
+      clrRow(2, f + 1, 55); //убираем лишнее
+      drawBitmap(0, 16, scan_ind_img, f, 8); //рисуем полосу
+      //--------------------------------------------------------------//
+      drawBitmap(60, 8, imp_all_img, 21, 8); //всего
+      setFont(TinyNumbersDown); //установка шрифта
+      printNumI(rad_scan, 58, 16, 7, TYPE_CHAR_FILL); //строка 1
 #endif
-    //---------------------------//
-    if (!graf) {
-      graf = 1; //запрещаем обновление графика
+      //---------------------------//
+      if (!graf) {
+        graf = 1; //запрещаем обновление графика
 
 #if TYPE_GRAF_MOVE //слева-направо
-      for (uint8_t i = 4; i < 80; i++) {
-        graf_lcd(map(graf_buff[i - 4], 0, maxLevel, 0, 22), i); //инициализируем график
-      }
+        for (uint8_t i = 4; i < 80; i++) {
+          graf_lcd(map(graf_buff[i - 4], 0, maxLevel, 0, 22), i, 22, 3); //инициализируем график
+        }
 #else //справа-налево
-      for (uint8_t i = 79; i > 3; i--) {
-        graf_lcd(map(graf_buff[i - 4], 0, maxLevel, 0, 22), i); //инициализируем график
-      }
+        for (uint8_t i = 79; i > 3; i--) {
+          graf_lcd(map(graf_buff[i - 4], 0, maxLevel, 0, 22), i, 22, 3); //инициализируем график
+        }
 #endif
+      }
+    }
+    //+++++++++++++++++++++  опрос кнопок  +++++++++++++++++++++++++++
+    switch (check_keys()) {
+      case 1: //Down key hold //вкл/выкл посветки
+        fast_light(); //быстрое включение посветки
+        break;
+
+      case 2: //Down key //сброс
+#if TYPE_SERCH_UNIT
+        rad_imp = 0;
+        for (uint8_t i = 0; i < 76; i++) graf_buff[i] = 0; //очищаем буфер графика
+        graf_init(); //инициализируем график
+#else
+        rad_scan = 0;
+        for (uint8_t i = 0; i < 76; i++) graf_buff[i] = 0; //очищаем буфер графика
+        graf_init(); //инициализируем график
+#endif
+        scr = 0; //разрешаем обновления экрана
+        break;
+
+      case 4: //Up key hold //вкл/выкл фонарика
+        fast_flash(); //быстрое включение фонарика
+        break;
+
+      case 3: //Up key //доп.действие
+        if (serch_disable) serch_disable = 0; else serch_disable = 1; //запрещаем обновление графика
+        scr = 0; //разрешаем обновления экрана
+        break;
+
+      case 5: //Select key //выбор режима
+        scr = 0; //разрешаем обновления экрана
+        break;
+
+      case 6: //hold select key //настройки
+        scr = 0; //разрешаем обновления экрана
+        return;
     }
   }
 }
 //--------------------------------Отрисовка графика-------------------------------------
-void graf_lcd(uint8_t r, uint8_t p) //отрисовка графика
+void graf_lcd(uint8_t r, uint8_t p, uint8_t max_g, uint8_t height) //отрисовка графика
 {
-#if SEARCH_RETURN //если выбран режим "поиск"
-  if (r > 22)r = 22; //ограничивываем максимум
-  if (p == 4) drawBitmap(0, 24, scan_alt_left_img, 4, 24); //рисуем левую шкалу
-  if (p == 79) drawBitmap(80, 24, scan_alt_right_img, 4, 24); //рисуем правую шкалу
+  if (r > max_g) r = max_g; //ограничивываем максимум
+  switch (height) {
+    case 2:
+      if (p == 4) drawBitmap(0, 32, scan_left_img, 4, 16); //рисуем левую шкалу
+      if (p == 79) drawBitmap(80, 32, scan_right_img, 4, 16); //рисуем правую шкалу
+      break;
+      if (p == 4) drawBitmap(0, 24, scan_alt_left_img, 4, 24); //рисуем левую шкалу
+      if (p == 79) drawBitmap(80, 24, scan_alt_right_img, 4, 24); //рисуем правую шкалу
+    case 3:
+      break;
+  }
 
-  for (uint8_t i = 0; i < 3; i++) { //отрисовываем 3 строки
+  for (uint8_t i = 0; i < height; i++) { //отрисовываем 3 строки
     uint8_t scale = 0; //устанавливаем столбец в ноль
     if ((r + 1) / 8 > i) scale = 8; //если столбец полный, зарисовываем полностью
     else if (r >= (i * 8 + r % 8)) scale = r % 8 + 1; //иначе отрисовываем остаток
     drawBitmap(p, 40 - i * 8, (uint8_t*)pgm_read_word(&scan_scale[scale]), 1, 8); //отрисовка
   }
-#else
-  if (r > 15)r = 15; //ограничивываем максимум
-  if (p == 4) drawBitmap(0, 32, scan_left_img, 4, 16); //рисуем левую шкалу
-  if (p == 79) drawBitmap(80, 32, scan_right_img, 4, 16); //рисуем правую шкалу
-
-  for (uint8_t i = 0; i < 2; i++) { //отрисовываем 2 строки
-    uint8_t scale = 0; //устанавливаем столбец в ноль
-    if ((r + 1) / 8 > i) scale = 8; //если столбец полный, зарисовываем полностью
-    else if (r >= (i * 8 + r % 8)) scale = r % 8 + 1; //иначе отрисовываем остаток
-    drawBitmap(p, 40 - i * 8, (uint8_t*)pgm_read_word(&scan_scale[scale]), 1, 8); //отрисовка
-  }
-#endif
 }
 //-----------------------------------Параметры-----------------------------------------
 void parameters(void) //параметры
@@ -2292,10 +2309,10 @@ void menu(void) //меню
         switch (n) {
           case 0:
           case 1:
-          case 2:
             scr_mode = n; //устанавливаем основной режим
             scr = 0; //разрешаем обновления экрана
             return;
+          case 2: graf_init(); break;
           case 3: measur_menu(); break;
           case 4: setings(); break;
           case 5: parameters(); break;
@@ -2846,9 +2863,6 @@ void task_bar(void) //шапка экрана
   {
     case 0: drawBitmap(0, 0, backgr_img, 17, 8); break;  //режим текущего фона
     case 1: drawBitmap(0, 0, dose_img, 22, 8); break;  //режим накопленной дозы
-#if SEARCH_RETURN
-    case 2: drawBitmap(0, 0, serch_img, 26, 8); break;  //режим поиска
-#endif
   }
 #if COEF_DEBUG //отладка коэффициента
   switch (scr_mode)
@@ -2866,22 +2880,13 @@ void task_bar(void) //шапка экрана
 void main_screen(void)
 {
   static boolean i; //анимация оповещения
-#if !SEARCH_RETURN
   static boolean f; //переключатель режима фон
-#endif
 
   //+++++++++++++++++++   вывод информации на экран  +++++++++++++++++++++++++
   if (!scr) { //обновление дисплея
     scr = 1; //сброс флага
 
-    if (scr_mode != 2) clrScr(); //очистка экрана
-#if SEARCH_RETURN
-    else {
-      clrRow(0); //очистка строки 0
-      clrRow(1); //очистка строки 1
-      clrRow(2); //очистка строки 2
-    }
-#endif
+    clrScr(); //очистка экрана
 
     task_bar(); //рисуем шапку экрана
 
@@ -2898,29 +2903,8 @@ void main_screen(void)
             break;
         }
 
-#if SEARCH_RETURN //если выбран режим поиска
-        setFont(RusFont); //установка шрифта
-        drawBitmap(0, 32, dose_mid_img, 26, 8);       //строка 2 сред.
-        drawBitmap(0, 40, dose_max_img, 26, 8);       //строка 3 макс.
-
-        _init_rads_unit(0, rad_mid, 1, 4, 29, 32, 0, 54, 32); //строка 2 средний
-        if (!first_mid) print("----", 29, 32); //если первый средний замер не готов
-
-        _init_rads_unit(0, rad_max, 1, 4, 29, 40, 0, 54, 40); //строка 3 максимальный
-#else //иначе отрисовываем график в режиме фон
         switch (f) {
-          case 0:
-#if TYPE_GRAF_MOVE //слева-направо
-            for (uint8_t i = 4; i < 80; i++) {
-              graf_lcd(map(graf_buff[i - 4], 0, maxLevel, 0, 15), i); //инициализируем график
-            }
-#else //справа-налево
-            for (uint8_t i = 79; i > 3; i--) {
-              graf_lcd(map(graf_buff[i - 4], 0, maxLevel, 0, 15), i); //инициализируем график
-            }
-#endif
-            break;
-
+          case 0: for (uint8_t i = 4; i < 80; i++) graf_lcd(map(rad_buff[i - 4], 0, maxLevel_back, 0, 15), i, 15, 2);  break; //инициализируем график
           case 1: //максимальный и средний фон
             setFont(RusFont); //установка шрифта
             drawBitmap(0, 32, dose_mid_img, 26, 8);       //строка 2 сред.
@@ -2932,7 +2916,6 @@ void main_screen(void)
             _init_rads_unit(0, rad_max, 1, 4, 29, 40, 0, 54, 40); //строка 3 максимальный
             break;
         }
-#endif
 
         _init_rads_unit(1, rad_back, 1, 4, 1, 8, 0, 54, 16); //строка 1 основной фон
 
@@ -2984,12 +2967,6 @@ void main_screen(void)
         break;
     }
   }
-  //===========================================================//
-#if SEARCH_RETURN
-  switch (scr_mode) { //отрисовываем график
-    case 2: graf_init(); break; //строим график
-  }
-#endif
 
   //+++++++++++++++++++++  опрос кнопок  +++++++++++++++++++++++++++
   switch (check_keys()) {
@@ -3002,13 +2979,6 @@ void main_screen(void)
         case 0:
           switch (scr_mode) { //основные экраны
             case 0: //сбрасываем максимальный фон и средний фон
-#if SEARCH_RETURN
-              rad_mid = 0; //сбрасываем среднее значение фона
-              rad_max = 0; //сбрасываем максимальное значение фона
-              tmr_mid = 0; //сбрасываем счетчик среднего фона
-              first_mid = 0; //сбрасываем флаг первого среднего замера фона
-              rad_mid_buff = 0; //сбрасываем буфер среднего замера фона
-#else
               for (uint8_t i = 0; i < geiger_time_now; i++) rad_buff[i + 1] = 0; //очищаем буфер фона
               rad_buff[0] = 0; //очищаем буфер счета
               geiger_time_now = 0; //сбрасываем счетчик накопления импульсов в буфере
@@ -3028,23 +2998,9 @@ void main_screen(void)
                   rad_mid_buff = 0; //сбрасываем буфер среднего замера фона
                   break;
               }
-#endif
               break;
 
             case 1: dose_reset(); break; //сбрасываем дозу и время
-#if SEARCH_RETURN
-            case 2://сбрасываем счетчик частиц или счетчик импульсов и график
-#if TYPE_SERCH_UNIT
-              rad_imp = 0;
-              for (uint8_t i = 0; i < 76; i++) graf_buff[i] = 0; //очищаем буфер графика
-              graf_init(); //инициализируем график
-#else
-              rad_scan = 0;
-              for (uint8_t i = 0; i < 76; i++) graf_buff[i] = 0; //очищаем буфер графика
-              graf_init(); //инициализируем график
-#endif
-              break;
-#endif
           }
           break;
         case 3: warn_back_wait = 1; alarm_switch = 0; _vibro_off(); buzz_read(); break; //фон
@@ -3061,25 +3017,8 @@ void main_screen(void)
       switch (alarm_switch) { //режим тревоги
         case 0:
           switch (scr_mode) { //основные экраны
-            case 0: //сбрасываем текущий фон
-#if SEARCH_RETURN
-              for (uint8_t i = 0; i < geiger_time_now; i++) rad_buff[i + 1] = 0; //очищаем буфер фона
-              rad_buff[0] = 0; //очищаем буфер счета
-              geiger_time_now = 0; //сбрасываем счетчик накопления импульсов в буфере
-              rad_back = 0; //сбрасываем фон
-#else
-              if (f) f = 0; else f = 1; //переключаем экраны фона
-#endif
-              break;
-
-            case 1://перключение режимов дозы
-              if (dose_mode) dose_mode = 0; else dose_mode = 1; //переключаем экраны дозы
-              break;
-#if SEARCH_RETURN
-            case 2://пауза графика
-              if (serch_disable) serch_disable = 0; else serch_disable = 1; //запрещаем обновление графика
-              break;
-#endif
+            case 0: f = (f) ? 0 : 1; break; //переключаем экраны фона
+            case 1: dose_mode = (dose_mode) ? 0 : 1; break; //переключаем экраны дозы
           }
           break;
         case 3: warn_back_wait = 1; alarm_switch = 0; _vibro_off(); buzz_read(); break; //фон
@@ -3090,7 +3029,7 @@ void main_screen(void)
 
     case 5: //Select key //выбор режима
       switch (alarm_switch) { //режим тревоги
-        case 0: if (scr_mode != 2) scr_mode = (scr_mode) ? 0 : 1; break; //переключение фон/доза
+        case 0: scr_mode = (scr_mode) ? 0 : 1; break; //переключение фон/доза
         case 3: warn_back_wait = 1; alarm_switch = 0; _vibro_off(); buzz_read(); break; //фон
         case 4: warn_dose_wait = rad_dose; alarm_switch = 0; _vibro_off(); buzz_read(); break; //доза
       }
