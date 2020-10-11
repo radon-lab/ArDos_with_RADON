@@ -2831,7 +2831,7 @@ void _rads_unit(boolean set, boolean unit, uint8_t unit_x, uint8_t unit_y) //Е�
   }
 }
 //----------------------------------Шапка экрана------------------------------------------------
-void _alarm_init(boolean waint, uint8_t alarm) //шапка экрана
+void _alarm_init(uint8_t waint, uint8_t alarm) //шапка экрана
 {
   if (waint) drawBitmap(60, 0, beep_alt_waint_img, 7, 8); //если ждем понижения фона
   else {
@@ -2857,8 +2857,8 @@ void task_bar(void) //шапка экрана
 
   switch (scr_mode)
   {
-    case 0: drawBitmap(0, 0, backgr_img, 17, 8); _alarm_init(alarm_back_wait, alarm_back); break;  //режим текущего фона
-    case 1: drawBitmap(0, 0, dose_img, 22, 8); _alarm_init(alarm_dose_wait, alarm_dose); break;  //режим накопленной дозы
+    case 0: drawBitmap(0, 0, backgr_img, 17, 8); _alarm_init(alarm_back_wait + warn_back_wait, alarm_back); break;  //режим текущего фона
+    case 1: drawBitmap(0, 0, dose_img, 22, 8); _alarm_init(0, alarm_dose); break;  //режим накопленной дозы
   }
 #if COEF_DEBUG //отладка коэффициента
   switch (scr_mode)
