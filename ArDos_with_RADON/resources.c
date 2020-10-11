@@ -25,8 +25,8 @@ const uint8_t low_bat_img[] PROGMEM = { //эмблемма разряженой 
 };
 
 //=============набор шкал===============
-const uint8_t l2[] PROGMEM = {0x20}; //1 пкс
-const uint8_t l1[] PROGMEM = {0x60}; //2 пкс
+const uint8_t l2[] PROGMEM = {0x10}; //1 пкс
+const uint8_t l1[] PROGMEM = {0x30}; //2 пкс
 const uint8_t l0[] PROGMEM = {0xFF}; //8 пкс
 //---------------------------------------------//
 const uint8_t* const _scale[] PROGMEM = {l0, l1, l2};
