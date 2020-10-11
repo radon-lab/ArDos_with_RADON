@@ -274,6 +274,7 @@ uint32_t rad_dose_old; //предыдущее значение дозы
 uint64_t time_micros = 0; //счетчик реального времени
 uint32_t time_sec = 0; //секунды
 uint8_t geiger_time_now = 0; //текущий номер набранной секунды счета
+uint8_t graf_time_now = 0; //текущий номер набранной секунды графика
 
 boolean scr_mode = 0; //текущий режим(фон/доза)
 boolean dose_mode = 0; //режим отображения дозы(текущая/общая)
@@ -1562,39 +1563,52 @@ void graf_update(void) //обновление графика
   static uint16_t cnt; //счетчик тиков графика
 
   if (++cnt >= GRAF_TIME) { //расчет показаний в зависимости от фона
-
-    if (!serch_disable) {
-      rad_imp = rad_buff[0] * (1000 / GRAF_TIME_MS); //динамический персчет импульсов в сек.
-      rad_imp_m = (rad_buff[0] * (1000 / GRAF_TIME_MS)) * 60; //динамический персчет импульсов в мин.
-      rad_scan += rad_buff[0]; //считаем общее количество частиц
-    }
-
     uint16_t graf_max = 0;
+    uint32_t temp_buf = 0; //временный буфер расчета имп
+    
 #if TYPE_GRAF_MOVE //слева-направо
     if (!serch_disable) {
+      if (graf_time_now < 76) graf_time_now++;
+
       for (uint8_t i = 75; i > 0; i--) {
         graf_buff[i] = graf_buff[i - 1]; //сдвигаем массив
         if (graf_buff[i] > graf_max) graf_max = graf_buff[i];
       }
-      graf_buff[0] = rad_buff[0]; //новое значение в последнюю ячейку
-      rad_buff[0] = 0; //сбрасываем буфер графика
-      if (graf_buff[0] > graf_max) graf_max = graf_buff[0];
 
+      graf_buff[0] = rad_buff[0]; //новое значение в последнюю ячейку
+      rad_scan += rad_buff[0]; //считаем общее количество частиц
+      rad_buff[1] = rad_buff[0]; //смещаем 0-й элемент в 1-й для дальнейшей работы с ним
+      rad_buff[0] = 0; //сбрасываем счетчик импульсов
+
+      if (graf_buff[0] > graf_max) graf_max = graf_buff[0];
       if (graf_max > 22) maxLevel = graf_max * GRAF_COEF_MAX; //если текущий замер больше максимума
       else maxLevel = 22;
+
+      for (uint8_t i = 0; i < graf_time_now; i++) temp_buf += graf_buff[i]; //сдвигаем массив
+      rad_imp = rad_buff[1] * (1000.00 / GRAF_TIME_MS); //динамический персчет импульсов в сек.
+      rad_imp_m = (temp_buf * ((1000.00 / GRAF_TIME_MS) / graf_time_now)) * 60; //динамический персчет импульсов в мин.
     }
 #else //справа-налево
     if (!serch_disable) {
+      if (graf_time_now < 76) graf_time_now++;
+
       for (uint8_t i = 0; i < 75; i++) {
         graf_buff[i] = graf_buff[i + 1]; //сдвигаем массив
         if (graf_buff[i] > graf_max) graf_max = graf_buff[i];
       }
-      graf_buff[75] = rad_buff[0]; //новое значение в последнюю ячейку
-      rad_buff[0] = 0; //сбрасываем буфер графика
-      if (graf_buff[75] > graf_max) graf_max = graf_buff[75];
 
+      graf_buff[75] = rad_buff[0]; //новое значение в последнюю ячейку
+      rad_scan += rad_buff[0]; //считаем общее количество частиц
+      rad_buff[1] = rad_buff[0]; //смещаем 0-й элемент в 1-й для дальнейшей работы с ним
+      rad_buff[0] = 0; //сбрасываем счетчик импульсов
+
+      if (graf_buff[75] > graf_max) graf_max = graf_buff[75];
       if (graf_max > 22) maxLevel = graf_max * GRAF_COEF_MAX; //если текущий замер больше максимума
       else maxLevel = 22;
+
+      for (uint8_t i = 76 - graf_time_now; i < 76; i++) temp_buf += graf_buff[i]; //сдвигаем массив
+      rad_imp = rad_buff[1] * (1000.00 / GRAF_TIME_MS); //динамический персчет импульсов в сек.
+      rad_imp_m = (temp_buf * ((1000.00 / GRAF_TIME_MS) / graf_time_now)) * 60; //динамический персчет импульсов в мин.
     }
 #endif
     cnt = 0; //сброс
@@ -1692,11 +1706,13 @@ void graf_init(void) //инициализация графика
         break;
 
       case 2: //Down key //сброс
-        rad_imp = 0;
-        rad_imp_m = 0;
-        rad_scan = 0;
-        for (uint8_t i = 0; i < 76; i++) graf_buff[i] = 0; //очищаем буфер графика
+        rad_imp = 0; //сбрасываем имп/с
+        rad_imp_m = 0; //сбрасываем имп/м
+        rad_scan = 0; //сбрасываем счет импульсов
         rad_buff[0] = 0; //сбрасываем буфер
+        graf_time_now = 0; //сбрасываем время счета графика
+        serch_disable = 0; //разрешаем обновление графика
+        for (uint8_t i = 0; i < 76; i++) graf_buff[i] = 0; //очищаем буфер графика
         scr = 0; //разрешаем обновления экрана
         break;
 
@@ -1715,7 +1731,8 @@ void graf_init(void) //инициализация графика
         break;
 
       case 6: //hold select key //настройки
-        rad_buff[0] = 0; //сбрасываем буфер
+        rad_buff[1] = 0; //сбрасываем счетчик импульсов
+        rad_buff[0] = 0; //сбрасываем счетчик импульсов
         serch = 0; //устанавливаем флаг поиска
         scr = 0; //разрешаем обновления экрана
         return;
