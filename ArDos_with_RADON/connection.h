@@ -121,7 +121,6 @@
 #define LIGHT_OFF   (bitSet(LIGHT_PORT, LIGHT_BIT))
 #endif
 #define LIGHT_OUT   (bitSet((DDR_REG(LIGHT_PORT)), LIGHT_BIT))
-#define is_LIGHT_ON (bitRead(LIGHT_PORT, LIGHT_BIT))
 
 #define LIGHT_INIT  LIGHT_OFF; LIGHT_OUT
 
