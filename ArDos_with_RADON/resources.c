@@ -32,12 +32,8 @@ const uint8_t l0[] PROGMEM = {0xFF}; //8 пкс
 const uint8_t* const _scale[] PROGMEM = {l0, l1, l2};
 
 //=============тревога===============
-const uint8_t beep_alt_img[] PROGMEM = { //две скобки
+const uint8_t beep_alt_img[] PROGMEM = { //скобка и вертикальная волна
   0xFF, 0xAB, 0xD5, 0xFF, 0xDB, 0xE7, 0xBD, 0xC3
-};
-
-const uint8_t beep_alt_off_img[] PROGMEM = { //крестик
-  0xFF, 0xBB, 0xD7, 0xEF, 0xD7, 0xBB, 0xFF
 };
 
 const uint8_t beep_alt_waint_img[] PROGMEM = { //звездочка
@@ -48,7 +44,7 @@ const uint8_t beep_alt_vibro_img[] PROGMEM = { //две вертикальные
   0xFF, 0xAB, 0xD5, 0xFF, 0xAB, 0xD5, 0xFF
 };
 //=============щелчки===============
-const uint8_t buzz_alt_img[] PROGMEM = { //динамик
+const uint8_t buzz_alt_img[] PROGMEM = { //две скобки
   0xFF, 0xDF, 0xC3, 0xFB, 0xC3, 0xDF, 0xFF
 };
 

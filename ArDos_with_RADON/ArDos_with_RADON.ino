@@ -105,7 +105,7 @@
   3.1.1 10.10.20 - исправлены едицы измерения, добавлено меню, быстрое меню удалено.
   3.1.1 11.10.20 - исправлено сохранение в отладке, добавлена возможность сброса настроек преобразователя, для сброса нужно зажать клавиши "ок" и "вверх" затем включить питание,
                    основные режимы теперь "фон" и "доза", режим поиска выведен отдельной функцией, график теперь постоянно доступен на экране "фон", отображает содержимое основного буфера,
-                   в режиме "поиск" добавлено переключение единиц имп/с | имп/м | имп.
+                   в режиме "поиск" добавлено переключение единиц имп/с | имп/м | имп, добавлен подрежим тревоги "звук", также теперь на каждом экране отображается свой выбранный тип тревоги.
 
   Внимание!!! При выключении пункта "СОН" в меню настроек влечет увеличением энергопотребления, но тем самым увеличивается производительность устройства.
 
@@ -297,10 +297,9 @@ uint8_t error = 0; //указатель на номер ошибки
 uint16_t speed_nak; //скорость накачки
 boolean sthv; //флаг считывания скорости накачки
 
-boolean alarm_back_disable = 1; //флаг запрета тревоги фона
-boolean alarm_dose_disable = 1; //флаг запрета тревоги дозы
-boolean alarm_back_sound_disable = 1; //флаг запрета звука тревоги фона
-boolean alarm_dose_sound_disable = 1; //флаг запрета звука тревоги дозы
+uint8_t alarm_switch = 0; //указатель текущей тревоги
+uint8_t alarm_back = 0; //флаг запрета тревоги фона
+uint8_t alarm_dose = 0; //флаг запрета тревоги дозы
 
 boolean alarm_back_wait = 0; //флаг ожидания выключения запрета тревоги фона
 boolean warn_back_wait = 0; //флаг ожидания выключения запрета предупреждения фона
@@ -312,7 +311,6 @@ uint16_t alarm_level_back = 300; //указатель на уровень тре
 uint16_t warn_level_dose = 10; //указатель на уровень тревоги 1 дозы в массиве
 uint16_t alarm_level_dose = 300; //указатель на уровень тревоги 2 дозы в массиве
 
-uint8_t alarm_switch = 0; //указатель текущей тревоги
 uint8_t mid_level = 0; //указатель на время замера среднего фона в массиве
 uint8_t pos_measur = 0; //указатель на частоту сохранения дозы в массиве
 uint8_t rad_flash = 1; //индикация попадания частиц
@@ -717,21 +715,21 @@ void data_convert(void) //преобразование данных
           break;
 
         case TIME_FACT_11: //обработка тревоги
-          if (!alarm_dose_disable && (rad_dose - alarm_dose_wait) >= alarm_level_dose) {
+          if (alarm_dose && (rad_dose - alarm_dose_wait) >= alarm_level_dose) {
             alarm_switch = 2;  //превышение дозы 2
             break;
           }
-          else if (!alarm_dose_disable && (rad_dose - warn_dose_wait) >= warn_level_dose) {
+          else if (alarm_dose && (rad_dose - warn_dose_wait) >= warn_level_dose) {
             alarm_switch = 4;  //превышение дозы 1
             break;
           }
 
           if (geiger_time_now >= GEIGER_CYCLE || rad_back >= RAD_PRE_WARN) {
-            if (!alarm_back_disable && !alarm_back_wait && rad_back >= alarm_level_back) {
+            if (alarm_back && !alarm_back_wait && rad_back >= alarm_level_back) {
               alarm_switch = 1;  //превышение фона 2
               break;
             }
-            else if (!alarm_back_disable && !warn_back_wait && rad_back >= warn_level_back) {
+            else if (alarm_back && !warn_back_wait && rad_back >= warn_level_back) {
               alarm_switch = 3;  //превышение фона 1
               break;
             }
@@ -1260,14 +1258,14 @@ void measur_menu(void) //режим замера
 void alarm_warning(void) //выбор тревоги
 {
   switch (alarm_switch) {
-    case 1: alarm_messege(0, alarm_back_sound_disable, "Ajy"); break; //фон 2
-    case 2: alarm_messege(1, alarm_dose_sound_disable, "Ljpf"); break; //доза 2
-    case 3: warn_messege(0, alarm_back_sound_disable); break; //фон 1
-    case 4: warn_messege(1, alarm_dose_sound_disable); break; //доза 1
+    case 1: alarm_messege(0, alarm_back, "Ajy"); break; //фон 2
+    case 2: alarm_messege(1, alarm_dose, "Ljpf"); break; //доза 2
+    case 3: warn_messege(0, alarm_back); break; //фон 1
+    case 4: warn_messege(1, alarm_dose); break; //доза 1
   }
 }
 //-------------------------------Предупреждение----------------------------------------------------------
-void warn_messege(boolean set, boolean sound) //предупреждение
+void warn_messege(boolean set, uint8_t sound) //предупреждение
 {
   buzz_switch = 0; //запрещаем щелчки
   cnt_pwr = 0; //обнуляем счетчик сна
@@ -1290,12 +1288,15 @@ void warn_messege(boolean set, boolean sound) //предупреждение
       break;
   }
   //==================================================================
-  if (!sound) _melody_chart(warn_sound, SAMPLS_WARN, 2); //играем волшебную мелодию
-  _vibro_on(); //включаем вибрацию
+  switch (sound) {
+    case 1: _melody_chart(warn_sound, SAMPLS_WARN, 2); break; //играем волшебную мелодию
+    case 2: _vibro_on(); break; //включаем вибрацию
+    case 3: _melody_chart(warn_sound, SAMPLS_WARN, 2); _vibro_on(); break; //играем волшебную мелодию и включаем вибрацию
+  }
   //==================================================================
 }
 //-------------------------------Тревога-----------------------------------------------------
-void alarm_messege(boolean set, boolean sound, char *mode) //тревога
+void alarm_messege(boolean set, uint8_t sound, char *mode) //тревога
 {
   uint8_t pos = 21 + (6 * set); //определяем позицию
   uint32_t rad_set; //текущие данные фона/дозы
@@ -1330,8 +1331,11 @@ void alarm_messege(boolean set, boolean sound, char *mode) //тревога
     }
 
     //==================================================================
-    if (!sound) _melody_chart(alarm_sound, SAMPLS_ALARM, 1); //играем волшебную мелодию
-    _vibro_on(); //включаем вибрацию
+    switch (sound) {
+      case 1: _melody_chart(alarm_sound, SAMPLS_ALARM, 1); break; //играем волшебную мелодию
+      case 2: _vibro_on(); break; //включаем вибрацию
+      case 3: _melody_chart(alarm_sound, SAMPLS_ALARM, 1); _vibro_on(); break; //играем волшебную мелодию и включаем вибрацию
+    }
     //==================================================================
 #if ALARM_AUTO_DISABLE
     if (check_keys() || (!set && rad_back < (alarm_level_back * ALARM_AUTO_GISTERESIS))) //если нажата любая кнопка или фон упал отключаем тревогу
@@ -2009,7 +2013,7 @@ void _setings_item_switch(boolean set, boolean inv, uint8_t num, uint8_t pos) //
     case 9: //Тревога Ф
       switch (set) {
         case 0: print("Nhtdjuf A&", LEFT, pos_row); break; //Тревога Ф:
-        case 1: if (alarm_back_disable) print("DSRK", RIGHT, pos_row); else if (alarm_back_sound_disable) print("DB<H", RIGHT, pos_row); else print("D+PD", RIGHT, pos_row); break;
+        case 1: if (!alarm_back) print("DSRK", RIGHT, pos_row); else if (alarm_back == 1) print("PDER", RIGHT, pos_row); else if (alarm_back == 2) print("DB<H", RIGHT, pos_row); else print("D+PD", RIGHT, pos_row); break;
       }
       break;
 
@@ -2030,7 +2034,7 @@ void _setings_item_switch(boolean set, boolean inv, uint8_t num, uint8_t pos) //
     case 12: //Тревога Д
       switch (set) {
         case 0: print("Nhtdjuf L&", LEFT, pos_row); break; //Тревога Д:
-        case 1: if (alarm_dose_disable) print("DSRK", RIGHT, pos_row); else if (alarm_dose_sound_disable) print("DB<H", RIGHT, pos_row); else print("D+PD", RIGHT, pos_row); break;
+        case 1: if (!alarm_dose) print("DSRK", RIGHT, pos_row); else if (alarm_dose == 1) print("PDER", RIGHT, pos_row); else if (alarm_dose == 2) print("DB<H", RIGHT, pos_row); else print("D+PD", RIGHT, pos_row); break;
       }
       break;
 
@@ -2084,10 +2088,10 @@ void _setings_data_up(uint8_t pos) //прибавление данных
     case 6: if (pos_measur < 9) pos_measur++; break; //Разн.зам
     case 7: if (mid_level < 9) mid_level ++; else mid_level = 0; break; //Средн.зам
     case 8: rad_mode = 1; break; //Ед.измер
-    case 9: if (alarm_back_disable) alarm_back_disable = 0; else alarm_back_sound_disable = 0; break; //Тревога Ф
+    case 9: if (alarm_back < 3) alarm_back++; break; //Тревога Ф
     case 10: if (warn_level_back < 300) warn_level_back += 5; else warn_level_back = 30; break; //Порог Ф1
     case 11: if (alarm_level_back < 500) alarm_level_back += 10; else if (alarm_level_back < 1000) alarm_level_back += 50; else if (alarm_level_back < 65000) alarm_level_back += 100; else alarm_level_back = 300; break; //Порог Ф2
-    case 12: if (alarm_dose_disable) alarm_dose_disable = 0; else alarm_dose_sound_disable = 0; break; //Тревога Д
+    case 12: if (alarm_dose < 3) alarm_dose++; break; //Тревога Д
     case 13: if (warn_level_dose < 300) warn_level_dose += 5; else warn_level_dose = 10; break; //Порог Д1
     case 14: if (alarm_level_dose < 500) alarm_level_dose += 10; else if (alarm_level_dose < 1000) alarm_level_dose += 50; else if (alarm_level_dose < 65000) alarm_level_dose += 100; else alarm_level_dose = 300; break; //Порог Д2
   }
@@ -2118,10 +2122,10 @@ void _setings_data_down(uint8_t pos) //убавление данных
     case 6: if (pos_measur > 0) pos_measur--;  break; //Разн.зам
     case 7: if (mid_level > 0) mid_level --; else mid_level = 9; break; //Средн.зам
     case 8: rad_mode = 0; break; //Ед.измер
-    case 9: if (!alarm_back_sound_disable) alarm_back_sound_disable = 1; else alarm_back_disable = 1; break; //Тревога Ф
+    case 9: if (alarm_back > 0) alarm_back--; break; //Тревога Ф
     case 10: if (warn_level_back > 30) warn_level_back -= 5; else warn_level_back = 300; break; //Порог Ф1
     case 11: if (alarm_level_back > 1000) alarm_level_back -= 100; else if (alarm_level_back > 500) alarm_level_back -= 50; else if (alarm_level_back > 300) alarm_level_back -= 10; else alarm_level_back = 65000; break; //Порог Ф2
-    case 12: if (!alarm_dose_sound_disable) alarm_dose_sound_disable = 1; else alarm_dose_disable = 1; break; //Тревога Д
+    case 12: if (alarm_dose > 0) alarm_dose--; break; //Тревога Д
     case 13: if (warn_level_dose > 10) warn_level_dose -= 5; else warn_level_dose = 300; break; //Порог Д1
     case 14: if (alarm_level_dose > 1000) alarm_level_dose -= 100; else if (alarm_level_dose > 500) alarm_level_dose -= 50; else if (alarm_level_dose > 300) alarm_level_dose -= 10; else alarm_level_dose = 65000; break; //Порог Д2
   }
@@ -2445,18 +2449,16 @@ void setings_read(void) //чтение настроек
   scr_mode = eeprom_read_byte(40);
   contrast = eeprom_read_byte(41);
   mid_level = eeprom_read_byte(42);
-  alarm_back_disable = eeprom_read_byte(43);
+  alarm_back = eeprom_read_byte(43);
   buzz_switch = eeprom_read_byte(44);
   knock_disable = eeprom_read_byte(45);
   pos_measur = eeprom_read_byte(46);
-  alarm_dose_disable = eeprom_read_byte(47);
+  alarm_dose = eeprom_read_byte(47);
   sleep_switch = eeprom_read_byte(48);
   TIME_BRIGHT = eeprom_read_byte(49);
   TIME_SLEEP = eeprom_read_byte(50);
   rad_mode = eeprom_read_byte(57);
-  alarm_back_sound_disable = eeprom_read_byte(58);
   rad_flash = eeprom_read_byte(59);
-  alarm_dose_sound_disable = eeprom_read_byte(61);
   warn_level_back = eeprom_read_word(62);
   alarm_level_back = eeprom_read_word(64);
   warn_level_dose = eeprom_read_word(66);
@@ -2469,18 +2471,16 @@ void setings_update(void) //обновление настроек
   eeprom_update_byte(40, scr_mode);
   eeprom_update_byte(41, contrast);
   eeprom_update_byte(42, mid_level);
-  eeprom_update_byte(43, alarm_back_disable);
+  eeprom_update_byte(43, alarm_back);
   eeprom_update_byte(44, buzz_switch);
   eeprom_update_byte(45, knock_disable);
   eeprom_update_byte(46, pos_measur);
-  eeprom_update_byte(47, alarm_dose_disable);
+  eeprom_update_byte(47, alarm_dose);
   eeprom_update_byte(48, sleep_switch);
   eeprom_update_byte(49, TIME_BRIGHT);
   eeprom_update_byte(50, TIME_SLEEP);
   eeprom_update_byte(57, rad_mode);
-  eeprom_update_byte(58, alarm_back_sound_disable);
   eeprom_update_byte(59, rad_flash);
-  eeprom_update_byte(61, alarm_dose_sound_disable);
   eeprom_update_word(62, warn_level_back);
   eeprom_update_word(64, alarm_level_back);
   eeprom_update_word(66, warn_level_dose);
@@ -2644,18 +2644,16 @@ void setings_save(boolean sw) //сохранить настройки
       if (
         contrast == eeprom_read_byte(41) &&
         mid_level == eeprom_read_byte(42) &&
-        alarm_back_disable == eeprom_read_byte(43) &&
+        alarm_back == eeprom_read_byte(43) &&
         buzz_switch == eeprom_read_byte(44) &&
         knock_disable == eeprom_read_byte(45) &&
         pos_measur == eeprom_read_byte(46) &&
-        alarm_dose_disable == eeprom_read_byte(47) &&
+        alarm_dose == eeprom_read_byte(47) &&
         sleep_switch == eeprom_read_byte(48) &&
         TIME_BRIGHT == eeprom_read_byte(49) &&
         TIME_SLEEP == eeprom_read_byte(50) &&
         rad_mode == eeprom_read_byte(57) &&
-        alarm_back_sound_disable == eeprom_read_byte(58) &&
         rad_flash == eeprom_read_byte(59) &&
-        alarm_dose_sound_disable == eeprom_read_byte(61) &&
         warn_level_back == eeprom_read_word(62) &&
         alarm_level_back == eeprom_read_word(64) &&
         warn_level_dose == eeprom_read_word(66) &&
@@ -2833,18 +2831,24 @@ void _rads_unit(boolean set, boolean unit, uint8_t unit_x, uint8_t unit_y) //Е�
   }
 }
 //----------------------------------Шапка экрана------------------------------------------------
+void _alarm_init(boolean waint, uint8_t alarm) //шапка экрана
+{
+  if (waint) drawBitmap(60, 0, beep_alt_waint_img, 7, 8); //если ждем понижения фона
+  else {
+    switch (alarm) //если тревога запрещена
+    {
+      case 0: drawBitmap(60, 0, buzz_alt_off_img, 7, 8); break; //тревога выключена
+      case 1: drawBitmap(60, 0, buzz_alt_img, 7, 8); break; //только звук
+      case 2: drawBitmap(60, 0, beep_alt_vibro_img, 7, 8); break; //только вибрация
+      case 3: drawBitmap(60, 0, beep_alt_img, 8, 8); break;
+    }
+  }
+}
+//----------------------------------Шапка экрана------------------------------------------------
 void task_bar(void) //шапка экрана
 {
   drawBitmap(0, 0, font_alt_img, 84, 8); //устанавлваем фон
   drawBitmap(70, 0, bat_alt_img, bat * 2, 8); //отображаем состояние батареи
-
-  if (alarm_back_disable) //если тревога запрещена
-  {
-    if (alarm_back_wait) drawBitmap(60, 0, beep_alt_waint_img, 7, 8); //если ждем понижения фона
-    else drawBitmap(60, 0, beep_alt_off_img, 7, 8); //иначе тревога выключена
-  }
-  else if (alarm_back_sound_disable) drawBitmap(60, 0, beep_alt_vibro_img, 7, 8); //иначе если звук выключен
-  else drawBitmap(60, 0, beep_alt_img, 8, 8);
 
   if (buzz_switch && !knock_disable) drawBitmap(47, 0, buzz_alt_on_img, 7, 8); //если щелчки и зв.кнопок включен
   else if (buzz_switch) drawBitmap(47, 0, buzz_alt_img, 7, 8); //если щелчки включены и зв.кнопок выключен
@@ -2853,8 +2857,8 @@ void task_bar(void) //шапка экрана
 
   switch (scr_mode)
   {
-    case 0: drawBitmap(0, 0, backgr_img, 17, 8); break;  //режим текущего фона
-    case 1: drawBitmap(0, 0, dose_img, 22, 8); break;  //режим накопленной дозы
+    case 0: drawBitmap(0, 0, backgr_img, 17, 8); _alarm_init(alarm_back_wait, alarm_back); break;  //режим текущего фона
+    case 1: drawBitmap(0, 0, dose_img, 22, 8); _alarm_init(alarm_dose_wait, alarm_dose); break;  //режим накопленной дозы
   }
 #if COEF_DEBUG //отладка коэффициента
   switch (scr_mode)
