@@ -1672,12 +1672,8 @@ void graf_init(void) //инициализация графика
 
         case 1:
           drawBitmap(57, 8, imp_m_img, 27, 8); //имп/м
-          setFont(RusFont); //установка шрифта
-#if (TYPE_CHAR_FILL > 44)
-          printNumI(rad_imp_m, 59, 16, 4, TYPE_CHAR_FILL); //строка 1
-#else
-          printNumI(rad_imp_m, 59, 16, 4, 32); //строка 1
-#endif
+          setFont(TinyNumbersDown); //установка шрифта
+          printNumI(rad_imp_m, 58, 16, 7, TYPE_CHAR_FILL); //строка 1
           break;
 
         case 2:
@@ -1708,15 +1704,10 @@ void graf_init(void) //инициализация графика
         break;
 
       case 2: //Down key //сброс
-#if TYPE_SERCH_UNIT
         rad_imp = 0;
-        for (uint8_t i = 0; i < 76; i++) graf_buff[i] = 0; //очищаем буфер графика
-        graf_init(); //инициализируем график
-#else
+        rad_imp_m = 0;
         rad_scan = 0;
         for (uint8_t i = 0; i < 76; i++) graf_buff[i] = 0; //очищаем буфер графика
-        graf_init(); //инициализируем график
-#endif
         scr = 0; //разрешаем обновления экрана
         break;
 
