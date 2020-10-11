@@ -2441,6 +2441,7 @@ void setings_read(void) //чтение настроек
   sleep_switch = eeprom_read_byte(48);
   TIME_BRIGHT = eeprom_read_byte(49);
   TIME_SLEEP = eeprom_read_byte(50);
+  scr_mode = eeprom_read_byte(56);
   rad_mode = eeprom_read_byte(57);
   alarm_back_sound_disable = eeprom_read_byte(58);
   rad_flash = eeprom_read_byte(59);
@@ -2465,6 +2466,7 @@ void setings_update(void) //обновление настроек
   eeprom_update_byte(48, sleep_switch);
   eeprom_update_byte(49, TIME_BRIGHT);
   eeprom_update_byte(50, TIME_SLEEP);
+  eeprom_update_byte(56, scr_mode);
   eeprom_update_byte(57, rad_mode);
   eeprom_update_byte(58, alarm_back_sound_disable);
   eeprom_update_byte(59, rad_flash);
@@ -3088,7 +3090,7 @@ void main_screen(void)
 
     case 5: //Select key //выбор режима
       switch (alarm_switch) { //режим тревоги
-        case 0: if (scr_mode < 1) scr_mode++; else scr_mode = 0; break; //вперёд
+        case 0: if (scr_mode != 2) scr_mode = (scr_mode) ? 0 : 1; break; //переключение фон/доза
         case 3: warn_back_wait = 1; alarm_switch = 0; _vibro_off(); buzz_read(); break; //фон
         case 4: warn_dose_wait = rad_dose; alarm_switch = 0; _vibro_off(); buzz_read(); break; //доза
       }
