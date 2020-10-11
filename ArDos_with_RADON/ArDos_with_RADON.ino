@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.1.1 low_pwr 10.10.20 специально для проекта ArDos
+  Версия программы RADON v3.1.1 low_pwr 11.10.20 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr
   Желательна установка лёгкого ядра https://alexgyver.github.io/package_GyverCore_index.json и загрузчика OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -102,11 +102,12 @@
   3.0.4 30.09.20 - добавлена возможность настройки "ADC_value" и "k_delitel" в меню отладки, оптимизация отображения единиц, изменен алгоритм обработки энергосбережения,
                    теперь зависимость от "имп/с" вместо "мкР", настроить можно в "config" параметры - "IMP_PWR_MANAGER", "IMP_PWR_DOWN" и "IMP_PWR_GIST", удален выбор количества счетчиков, добавлено отключение мертвого времени.
   3.0.5 01.10.20 - добавлен учет собственного фона счетчика, параметр в "config" - "OWN_BACK".
-  3.1.1 01.10.20 - исправлены едицы измерения, добавлено меню, быстрое меню удалено.
+  3.1.1 10.10.20 - исправлены едицы измерения, добавлено меню, быстрое меню удалено.
+  3.1.1 11.10.20 - исправлено сохранение в отладке, добавлена возможность сброса настроек преобразователя, для сброса нужно зажать клавиши "ок" и "вверх" затем включить питание.
 
   Внимание!!! При выключении пункта "СОН" в меню настроек влечет увеличением энергопотребления, но тем самым увеличивается производительность устройства.
 
-  Для сброса настроек необходимо зажать клавишу "ОК" и включить питание, появится сообщение об успешном сбросе.
+  Для сброса настроек необходимо зажать клавишу "ОК" и включить питание(если нужно сбросить ещё и настройки преобразователя то "ОК" + "ВВЕРХ"), появится сообщение об успешном сбросе.
   Если что-то идет или работает не так, в первую очередь пробуйте сброс настроек хот-кеем как описано выше!!!
 
   Не забудьте установить свои настройки ADC_value и k_delitel в файле SETUP, если вы не настраивали параметры утилитой ранее!!! Этот файл также можно сохранить отдельно и вставлять в новые версии программы.
@@ -387,7 +388,10 @@ int main(void)  //инициализация
 
   for (uint32_t t = millis() + START_TIME; t > millis();); //ждем
 
-  if (!OK_OUT) eeprom_update_byte(100, 0); //если зажата кнопка ок при запуске, сбрасываем настройки
+  if (!OK_OUT) { //если зажата кнопка ок при запуске
+    if (!UP_OUT) eeprom_update_byte(101, 0); //если зажата кнопка вверх при запуске, сбрасываем настройки преобразователя
+    eeprom_update_byte(100, 0); //сбрасываем настройки
+  }
 
   if (eeprom_read_byte(100) != 100) { //если настройки были сброшены, калибруем таймер и восстанавливаем из переменных
     wdt_calibrate(); //калибруем таймер
@@ -1803,7 +1807,9 @@ void parameters(void) //параметры
     switch (check_keys()) {
       case 1: //Down key hold
       case 4: //Up key hold
+#if DEBUG_RETURN
         debug(); //отладка
+#endif
         time_out = 0; //сбрасывает авто-выход
         scr = 0; //разрешаем обновление экрана
         break;
@@ -1849,30 +1855,30 @@ void debug(void) //отладка
       float vcc_bat = (opornoe * 255.0) / bat_adc; //состояние батареи
       uint16_t vcc_hv = hv_adc * opornoe * k_delitel / 255; //считем высокое перед выводом
 
-      print("<FN", LEFT, 16); //БАТ
-      printNumF(vcc_bat, 2, 20, 16, 46, 4, 48); //напряжение акб
-      print("FWG", 46, 16); //АЦП
-      printNumI(bat_adc, RIGHT, 16); //значение ацп акб
-      print("DD", 0, 24); //ВВ
-      printNumI(vcc_hv, 18, 24); //напряжение высокого
-      print("CRH", 46, 24); //СКР
-      printNumI(speed_nak, RIGHT, 24); //скорость накачки
+      print("<FN", LEFT, 8); //БАТ
+      printNumF(vcc_bat, 2, 20, 8, 46, 4, 48); //напряжение акб
+      print("FWG", 46, 8); //АЦП
+      printNumI(bat_adc, RIGHT, 8); //значение ацп акб
+      print("DD", 0, 16); //ВВ
+      printNumI(vcc_hv, 18, 16); //напряжение высокого
+      print("CRH", 46, 16); //СКР
+      printNumI(speed_nak, RIGHT, 16); //скорость накачки
 
       speed_nak = 0; //сбрасываем скорость накачки
 
       for (uint8_t i = 0; i < 10; i++) {
         if (n == i) invertText(true); //включаем инверсию
         switch (i) {
-          case 0: print("Cxtn&", LEFT, 8); break; //Счёт:
-          case 1: print("JGH", LEFT, 32); break; //ОПР
-          case 2: print("BVG", LEFT, 40); break; //ИМП
-          case 3: print("RLK", 46, 32); break; //КДЛ
-          case 4: print("FWG", 46, 40); break; //АЦП
-          case 5: printNumI(GEIGER_TIME, RIGHT, 8); break; //счёт
-          case 6: printNumF(opornoe, 2, 20, 32, 46, 4, 48); break; //опорное напряжение
-          case 7: printNumI(puls, 20, 40); break; //длинна импульса
-          case 8: printNumI(k_delitel, RIGHT, 32); break; //коэффициент делителя
-          case 9: printNumI(ADC_value, RIGHT, 40); break; //значение АЦП для преобразователя
+          case 0: print("JGH", LEFT, 24); break; //ОПР
+          case 1: print("BVG", LEFT, 32); break; //ИМП
+          case 2: print("RLK", 46, 24); break; //КДЛ
+          case 3: print("FWG", 46, 32); break; //АЦП
+          case 4: print("Cxtn&", LEFT, 40); break; //Счёт:
+          case 5: printNumF(opornoe, 2, 20, 24, 46, 4, 48); break; //опорное напряжение
+          case 6: printNumI(puls, 20, 32); break; //длинна импульса
+          case 7: printNumI(k_delitel, RIGHT, 24); break; //коэффициент делителя
+          case 8: printNumI(ADC_value, RIGHT, 32); break; //значение АЦП для преобразователя
+          case 9: printNumI(GEIGER_TIME, RIGHT, 40); break; //счёт
         }
         if (n == i) invertText(false); //выключаем инверсию
       }
@@ -1882,11 +1888,11 @@ void debug(void) //отладка
 
       case 3: //Up key //нажатие
         switch (n) {
-          case 0: if (GEIGER_TIME < MAX_GEIGER_TIME) GEIGER_TIME++; break; //Счет
-          case 1: if ((opornoe += 0.01) > 1.50) opornoe = 1.50; break; //прибавляем опорное напряжение
-          case 2: if (++puls > 30) puls = 30; break; //прибавляем длинну импульса
-          case 3: if (++k_delitel > 999) k_delitel = 999; break; //прибавляем коэффициент делителя
-          case 4: if (++ADC_value > 254) ADC_value = 254; break; //прибавляем значение АЦП для преобразователя
+          case 0: if ((opornoe += 0.01) > 1.50) opornoe = 1.50; break; //прибавляем опорное напряжение
+          case 1: if (++puls > 30) puls = 30; break; //прибавляем длинну импульса
+          case 2: if (++k_delitel > 999) k_delitel = 999; break; //прибавляем коэффициент делителя
+          case 3: if (++ADC_value > 254) ADC_value = 254; break; //прибавляем значение АЦП для преобразователя
+          case 4: if (GEIGER_TIME < MAX_GEIGER_TIME) GEIGER_TIME++; break; //Счет
         }
         time_out = 0; //сбрасывает авто-выход
         scr = 0; //разрешаем обновление экрана
@@ -1894,18 +1900,18 @@ void debug(void) //отладка
 
       case 2: //Down key //нажатие
         switch (n) {
-          case 0: if (GEIGER_TIME > MIN_GEIGER_TIME) GEIGER_TIME--; break; //Счет
-          case 1: if ((opornoe -= 0.01) < 0.50) opornoe = 0.50; break; //убавляем опорное напряжение
-          case 2: if (--puls < 1) puls = 1; break; //убавляем длинну импульса
-          case 3: if (--k_delitel < 10) k_delitel = 10; break; //убавляем коэффициент делителя
-          case 4: if (--ADC_value < 10) ADC_value = 10; break; //убавляем значение АЦП для преобразователя
+          case 0: if ((opornoe -= 0.01) < 0.50) opornoe = 0.50; break; //убавляем опорное напряжение
+          case 1: if (--puls < 1) puls = 1; break; //убавляем длинну импульса
+          case 2: if (--k_delitel < 10) k_delitel = 10; break; //убавляем коэффициент делителя
+          case 3: if (--ADC_value < 10) ADC_value = 10; break; //убавляем значение АЦП для преобразователя
+          case 4: if (GEIGER_TIME > MIN_GEIGER_TIME) GEIGER_TIME--; break; //Счет
         }
         time_out = 0; //сбрасывает авто-выход
         scr = 0; //разрешаем обновление экрана
         break;
 
       case 5: //select key //нажатие
-        if (++n > 3) n = 0;
+        if (++n > 4) n = 0;
         time_out = 0; //сбрасывает авто-выход
         scr = 0; //разрешаем обновление экрана
         break;
@@ -2524,7 +2530,7 @@ void dose_reset(void) //сброс текущей дозы
   switch (dose_mode) {
     case 0: //текущая доза
       print("C,hjcbnm", CENTER, 8); //Сбросить
-      print("ntreoe/ ljpe?", CENTER, 16); //текущщую дозу?
+      print("ntreoe/ ljpe?", CENTER, 16); //текущую дозу?
       break;
 
     case 1: //накопленная доза
