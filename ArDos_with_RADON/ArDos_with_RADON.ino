@@ -214,8 +214,7 @@
 #define ALARM_AUTO_GISTERESIS  (1.00 - (ALARM_AUTO_GIST / 100.00)) //инвертируем проценты
 #define IMP_PWR_GISTERESIS  (1.00 - (IMP_PWR_GIST / 100.00)) //инвертируем проценты
 
-#define GRAF_MAX (GRAF_MAX_MS / (wdt_period / 100.0)) //максимальное время обновления графика
-#define GRAF_MIN (GRAF_MIN_MS / (wdt_period / 100.0)) //минимальное время обновления графика
+#define GRAF_TIME (GRAF_TIME_MS / (wdt_period / 100.0)) //максимальное время обновления графика
 
 #define MASS_TIME_FACT (MASS_TIME - 1) //фактический номер элемента массивов секунд
 #define MASS_BACK_FACT (MASS_BACK - 1) //фактический номер элемента массивов фона
@@ -227,8 +226,6 @@
 
 volatile uint16_t rad_buff[BUFF_LENGTHY]; //массив секундных замеров для расчета фона
 uint16_t graf_buff[76]; //буфер графика
-uint16_t rad_scan_buff; //буфер сканирования
-uint16_t part_count;   //буфер импульсов
 uint32_t rad_mid_buff; //буфер среднего замера
 
 uint16_t wdt_period; //период тика wdt
@@ -290,6 +287,7 @@ volatile boolean power_off = 0; //флаг выключения питания
 boolean bat_update = 0; //флаг обновления батареи
 boolean scr = 0; //флаг обновления экрана
 boolean graf = 0; //флаг обновления графика
+boolean serch = 0; //флаг работы поиска
 boolean first_mid = 0; //флаг первого усреднения
 boolean knock_disable = 0; //флаг запрет треска кнопками
 uint8_t buzz_switch = 0; //указатель на тип треска пищалкой
@@ -325,7 +323,6 @@ uint8_t power_manager = 2; //переключатель режимов сна
 boolean sleep = 0; //флаг активного сна
 boolean light = 0; //флаг выключенной подсветки
 
-boolean light_lcd = 1; //подсветка дисплея
 uint8_t contrast = 70; //контрастность дисплея
 
 volatile uint8_t tick_wdt; //счетчик тиков для обработки данных
@@ -402,7 +399,7 @@ int main(void)  //инициализация
 
   InitLCD(contrast); //инициализируем дисплей
 
-  if (light_lcd) LIGHT_ON; // включаем подсветку, если была включена настройками
+  LIGHT_ON; // включаем подсветку, если была включена настройками
 
   drawBitmap(0, 0, logo_img, 84, 24);//выводим лого
   setFont(RusFont); //установка шрифта
@@ -516,7 +513,7 @@ ISR(INT1_vect) //внешнее прерывание на пине INT1 - вкл
     bat_check(); //опрос батареи
     if (bat_adc < LOW_BAT_POWER) { //если батарея не разряжена
       disableSleep(contrast); //включаем дисплей
-      if (light_lcd) LIGHT_ON; //включаем подсветку, если была включена настройками
+      LIGHT_ON; //включаем подсветку, если была включена настройками
 
       drawBitmap(0, 0, logo_img, 84, 24); //выводим лого
       setFont(RusFont); //установка шрифта
@@ -590,7 +587,7 @@ void data_convert(void) //преобразование данных
     if (++time_wdt >= TIME_FACT_1) time_wdt = 0; //расчет времени один раз в секунду
     time_micros += wdt_period; //микросекунды * 10
 
-    if (!measur) {
+    if (!measur && !serch) {
       switch (time_wdt) {
         case TIME_FACT_2: //обновление статистики
           if (++stat_upd_tmr >= STAT_UPD_TIME) { //если пришло время, обновляем статистику
@@ -609,7 +606,6 @@ void data_convert(void) //преобразование данных
           rad_buff[1] = rad_buff[0]; //смещаем 0-й элемент в 1-й для дальнейшей работы с ним
           rad_buff[0] = 0; //сбрасываем счетчик импульсов
           tmp_buff = 0; //сбрасываем временный буфер
-          part_count = 0; //сбрасываем буфер графика
 
           if (geiger_time_now < MAX_GEIGER_TIME) geiger_time_now++; //прибавляем указатель заполненности буффера
 
@@ -711,12 +707,6 @@ void data_convert(void) //преобразование данных
           break;
 
         case TIME_FACT_10: //расчет данных для графика
-          //--------------------------------------
-          if (tm >= TIME_FACT_1 && !serch_disable) rad_imp = rad_buff[1]; //считаем кол-во импульсов в сек.
-          if (tm >= TIME_FACT_1 && !serch_disable) rad_scan += rad_buff[1]; //считаем общее количество частиц
-
-          rad_imp_m = tmp_buff * (60.00 / geiger_time_now); //динамический персчет импульсов в сек.
-          //--------------------------------------
           uint16_t graf_max = 0;
           for (uint8_t i = 0; i > 76; i--) if (rad_buff[i + 1] > graf_max) graf_max = rad_buff[i + 1]; //ищем максимум
 
@@ -1572,16 +1562,12 @@ void graf_update(void) //обновление графика
 {
   static uint16_t cnt; //счетчик тиков графика
 
-  if (rad_buff[0] > part_count) {
-    rad_scan_buff += rad_buff[0] - part_count; //текущее количество частиц
-    part_count = rad_buff[0]; //запоминаем новое количество частиц
-  }
+  if (++cnt >= GRAF_TIME) { //расчет показаний в зависимости от фона
 
-  if (++cnt >= tm) { //расчет показаний в зависимости от фона
-
-    if (tm < TIME_FACT_1 && !serch_disable) {
-      rad_imp = rad_scan_buff * (1000 / ((wdt_period / 100.0) * tm)); //динамический персчет импульсов в сек.
-      rad_scan += rad_scan_buff; //считаем общее количество частиц
+    if (!serch_disable) {
+      rad_imp = rad_buff[0] * (1000 / GRAF_TIME_MS); //динамический персчет импульсов в сек.
+      rad_imp_m = (rad_buff[0] * (1000 / GRAF_TIME_MS)) * 60; //динамический персчет импульсов в мин.
+      rad_scan += rad_buff[0]; //считаем общее количество частиц
     }
 
     uint16_t graf_max = 0;
@@ -1591,8 +1577,8 @@ void graf_update(void) //обновление графика
         graf_buff[i] = graf_buff[i - 1]; //сдвигаем массив
         if (graf_buff[i] > graf_max) graf_max = graf_buff[i];
       }
-      graf_buff[0] = rad_scan_buff; //новое значение в последнюю ячейку
-      rad_scan_buff = 0; //сбрасываем буфер графика
+      graf_buff[0] = rad_buff[0]; //новое значение в последнюю ячейку
+      rad_buff[0] = 0; //сбрасываем буфер графика
       if (graf_buff[0] > graf_max) graf_max = graf_buff[0];
 
       if (graf_max > 22) maxLevel = graf_max * GRAF_COEF_MAX; //если текущий замер больше максимума
@@ -1604,8 +1590,8 @@ void graf_update(void) //обновление графика
         graf_buff[i] = graf_buff[i + 1]; //сдвигаем массив
         if (graf_buff[i] > graf_max) graf_max = graf_buff[i];
       }
-      graf_buff[75] = rad_scan_buff; //новое значение в последнюю ячейку
-      rad_scan_buff = 0; //сбрасываем буфер графика
+      graf_buff[75] = rad_buff[0]; //новое значение в последнюю ячейку
+      rad_buff[0] = 0; //сбрасываем буфер графика
       if (graf_buff[75] > graf_max) graf_max = graf_buff[75];
 
       if (graf_max > 22) maxLevel = graf_max * GRAF_COEF_MAX; //если текущий замер больше максимума
@@ -1615,15 +1601,12 @@ void graf_update(void) //обновление графика
     cnt = 0; //сброс
     graf = 0; //разрешаем обновление графика
   }
-
-  if (rad_back > GRAF_RAD) tm = GRAF_RAD; //ускоряем движение графика с увеличением фона
-  else tm = rad_back; //
-  tm = map(tm, 0, GRAF_RAD, GRAF_MAX, GRAF_MIN);
 }
 //-------------------------Инициализация графика-----------------------------------------
 void graf_init(void) //инициализация графика
 {
   uint8_t c = 0; //переключатель единиц графика
+  serch = 1; //устанавливаем флаг поиска
   scr = 0; //разрешаем обновление экрана
 
   while (1) {
@@ -1636,11 +1619,11 @@ void graf_init(void) //инициализация графика
 
     if (!scr) { //обновление дисплея
       scr = 1; //сброс флага
-      
+
       clrRow(0); //очистка строки 0
       clrRow(1); //очистка строки 1
       clrRow(2); //очистка строки 2
-      
+
       drawBitmap(0, 0, serch_img, 84, 8); //отрисовываем фон
     }
 
@@ -1659,21 +1642,33 @@ void graf_init(void) //инициализация графика
       clrRow(2, f + 1, 55); //убираем лишнее
       drawBitmap(0, 16, scan_ind_img, f, 8); //рисуем полосу
       //--------------------------------------------------------------//
-      setFont(TinyNumbersDown); //установка шрифта
+      setFont(RusFont); //установка шрифта
       switch (c) {
         case 0:
           drawBitmap(57, 8, imp_s_img, 26, 8); //имп/с
-          printNumI(rad_imp, 58, 16, 6, TYPE_CHAR_FILL); //строка 1
+#if (TYPE_CHAR_FILL > 44)
+          printNumI(rad_imp, 54, 16, 5, TYPE_CHAR_FILL); //строка 1
+#else
+          printNumI(rad_imp, 54, 16, 5, 32); //строка 1
+#endif
           break;
 
         case 1:
           drawBitmap(57, 8, imp_m_img, 27, 8); //имп/м
-          printNumI(rad_imp_m, 58, 16, 6, TYPE_CHAR_FILL); //строка 1
+#if (TYPE_CHAR_FILL > 44)
+          printNumI(rad_imp_m, 54, 16, 5, TYPE_CHAR_FILL); //строка 1
+#else
+          printNumI(rad_imp_m, 54, 16, 5, 32); //строка 1
+#endif
           break;
 
         case 2:
           drawBitmap(60, 8, imp_all_img, 20, 8); //всего
-          printNumI(rad_scan, 58, 16, 6, TYPE_CHAR_FILL); //строка 1
+#if (TYPE_CHAR_FILL > 44)
+          printNumI(rad_scan, 54, 16, 5, TYPE_CHAR_FILL); //строка 1
+#else
+          printNumI(rad_scan, 54, 16, 5, 32); //строка 1
+#endif
           break;
       }
       //---------------------------//
@@ -1702,6 +1697,7 @@ void graf_init(void) //инициализация графика
         rad_imp_m = 0;
         rad_scan = 0;
         for (uint8_t i = 0; i < 76; i++) graf_buff[i] = 0; //очищаем буфер графика
+        rad_buff[0] = 0; //сбрасываем буфер
         scr = 0; //разрешаем обновления экрана
         break;
 
@@ -1720,6 +1716,8 @@ void graf_init(void) //инициализация графика
         break;
 
       case 6: //hold select key //настройки
+        rad_buff[0] = 0; //сбрасываем буфер
+        serch = 0; //устанавливаем флаг поиска
         scr = 0; //разрешаем обновления экрана
         return;
     }
@@ -1784,18 +1782,18 @@ void parameters(void) //параметры
       setFont(RusFont); //установка шрифта
       drawBitmap(0, 0, stat_img, 84, 8); //устанавлваем фон
 
-      print("<fnfhtz&", LEFT, 8);
+      print("<fnfhtz&", LEFT, 8); //Батарея:
       printNumF(vcc_bat, 2, RIGHT, 8, 46, 4, 48); //напряжение акб
-      print("Pyfx.FWG&", LEFT, 16);
+      print("Pyfx.FWG&", LEFT, 16); //Знач.АЦП:
       printNumI(bat_adc, RIGHT, 16); //значение ацп акб
 
-      print("Yfrfxrf&", LEFT, 24); //напряжение высокого и скорость накачки
-      printNumI(vcc_hv, RIGHT, 24);
-      print("Crjhjcnm&", LEFT, 32); //напряжение высокого и скорость накачки
-      printNumI(speed_nak, RIGHT, 32);
+      print("Yfrfxrf DD&", LEFT, 24); //Накачка ВВ:
+      printNumI(vcc_hv, RIGHT, 24);//напряжение высокого
+      print("Crjhjcnm&", LEFT, 32); //Скорость:
+      printNumI(speed_nak, RIGHT, 32);//скорость накачки
 
-      print("Jgjhyjt&", LEFT, 40); //напряжение высокого и скорость накачки
-      printNumF(opornoe, 2, RIGHT, 40, 46, 4, 48);
+      print("Jgjhyjt&", LEFT, 40); //Опорное:
+      printNumF(opornoe, 2, RIGHT, 40, 46, 4, 48); //опорное напряжение
 
       speed_nak = 0; //сбрасываем скорость накачки
     }
@@ -2041,14 +2039,14 @@ void _setings_data_up(uint8_t pos) //прибавление данных
   {
     case 0: //Сон
       switch (sleep_switch) {
-        case 0: sleep_switch = 2; LIGHT_ON; light_lcd = 1; break;
+        case 0: sleep_switch = 2; LIGHT_ON; break;
         case 1: sleep_switch = 2; TIME_BRIGHT = 5; break;
         case 2: if (TIME_SLEEP < 250) TIME_SLEEP += 5; break;
       }
       break;
     case 1: //Подсветка
       switch (sleep_switch) {
-        case 0: sleep_switch = 1; LIGHT_ON; light_lcd = 1; break;
+        case 0: sleep_switch = 1; LIGHT_ON; break;
         case 1: if (TIME_BRIGHT < 250) TIME_BRIGHT += 5; break;
         case 2: if (TIME_BRIGHT < TIME_SLEEP - 5) TIME_BRIGHT += 5; break;
       }
@@ -2086,7 +2084,7 @@ void _setings_data_down(uint8_t pos) //убавление данных
         if (TIME_BRIGHT == TIME_SLEEP) TIME_BRIGHT -= 5;
       }
       else if (sleep_switch == 2) sleep_switch = 1; break;
-    case 1: if (TIME_BRIGHT > 5) TIME_BRIGHT -= 5; else sleep_switch = 0; break; //Подсветка
+    case 1: if (TIME_BRIGHT > 5) TIME_BRIGHT -= 5; else sleep_switch = 0; LIGHT_OFF; break; //Подсветка
     case 2: if (contrast > 0) contrast--; setContrast(contrast); break; //Контраст
     case 3: switch (rad_flash) { //Вспышки
         case 1: rad_flash = 0; break;
@@ -2319,15 +2317,13 @@ void fast_flash(void) //вкл/выкл фонарика
 void fast_light(void) //вкл/выкл подсветки
 {
   if (!sleep_switch) { //если сон выключен
-    if (light_lcd) { //выключаем подсветку
-      LIGHT_OFF;
-      light_lcd = 0;
-    }
-    else { //иначе включаем подсветку
-      LIGHT_ON;
-      light_lcd = 1;
-    }
-    light_update(); //сохранение подсветки
+#if LIGHT_INV
+    if (is_LIGHT_ON) LIGHT_OFF; //выключаем подсветку
+    else LIGHT_ON; //иначе включаем подсветку
+#else
+    if (!is_LIGHT_ON) LIGHT_OFF; //выключаем подсветку
+    else LIGHT_ON; //иначе включаем подсветку
+#endif
   }
   return;
 }
@@ -2427,7 +2423,7 @@ void wdt_calibrate(void) //калибровка wdt
 //------------------------------------Чтение настроек----------------------------------------------
 void setings_read(void) //чтение настроек
 {
-  light_lcd = eeprom_read_byte(40);
+  scr_mode = eeprom_read_byte(40);
   contrast = eeprom_read_byte(41);
   mid_level = eeprom_read_byte(42);
   alarm_back_disable = eeprom_read_byte(43);
@@ -2438,7 +2434,6 @@ void setings_read(void) //чтение настроек
   sleep_switch = eeprom_read_byte(48);
   TIME_BRIGHT = eeprom_read_byte(49);
   TIME_SLEEP = eeprom_read_byte(50);
-  scr_mode = eeprom_read_byte(56);
   rad_mode = eeprom_read_byte(57);
   alarm_back_sound_disable = eeprom_read_byte(58);
   rad_flash = eeprom_read_byte(59);
@@ -2452,7 +2447,7 @@ void setings_read(void) //чтение настроек
 //---------------------------------------Обновление настроек------------------------------------------------
 void setings_update(void) //обновление настроек
 {
-  eeprom_update_byte(40, light_lcd);
+  eeprom_update_byte(40, scr_mode);
   eeprom_update_byte(41, contrast);
   eeprom_update_byte(42, mid_level);
   eeprom_update_byte(43, alarm_back_disable);
@@ -2463,7 +2458,6 @@ void setings_update(void) //обновление настроек
   eeprom_update_byte(48, sleep_switch);
   eeprom_update_byte(49, TIME_BRIGHT);
   eeprom_update_byte(50, TIME_SLEEP);
-  eeprom_update_byte(56, scr_mode);
   eeprom_update_byte(57, rad_mode);
   eeprom_update_byte(58, alarm_back_sound_disable);
   eeprom_update_byte(59, rad_flash);
@@ -2513,15 +2507,10 @@ void rad_flash_read(void) //чтение состояния вспышек
 {
   rad_flash = eeprom_read_byte(59);
 }
-//--------------------------------Обновление состояния подсветки--------------------------------------------
-void light_update(void) //обновление состояния подсветки
-{
-  eeprom_update_byte(40, light_lcd);
-}
 //--------------------------------Обновление текущего экрана--------------------------------------------
 void scr_mode_update(void) //обновление текущего экрана
 {
-  eeprom_update_byte(56, scr_mode);
+  eeprom_update_byte(40, scr_mode);
 }
 //---------------------------------------Сброс текущей дозы--------------------------------------------
 void dose_reset(void) //сброс текущей дозы
@@ -2634,7 +2623,6 @@ void setings_save(boolean sw) //сохранить настройки
   switch (sw) {
     case 0:
       if (
-        light_lcd == eeprom_read_byte(40) &&
         contrast == eeprom_read_byte(41) &&
         mid_level == eeprom_read_byte(42) &&
         alarm_back_disable == eeprom_read_byte(43) &&
@@ -2972,7 +2960,6 @@ void main_screen(void)
               switch (f) {
                 case 0:
                   for (uint8_t i = 0; i < 76; i++) graf_buff[i] = 0; //очищаем буфер графика
-                  rad_scan_buff = 0; //очищаем счетный буфер графика
                   break;
 
                 case 1:
