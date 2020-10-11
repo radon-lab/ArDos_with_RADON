@@ -770,7 +770,6 @@ void data_convert(void) //преобразование данных
     }
 
     switch (time_wdt) {
-#if !MESSUR_OR_PWR
       case TIME_FACT_13:
         switch (measur) { //разностный замер
           case 1: if (time_switch < (diff_measuring[pos_measur] * 60)) time_switch ++; //прибавляем секунду
@@ -785,7 +784,6 @@ void data_convert(void) //преобразование данных
             break;
         }
         break;
-#endif
 
       case TIME_FACT_14: //управление энергосбережением
         switch (power_manager) {
@@ -1626,8 +1624,6 @@ void graf_update(void) //обновление графика
 void graf_init(void) //инициализация графика
 {
   uint8_t c = 0; //переключатель единиц графика
-  clrScr(); //очистка экрана
-  drawBitmap(0, 0, serch_img, 84, 8); //отрисовываем фон
   scr = 0; //разрешаем обновление экрана
 
   while (1) {
@@ -1640,8 +1636,12 @@ void graf_init(void) //инициализация графика
 
     if (!scr) { //обновление дисплея
       scr = 1; //сброс флага
+      
+      clrRow(0); //очистка строки 0
       clrRow(1); //очистка строки 1
       clrRow(2); //очистка строки 2
+      
+      drawBitmap(0, 0, serch_img, 84, 8); //отрисовываем фон
     }
 
     if (!sleep) { //если мы не спим
@@ -1659,27 +1659,21 @@ void graf_init(void) //инициализация графика
       clrRow(2, f + 1, 55); //убираем лишнее
       drawBitmap(0, 16, scan_ind_img, f, 8); //рисуем полосу
       //--------------------------------------------------------------//
+      setFont(TinyNumbersDown); //установка шрифта
       switch (c) {
         case 0:
           drawBitmap(57, 8, imp_s_img, 26, 8); //имп/с
-          setFont(RusFont); //установка шрифта
-#if (TYPE_CHAR_FILL > 44)
-          printNumI(rad_imp, 59, 16, 4, TYPE_CHAR_FILL); //строка 1
-#else
-          printNumI(rad_imp, 59, 16, 4, 32); //строка 1
-#endif
+          printNumI(rad_imp, 58, 16, 6, TYPE_CHAR_FILL); //строка 1
           break;
 
         case 1:
           drawBitmap(57, 8, imp_m_img, 27, 8); //имп/м
-          setFont(TinyNumbersDown); //установка шрифта
-          printNumI(rad_imp_m, 58, 16, 7, TYPE_CHAR_FILL); //строка 1
+          printNumI(rad_imp_m, 58, 16, 6, TYPE_CHAR_FILL); //строка 1
           break;
 
         case 2:
-          drawBitmap(60, 8, imp_all_img, 21, 8); //всего
-          setFont(TinyNumbersDown); //установка шрифта
-          printNumI(rad_scan, 58, 16, 7, TYPE_CHAR_FILL); //строка 1
+          drawBitmap(60, 8, imp_all_img, 20, 8); //всего
+          printNumI(rad_scan, 58, 16, 6, TYPE_CHAR_FILL); //строка 1
           break;
       }
       //---------------------------//
