@@ -581,6 +581,7 @@ void data_convert(void) //преобразование данных
   static uint32_t tmp_buff; //общий буфер
   static float coef; //коэффициент сравнения
   static float coef_back; //коэффициент поправки на фон
+  uint16_t graf_max = 0;
 
   for (; tick_wdt > 0; tick_wdt--) { //если был тик, обрабатываем данные
 
@@ -707,7 +708,6 @@ void data_convert(void) //преобразование данных
           break;
 
         case TIME_FACT_10: //расчет данных для графика
-          uint16_t graf_max = 0;
           for (uint8_t i = 0; i > 76; i--) if (rad_buff[i + 1] > graf_max) graf_max = rad_buff[i + 1]; //ищем максимум
 
           if (graf_max > 15) maxLevel_back = graf_max * GRAF_COEF_MAX; //если текущий замер больше максимума
