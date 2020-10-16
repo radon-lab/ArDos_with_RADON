@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.1.2 low_pwr 14.10.20 специально для проекта ArDos
+  Версия программы RADON v3.1.3 low_pwr 16.10.20 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr
   Желательна установка лёгкого ядра https://alexgyver.github.io/package_GyverCore_index.json и загрузчика OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -106,7 +106,8 @@
   3.1.1 11.10.20 - исправлено сохранение в отладке, добавлена возможность сброса настроек преобразователя, для сброса нужно зажать клавиши "ок" и "вверх" затем включить питание,
                    основные режимы теперь "фон" и "доза", режим поиска выведен отдельной функцией, график теперь постоянно доступен на экране "фон", отображает содержимое основного буфера,
                    в режиме "поиск" добавлено переключение единиц имп/с | имп/м | имп, добавлен подрежим тревоги "звук", также теперь на каждом экране отображается свой выбранный тип тревоги.
-  3.1.2 10.10.20 - мелкие исправления, перераотаны алгоритмы батареи/замера/сна/накачки/ошибок.
+  3.1.2 14.10.20 - мелкие исправления, перераотаны алгоритмы батареи/замера/сна/накачки/ошибок.
+  3.1.3 16.10.20 - мелкие исправления, добавлен подрежим экрана "фон" - "бета и гамма", добавленны доверительные интервалы(сигма) и точность в %.
 
   Внимание!!! При выключении пункта "СОН" в меню настроек влечет увеличением энергопотребления, но тем самым увеличивается производительность устройства.
 
@@ -121,7 +122,7 @@
   -Обозначения иконок-
 
   - Иконка "Динамик"
-  Две скобки - звки клавиш и треск включен
+  Две скобки - звуки клавиш и треск включен
   Горизонтальная волна - звук клвиш выключен, треск включен
   Звёздочка - звук клавиш включен, треск выключен
   Крестик - звук клавиш и треск выключены
@@ -129,14 +130,16 @@
   - Иконка "Колокольчик"
   Волна и две скобки - звки и вибрация при тревоге включены
   Две волны - звук тревоги выключен, вибрация включена
+  Две скобки - звук тревоги включен, вибрация выключена
   Звёздочка - ожидание понижения фона
-  Крестик - звки и вибрация при тревоге выключены
+  Крестик - звуки и вибрация при тревоге выключены
+
 
 
   -Действия клавиш-
 
   - На экране ФОН
-  Вверх - выбор - график или средн. и макс. фон, удерж. - вкл/выкл фонарик
+  Вверх - выбор - график | средн. и макс. фон | бета и гамма, удерж. - вкл/выкл фонарик
   Вниз - сбросить текущий фон и график/средн. и макс., удерж. - вкл/выкл подсветку
   Ок - переключить экран, удерж. - выход в меню
 
@@ -248,15 +251,21 @@ uint8_t TIME_FACT_1; //секундные интервалы 1
 #define TIME_FACT_16 41 //секундные интервалы 16
 #define TIME_FACT_17 42 //секундные интервалы 17
 #define TIME_FACT_18 43 //секундные интервалы 18
+#define TIME_FACT_19 44 //секундные интервалы 19
 
 uint16_t stat_upd_tmr; //таймер записи статистики в память
 uint16_t tmr_mid; //таймер расчета среднего фона
 
 uint32_t rad_sum; //сумма импульсов за все время
 uint32_t rad_back; //текущий фон
+uint32_t rad_beta; //текущий фон бета
+uint32_t rad_gamma; //текущий фон гамма
 uint32_t rad_dose; //текущая доза
 uint32_t rad_mid; //усредненный фон
 uint32_t rad_max; //максимальный фон
+
+uint8_t accur_percent; //точность процентов
+uint8_t sigma_pos = 1; //указатель сигмы
 
 uint16_t rad_imp; //импульсы в секунду
 uint16_t rad_imp_m; //импульсы в минуту
@@ -296,6 +305,7 @@ boolean scr = 0; //флаг обновления экрана
 boolean graf = 0; //флаг обновления графика
 boolean serch = 0; //флаг работы поиска
 boolean first_mid = 0; //флаг первого усреднения
+boolean first_beta = 0; //флаг начала отображения бета/гамма
 boolean knock_disable = 0; //флаг запрет треска кнопками
 uint8_t buzz_switch = 0; //указатель на тип треска пищалкой
 uint8_t error = 0; //указатель на номер ошибки
@@ -315,7 +325,7 @@ uint16_t warn_level_dose = 10; //указатель на уровень трев
 uint16_t alarm_level_dose = 300; //указатель на уровень тревоги 2 дозы в массиве
 
 uint8_t mid_level = 0; //указатель на время замера среднего фона в массиве
-uint8_t pos_measur = 0; //указатель на частоту сохранения дозы в массиве
+uint8_t pos_measur = 0; //указатель на время разностного замера в массиве
 uint8_t rad_flash = 1; //индикация попадания частиц
 
 uint8_t TIME_SLEEP = 10; //время до ухода в сон(должно быть больше чем время подсветки) (10..250)(s)
@@ -433,7 +443,7 @@ int main(void)  //инициализация
 
   setFont(RusFont); //установка шрифта
   print("-=HFLJY=-", CENTER, 32); //-=РАДОН=-
-  print("3.1.2", CENTER, 40); //версия по
+  print("3.1.3", CENTER, 40); //версия по
 
   bat_check(); //опрос батареи
 
@@ -585,6 +595,7 @@ void data_convert(void) //преобразование данных
   static uint32_t temp; //буффер второго плеча
   static uint32_t temp_run; //буффер первого плеча
   static uint32_t tmp_buff; //общий буфер
+  static uint32_t beta_buff; //бета буфер
   static float coef; //коэффициент сравнения
   static float coef_back; //коэффициент поправки на фон
   uint16_t graf_max = 0;
@@ -682,7 +693,7 @@ void data_convert(void) //преобразование данных
 
         case TIME_FACT_7: //расчет текущего фона этап-5
 #if GEIGER_OWN_BACK
-          tmp_buff -= geiger_time_now * OWN_BACK; //убираем собственный фон счетчика
+          if (tmp_buff > geiger_time_now * OWN_BACK) tmp_buff -= geiger_time_now * OWN_BACK; //убираем собственный фон счетчика
 #endif
           if (tmp_buff > 9999999) tmp_buff = 9999999; //переполнение буфера импульсов
           if (geiger_time_now > 1) rad_back = tmp_buff * ((float)GEIGER_TIME / geiger_time_now); //расчет фона мкР/ч
@@ -752,7 +763,19 @@ void data_convert(void) //преобразование данных
           }
           break;
 
-        case TIME_FACT_12: //считаем пройденное время
+        case TIME_FACT_12: //рассчитываем точность и бета фон
+          accur_percent = (1 / sqrtf((float)tmp_buff)) * 100 * (sigma_pos + 1);
+          if (geiger_time_now == GEIGER_TIME) {
+            beta_buff = tmp_buff;
+            first_beta = 1; //устанавливаем флаг отображения бета/гамма
+          }
+          if (first_beta) {
+            if (tmp_buff > beta_buff) rad_beta = tmp_buff - beta_buff; else rad_beta = 0;
+            if (tmp_buff > rad_beta) rad_gamma = tmp_buff - rad_beta; else rad_gamma = 0;
+          }
+          break;
+
+        case TIME_FACT_13: //считаем пройденное время
           time_micros += wdt_period * TIME_FACT_1; //микросекунды * 10
           time_sec = time_micros / 100000; //пересчитываем в секунды
           break;
@@ -761,7 +784,7 @@ void data_convert(void) //преобразование данных
 
     switch (time_wdt) {
 #if ERRORS_RETURN
-      case TIME_FACT_13: //обработка ошибок
+      case TIME_FACT_14: //обработка ошибок
         if (!rad_buff[1]) { //если нету импульсов в обменном буфере
           if (++nop_imp_tmr >= IMP_ERROR_TIME) { //считаем время до вывода предупреждения
             error = 4; //устанавливаем ошибку 4 - нет импульсов
@@ -777,7 +800,7 @@ void data_convert(void) //преобразование данных
         break;
 #endif
 
-      case TIME_FACT_14: //разностный замер
+      case TIME_FACT_15: //разностный замер
         switch (measur) { //выбираем режим замера
           case 1: if (time_switch < (diff_measuring[pos_measur] * 60)) time_switch ++; //прибавляем секунду
             else next_measur = 1; //иначе время вышло
@@ -794,7 +817,7 @@ void data_convert(void) //преобразование данных
         }
         break;
 
-      case TIME_FACT_15: //считаем время до ухода в сон
+      case TIME_FACT_16: //считаем время до ухода в сон
         if (!sleep_disable) { //если сон не запрещен
           switch (sleep_switch) { //выбераем счет времени
             case 1: if (cnt_pwr < TIME_BRIGHT + 1) cnt_pwr++; break; //счет выключения подсветки
@@ -803,7 +826,7 @@ void data_convert(void) //преобразование данных
         }
         break;
 
-      case TIME_FACT_16: //управление энергосбережением
+      case TIME_FACT_17: //управление энергосбережением
         switch (power_manager) {
           case 0: if (rad_buff[1] <= (IMP_PWR_MANAGER * IMP_PWR_GISTERESIS)) power_manager = 1; break; //если текущее количество импульсов меньше установленного порога включения энергосбережения
           case 1:
@@ -814,7 +837,7 @@ void data_convert(void) //преобразование данных
         }
         break;
 
-      case TIME_FACT_17: //таймер обновления батареи
+      case TIME_FACT_18: //таймер обновления батареи
         if (tmr_upd_bat >= UPD_BAT_TIME) {
           if (bat_update) {
             tmr_upd_bat = 0;
@@ -831,7 +854,7 @@ void data_convert(void) //преобразование данных
         else tmr_low_bat++;
         break;
 
-      case TIME_FACT_18: //таймер обновления экрана
+      case TIME_FACT_19: //таймер обновления экрана
         if (!sleep) scr = 0; //устанавливаем флаг для обновления экрана
         break;
     }
@@ -1979,49 +2002,56 @@ void _setings_item_switch(boolean set, boolean inv, uint8_t num, uint8_t pos) //
       }
       break;
 
-    case 8: //Ед.измер
+      case 8: //Сигма
+      switch (set) {
+        case 0: print("Cbuvf&", LEFT, pos_row); break; //Сигма:
+        case 1: printNumI(sigma_pos + 1, RIGHT, pos_row); break;
+      }
+      break;
+
+    case 9: //Ед.измер
       switch (set) {
         case 0: print("Tl.bpvth&", LEFT, pos_row); break; //Ед.измер:
         case 1: if (!rad_mode) print("vrH", RIGHT, pos_row); else print("vrPd", RIGHT, pos_row); break;
       }
       break;
 
-    case 9: //Тревога Ф
+    case 10: //Тревога Ф
       switch (set) {
         case 0: print("Nhtdjuf A&", LEFT, pos_row); break; //Тревога Ф:
         case 1: if (!alarm_back) print("DSRK", RIGHT, pos_row); else if (alarm_back == 1) print("PDER", RIGHT, pos_row); else if (alarm_back == 2) print("DB<H", RIGHT, pos_row); else print("D+PD", RIGHT, pos_row); break;
       }
       break;
 
-    case 10: //Порог Ф1
+    case 11: //Порог Ф1
       switch (set) {
         case 0: print("Gjhju A1&", LEFT, pos_row); break; //Порог Ф1:
         case 1: printNumI(warn_level_back, RIGHT, pos_row); break;
       }
       break;
 
-    case 11: //Порог Ф2
+    case 12: //Порог Ф2
       switch (set) {
         case 0: print("Gjhju A2&", LEFT, pos_row); break; //Порог Ф2:
         case 1: printNumI(alarm_level_back, RIGHT, pos_row); break;
       }
       break;
 
-    case 12: //Тревога Д
+    case 13: //Тревога Д
       switch (set) {
         case 0: print("Nhtdjuf L&", LEFT, pos_row); break; //Тревога Д:
         case 1: if (!alarm_dose) print("DSRK", RIGHT, pos_row); else if (alarm_dose == 1) print("PDER", RIGHT, pos_row); else if (alarm_dose == 2) print("DB<H", RIGHT, pos_row); else print("D+PD", RIGHT, pos_row); break;
       }
       break;
 
-    case 13: //Порог Д1
+    case 14: //Порог Д1
       switch (set) {
         case 0: print("Gjhju L1&", LEFT, pos_row); break; //Порог Д1:
         case 1: printNumI(warn_level_dose, RIGHT, pos_row); break;
       }
       break;
 
-    case 14: //Порог Д2
+    case 15: //Порог Д2
       switch (set) {
         case 0: print("Gjhju L2&", LEFT, pos_row); break; //Порог Д2:
         case 1: printNumI(alarm_level_dose, RIGHT, pos_row); break;
@@ -2062,14 +2092,15 @@ void _setings_data_up(uint8_t pos) //прибавление данных
       break;
     case 5: knock_disable = 0; break; //Зв.кнопок
     case 6: if (pos_measur < 9) pos_measur++; break; //Разн.зам
-    case 7: if (mid_level < 9) mid_level ++; else mid_level = 0; break; //Средн.зам
-    case 8: rad_mode = 1; break; //Ед.измер
-    case 9: if (alarm_back < 3) alarm_back++; break; //Тревога Ф
-    case 10: if (warn_level_back < 300) warn_level_back += 5; else warn_level_back = 30; break; //Порог Ф1
-    case 11: if (alarm_level_back < 500) alarm_level_back += 10; else if (alarm_level_back < 1000) alarm_level_back += 50; else if (alarm_level_back < 65000) alarm_level_back += 100; else alarm_level_back = 300; break; //Порог Ф2
-    case 12: if (alarm_dose < 3) alarm_dose++; break; //Тревога Д
-    case 13: if (warn_level_dose < 300) warn_level_dose += 5; else warn_level_dose = 10; break; //Порог Д1
-    case 14: if (alarm_level_dose < 500) alarm_level_dose += 10; else if (alarm_level_dose < 1000) alarm_level_dose += 50; else if (alarm_level_dose < 65000) alarm_level_dose += 100; else alarm_level_dose = 300; break; //Порог Д2
+    case 7: if (mid_level < 9) mid_level++; else mid_level = 0; break; //Средн.зам
+    case 8: if (sigma_pos < 2) sigma_pos++; else sigma_pos = 0; break; //Сигма
+    case 9: rad_mode = 1; break; //Ед.измер
+    case 10: if (alarm_back < 3) alarm_back++; break; //Тревога Ф
+    case 11: if (warn_level_back < 300) warn_level_back += 5; else warn_level_back = 30; break; //Порог Ф1
+    case 12: if (alarm_level_back < 500) alarm_level_back += 10; else if (alarm_level_back < 1000) alarm_level_back += 50; else if (alarm_level_back < 65000) alarm_level_back += 100; else alarm_level_back = 300; break; //Порог Ф2
+    case 13: if (alarm_dose < 3) alarm_dose++; break; //Тревога Д
+    case 14: if (warn_level_dose < 300) warn_level_dose += 5; else warn_level_dose = 10; break; //Порог Д1
+    case 15: if (alarm_level_dose < 500) alarm_level_dose += 10; else if (alarm_level_dose < 1000) alarm_level_dose += 50; else if (alarm_level_dose < 65000) alarm_level_dose += 100; else alarm_level_dose = 300; break; //Порог Д2
   }
 }
 //------------------------------------Убавление данных------------------------------------------------------
@@ -2096,14 +2127,15 @@ void _setings_data_down(uint8_t pos) //убавление данных
       break;
     case 5: knock_disable = 1; break; //Зв.кнопок
     case 6: if (pos_measur > 0) pos_measur--;  break; //Разн.зам
-    case 7: if (mid_level > 0) mid_level --; else mid_level = 9; break; //Средн.зам
-    case 8: rad_mode = 0; break; //Ед.измер
-    case 9: if (alarm_back > 0) alarm_back--; break; //Тревога Ф
-    case 10: if (warn_level_back > 30) warn_level_back -= 5; else warn_level_back = 300; break; //Порог Ф1
-    case 11: if (alarm_level_back > 1000) alarm_level_back -= 100; else if (alarm_level_back > 500) alarm_level_back -= 50; else if (alarm_level_back > 300) alarm_level_back -= 10; else alarm_level_back = 65000; break; //Порог Ф2
-    case 12: if (alarm_dose > 0) alarm_dose--; break; //Тревога Д
-    case 13: if (warn_level_dose > 10) warn_level_dose -= 5; else warn_level_dose = 300; break; //Порог Д1
-    case 14: if (alarm_level_dose > 1000) alarm_level_dose -= 100; else if (alarm_level_dose > 500) alarm_level_dose -= 50; else if (alarm_level_dose > 300) alarm_level_dose -= 10; else alarm_level_dose = 65000; break; //Порог Д2
+    case 7: if (mid_level > 0) mid_level--; else mid_level = 9; break; //Средн.зам
+    case 8: if (sigma_pos > 0) sigma_pos--; else sigma_pos = 2; break; //Сигма
+    case 9: rad_mode = 0; break; //Ед.измер
+    case 10: if (alarm_back > 0) alarm_back--; break; //Тревога Ф
+    case 11: if (warn_level_back > 30) warn_level_back -= 5; else warn_level_back = 300; break; //Порог Ф1
+    case 12: if (alarm_level_back > 1000) alarm_level_back -= 100; else if (alarm_level_back > 500) alarm_level_back -= 50; else if (alarm_level_back > 300) alarm_level_back -= 10; else alarm_level_back = 65000; break; //Порог Ф2
+    case 13: if (alarm_dose > 0) alarm_dose--; break; //Тревога Д
+    case 14: if (warn_level_dose > 10) warn_level_dose -= 5; else warn_level_dose = 300; break; //Порог Д1
+    case 15: if (alarm_level_dose > 1000) alarm_level_dose -= 100; else if (alarm_level_dose > 500) alarm_level_dose -= 50; else if (alarm_level_dose > 300) alarm_level_dose -= 10; else alarm_level_dose = 65000; break; //Порог Д2
   }
 }
 //------------------------------------Настройки------------------------------------------------------
@@ -2153,7 +2185,7 @@ void setings(void) //настройки
       case 2: //Down key //вниз
         switch (set) {
           case 0:
-            if (n < 14) { //изменяем позицию
+            if (n < 15) { //изменяем позицию
               n++;
               if (c < 4) c++; //изменяем положение курсора
             }
@@ -2176,7 +2208,7 @@ void setings(void) //настройки
               if (c > 0) c--; //изменяем положение курсора
             }
             else { //иначе конец списка
-              n = 14;
+              n = 15;
               c = 4;
             }
             break;
@@ -2450,6 +2482,7 @@ void setings_read(void) //чтение настроек
   TIME_SLEEP = eeprom_read_byte(50);
   rad_mode = eeprom_read_byte(57);
   rad_flash_read();
+  sigma_pos = eeprom_read_word(60);
   warn_level_back = eeprom_read_word(62);
   alarm_level_back = eeprom_read_word(64);
   warn_level_dose = eeprom_read_word(66);
@@ -2472,6 +2505,7 @@ void setings_update(void) //обновление настроек
   eeprom_update_byte(50, TIME_SLEEP);
   eeprom_update_byte(57, rad_mode);
   eeprom_update_byte(59, rad_flash);
+  eeprom_update_word(60, sigma_pos);
   eeprom_update_word(62, warn_level_back);
   eeprom_update_word(64, alarm_level_back);
   eeprom_update_word(66, warn_level_dose);
@@ -2650,6 +2684,7 @@ void setings_save(boolean sw) //сохранить настройки
         TIME_SLEEP == eeprom_read_byte(50) &&
         rad_mode == eeprom_read_byte(57) &&
         rad_flash == eeprom_read_byte(59) &&
+        sigma_pos == eeprom_read_word(60) &&
         warn_level_back == eeprom_read_word(62) &&
         alarm_level_back == eeprom_read_word(64) &&
         warn_level_dose == eeprom_read_word(66) &&
@@ -2875,21 +2910,30 @@ void task_bar(void) //шапка экрана
 void main_screen(void)
 {
   static boolean i; //анимация оповещения
-  static boolean f; //переключатель режима фон
+  static uint8_t f; //переключатель режима фон
 
   //+++++++++++++++++++   вывод информации на экран  +++++++++++++++++++++++++
   if (!scr) { //обновление дисплея
     scr = 1; //сброс флага
 
     clrScr(); //очистка экрана
-
     task_bar(); //рисуем шапку экрана
 
     //===========================================================//
     switch (scr_mode) { //отрисовываем выбранный экран
       case 0: //режим измерения текущего фона
         switch (alarm_switch) {
-          case 0: _screen_line(map(constrain(geiger_time_now, 0, GEIGER_TIME), 0, GEIGER_TIME, 5, 82), map(constrain(geiger_time_now, 0, MAX_GEIGER_TIME), 0, MAX_GEIGER_TIME, 5, 82), 1, 1, 24); break; //шкалы точности и усреднения
+          case 0: 
+          setFont(TinyNumbersUp); //установка шрифта
+            printNumI(sigma_pos, 45, 24); //сигма
+            drawBitmap(50, 24, sigma_img, 5, 8); //±σ
+            printNumI(constrain(accur_percent, 1, 99), 60, 24, 2, 48); //точность
+            drawBitmap(56, 24, plus_minus_img, 3, 8); //±
+            drawBitmap(RIGHT, 24, percent_img, 6, 8); //%
+            
+          _screen_line(map(constrain(geiger_time_now, 0, GEIGER_TIME), 0, GEIGER_TIME, 5, 44), map(constrain(geiger_time_now, 0, MAX_GEIGER_TIME), 0, MAX_GEIGER_TIME, 5, 44), 1, 1, 24); //шкалы точности и усреднения
+            break;
+
           case 3:
             switch (i) {
               case 0: drawBitmap(18, 24, warning_img, 48, 8); i = 1; break;
@@ -2899,16 +2943,25 @@ void main_screen(void)
         }
 
         switch (f) {
-          case 0: for (uint8_t i = 4; i < 80; i++) graf_lcd(map(rad_buff[i - 4], 0, maxLevel_back, 0, 15), i, 15, 2);  break; //инициализируем график
+          case 0: for (uint8_t i = 4; i < 80; i++) graf_lcd(map(rad_buff[i - 3], 0, maxLevel_back, 0, 15), i, 15, 2);  break; //инициализируем график
           case 1: //максимальный и средний фон
             setFont(RusFont); //установка шрифта
-            drawBitmap(0, 32, dose_mid_img, 26, 8);       //строка 2 сред.
-            drawBitmap(0, 40, dose_max_img, 26, 8);       //строка 3 макс.
-
+            drawBitmap(0, 32, dose_mid_img, 26, 8);       //строка 2 средн:
+            drawBitmap(0, 40, dose_max_img, 22, 8);       //строка 3 макс:
             _init_rads_unit(0, rad_mid, 1, 4, 29, 32, 0, 54, 32); //строка 2 средний
             if (!first_mid) print("----", 29, 32); //если первый средний замер не готов
-
             _init_rads_unit(0, rad_max, 1, 4, 29, 40, 0, 54, 40); //строка 3 максимальный
+            break;
+
+          case 2: //фон бета
+            setFont(RusFont); //установка шрифта
+            drawBitmap(0, 32, beta_back_img, 22, 8);       //строка 2 бета:
+            drawBitmap(0, 40, gamma_back_img, 28, 8);       //строка 3 гамма:
+            _init_rads_unit(0, rad_beta, 1, 4, 29, 32, 0, 54, 32); //строка 2 бета
+            if (!first_beta) print("----", 29, 32); //если бета/гамма не рассчитаны
+            _init_rads_unit(0, rad_gamma, 1, 4, 29, 40, 0, 54, 40); //строка 3 гамма
+            if (!first_beta) print("----", 29, 40); //если бета/гамма не рассчитаны
+
             break;
         }
 
@@ -3007,7 +3060,7 @@ void main_screen(void)
       switch (alarm_switch) { //режим тревоги
         case 0:
           switch (scr_mode) { //основные экраны
-            case 0: f = (f) ? 0 : 1; break; //переключаем экраны фона
+            case 0: if (f < 2) f++; else f = 0; break; //переключаем экраны фона
             case 1: dose_mode = (dose_mode) ? 0 : 1; break; //переключаем экраны дозы
           }
           break;
