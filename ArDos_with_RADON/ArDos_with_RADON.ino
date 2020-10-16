@@ -685,6 +685,7 @@ void data_convert(void) //преобразование данных
                 mass_switch = 0; //сбрасываем позицию переключения
                 rad_mid_buff = 0; //стираем буфер усреднения
                 first_mid = 0; //показываем что это первый замер
+                first_beta = 0; //запрещаяем отображения бета/гамма
                 tmr_mid = 0; //обнуляем таймер среднего замера
               }
             }
@@ -2002,7 +2003,7 @@ void _setings_item_switch(boolean set, boolean inv, uint8_t num, uint8_t pos) //
       }
       break;
 
-      case 8: //Сигма
+    case 8: //Сигма
       switch (set) {
         case 0: print("Cbuvf&", LEFT, pos_row); break; //Сигма:
         case 1: printNumI(sigma_pos + 1, RIGHT, pos_row); break;
@@ -2923,15 +2924,15 @@ void main_screen(void)
     switch (scr_mode) { //отрисовываем выбранный экран
       case 0: //режим измерения текущего фона
         switch (alarm_switch) {
-          case 0: 
-          setFont(TinyNumbersUp); //установка шрифта
+          case 0:
+            setFont(TinyNumbersUp); //установка шрифта
             printNumI(sigma_pos, 45, 24); //сигма
             drawBitmap(50, 24, sigma_img, 5, 8); //±σ
             printNumI(constrain(accur_percent, 1, 99), 60, 24, 2, 48); //точность
             drawBitmap(56, 24, plus_minus_img, 3, 8); //±
             drawBitmap(RIGHT, 24, percent_img, 6, 8); //%
-            
-          _screen_line(map(constrain(geiger_time_now, 0, GEIGER_TIME), 0, GEIGER_TIME, 5, 44), map(constrain(geiger_time_now, 0, MAX_GEIGER_TIME), 0, MAX_GEIGER_TIME, 5, 44), 1, 1, 24); //шкалы точности и усреднения
+
+            _screen_line(map(constrain(geiger_time_now, 0, GEIGER_TIME), 0, GEIGER_TIME, 5, 44), map(constrain(geiger_time_now, 0, MAX_GEIGER_TIME), 0, MAX_GEIGER_TIME, 5, 44), 1, 1, 24); //шкалы точности и усреднения
             break;
 
           case 3:
@@ -3043,6 +3044,12 @@ void main_screen(void)
                   tmr_mid = 0; //сбрасываем счетчик среднего фона
                   first_mid = 0; //сбрасываем флаг первого среднего замера фона
                   rad_mid_buff = 0; //сбрасываем буфер среднего замера фона
+                  break;
+
+                case 2:
+                  rad_beta = 0; //сбрасываем бета фон
+                  rad_gamma = 0; //сбрасываем гамма фон
+                  first_beta = 0; //запрещаяем отображения бета/гамма
                   break;
               }
               break;
