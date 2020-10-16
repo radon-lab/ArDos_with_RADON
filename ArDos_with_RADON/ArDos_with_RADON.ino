@@ -2960,8 +2960,8 @@ void main_screen(void)
         }
 
         setFont(TinyNumbersUp); //установка шрифта
-        printNumI(sigma_pos, 54, 8); //сигма
-        drawBitmap(58, 8, sigma_img, 5, 8); //±σ
+        printNumI(sigma_pos + 1, 54, 8); //сигма
+        drawBitmap(58, 8, sigma_img, 5, 8); //σ
         drawBitmap(66, 8, plus_minus_img, 3, 8); //±
         printNumI(constrain(accur_percent, 1, 99), 70, 8, 2, 48); //точность
         drawBitmap(78, 8, percent_img, 6, 8); //%
