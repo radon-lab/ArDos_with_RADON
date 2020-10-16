@@ -2925,14 +2925,7 @@ void main_screen(void)
       case 0: //режим измерения текущего фона
         switch (alarm_switch) {
           case 0:
-            setFont(TinyNumbersUp); //установка шрифта
-            printNumI(sigma_pos, 45, 24); //сигма
-            drawBitmap(50, 24, sigma_img, 5, 8); //±σ
-            printNumI(constrain(accur_percent, 1, 99), 60, 24, 2, 48); //точность
-            drawBitmap(56, 24, plus_minus_img, 3, 8); //±
-            drawBitmap(RIGHT, 24, percent_img, 6, 8); //%
-
-            _screen_line(map(constrain(geiger_time_now, 0, GEIGER_TIME), 0, GEIGER_TIME, 5, 44), map(constrain(geiger_time_now, 0, MAX_GEIGER_TIME), 0, MAX_GEIGER_TIME, 5, 44), 1, 1, 24); //шкалы точности и усреднения
+            _screen_line(map(constrain(geiger_time_now, 0, GEIGER_TIME), 0, GEIGER_TIME, 5, 82), map(constrain(geiger_time_now, 0, MAX_GEIGER_TIME), 0, MAX_GEIGER_TIME, 5, 82), 1, 1, 24); //шкалы точности и усреднения
             break;
 
           case 3:
@@ -2965,6 +2958,13 @@ void main_screen(void)
 
             break;
         }
+
+        setFont(TinyNumbersUp); //установка шрифта
+        printNumI(sigma_pos, 54, 8); //сигма
+        drawBitmap(58, 8, sigma_img, 5, 8); //±σ
+        drawBitmap(66, 8, plus_minus_img, 3, 8); //±
+        printNumI(constrain(accur_percent, 1, 99), 70, 8, 2, 48); //точность
+        drawBitmap(78, 8, percent_img, 6, 8); //%
 
         _init_rads_unit(1, rad_back, 1, 4, 1, 8, 0, 54, 16); //строка 1 основной фон
 
