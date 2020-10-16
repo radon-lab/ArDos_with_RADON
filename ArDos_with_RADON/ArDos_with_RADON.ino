@@ -771,8 +771,8 @@ void data_convert(void) //преобразование данных
             first_beta = 1; //устанавливаем флаг отображения бета/гамма
           }
           if (first_beta) {
-            if (tmp_buff > beta_buff) rad_beta = tmp_buff - beta_buff; else rad_beta = 0;
-            if (tmp_buff > rad_beta) rad_gamma = tmp_buff - rad_beta; else rad_gamma = 0;
+            if (rad_back > beta_buff) rad_beta = rad_back - beta_buff; else rad_beta = 0;
+            if (rad_back > rad_beta) rad_gamma = rad_back - rad_beta; else rad_gamma = 0;
           }
           break;
 
@@ -2911,7 +2911,7 @@ void task_bar(void) //шапка экрана
 void main_screen(void)
 {
   static boolean i; //анимация оповещения
-  static uint8_t f; //переключатель режима фон
+  static uint8_t back_mode; //переключатель режима фон
 
   //+++++++++++++++++++   вывод информации на экран  +++++++++++++++++++++++++
   if (!scr) { //обновление дисплея
@@ -2943,7 +2943,7 @@ void main_screen(void)
             break;
         }
 
-        switch (f) {
+        switch (back_mode) {
           case 0: for (uint8_t i = 4; i < 80; i++) graf_lcd(map(rad_buff[i - 3], 0, maxLevel_back, 0, 15), i, 15, 2);  break; //инициализируем график
           case 1: //максимальный и средний фон
             setFont(RusFont); //установка шрифта
@@ -3033,7 +3033,7 @@ void main_screen(void)
               geiger_time_now = 0; //сбрасываем счетчик накопления импульсов в буфере
               rad_back = 0; //сбрасываем фон
 
-              switch (f) {
+              switch (back_mode) {
                 case 0:
                   for (uint8_t i = 0; i < 76; i++) graf_buff[i] = 0; //очищаем буфер графика
                   break;
@@ -3067,7 +3067,7 @@ void main_screen(void)
       switch (alarm_switch) { //режим тревоги
         case 0:
           switch (scr_mode) { //основные экраны
-            case 0: if (f < 2) f++; else f = 0; break; //переключаем экраны фона
+            case 0: if (back_mode < 2) back_mode++; else back_mode = 0; break; //переключаем экраны фона
             case 1: dose_mode = (dose_mode) ? 0 : 1; break; //переключаем экраны дозы
           }
           break;
