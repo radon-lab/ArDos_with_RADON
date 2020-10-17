@@ -286,7 +286,6 @@ uint32_t rad_dose_old; //предыдущее значение дозы
 uint64_t time_micros = 0; //счетчик реального времени
 uint32_t time_sec = 0; //секунды
 uint8_t geiger_time_now = 0; //текущий номер набранной секунды счета
-uint8_t graf_time_now = 0; //текущий номер набранной секунды графика
 
 boolean scr_mode = 0; //текущий режим(фон/доза)
 boolean dose_mode = 0; //режим отображения дозы(текущая/общая)
@@ -1585,11 +1584,9 @@ void graf_update(void) //обновление графика
 
   if (++cnt >= GRAF_TIME) { //расчет показаний в зависимости от фона
     uint16_t graf_max = 0;
-    uint32_t temp_buf = 0; //временный буфер расчета имп
 
 #if TYPE_GRAF_MOVE //слева-направо
     if (!serch_disable) {
-      if (graf_time_now < 76) graf_time_now++;
 
       for (uint8_t i = 75; i > 0; i--) {
         graf_buff[i] = graf_buff[i - 1]; //сдвигаем массив
@@ -1604,14 +1601,12 @@ void graf_update(void) //обновление графика
       if (graf_max > 22) maxLevel = graf_max * GRAF_COEF_MAX; //если текущий замер больше максимума
       else maxLevel = 22;
 
-      for (uint8_t i = 0; i < graf_time_now; i++) temp_buf += graf_buff[i]; //сдвигаем массив
-      rad_imp = rad_buff[1] * (1000.00 / GRAF_TIME_MS); //динамический персчет импульсов в сек.
+      rad_imp = rad_buff[1] * (1000.00 / GRAF_TIME_MS); //персчет импульсов в сек.
+      rad_imp_m = rad_imp * 60; //персчет импульсов в мин.
       rad_imp_cm2 = rad_imp * 60 / GRAF_GEIGER_AREA; //считаем частиц/см2*мин
-      rad_imp_m = (temp_buf * ((1000.00 / GRAF_TIME_MS) / graf_time_now)) * 60; //динамический персчет импульсов в мин.
     }
 #else //справа-налево
     if (!serch_disable) {
-      if (graf_time_now < 76) graf_time_now++;
 
       for (uint8_t i = 0; i < 75; i++) {
         graf_buff[i] = graf_buff[i + 1]; //сдвигаем массив
@@ -1626,10 +1621,9 @@ void graf_update(void) //обновление графика
       if (graf_max > 22) maxLevel = graf_max * GRAF_COEF_MAX; //если текущий замер больше максимума
       else maxLevel = 22;
 
-      for (uint8_t i = 76 - graf_time_now; i < 76; i++) temp_buf += graf_buff[i]; //сдвигаем массив
-      rad_imp = rad_buff[1] * (1000.00 / GRAF_TIME_MS); //динамический персчет импульсов в сек.
+      rad_imp = rad_buff[1] * (1000.00 / GRAF_TIME_MS); //персчет импульсов в сек.
+      rad_imp_m = rad_imp * 60; //персчет импульсов в мин.
       rad_imp_cm2 = rad_imp * 60 / GRAF_GEIGER_AREA; //считаем частиц/см2*мин
-      rad_imp_m = (temp_buf * ((1000.00 / GRAF_TIME_MS) / graf_time_now)) * 60; //динамический персчет импульсов в мин.
     }
 #endif
     cnt = 0; //сброс
@@ -1730,7 +1724,6 @@ void graf_init(void) //инициализация графика
         rad_imp_m = 0; //сбрасываем имп/м
         rad_imp_cm2 = 0; //сбрасываем счет импульсов
         rad_buff[0] = 0; //сбрасываем буфер
-        graf_time_now = 0; //сбрасываем время счета графика
         serch_disable = 0; //разрешаем обновление графика
         for (uint8_t i = 0; i < 76; i++) graf_buff[i] = 0; //очищаем буфер графика
         scr = 0; //разрешаем обновления экрана
