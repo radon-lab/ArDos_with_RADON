@@ -268,9 +268,9 @@ uint32_t rad_max; //максимальный фон
 uint8_t accur_percent; //точность процентов
 uint8_t sigma_pos = 1; //указатель сигмы
 
-uint16_t rad_imp; //импульсы в секунду
-uint16_t rad_imp_m; //импульсы в минуту
-uint32_t rad_imp_cm2; //общее кол-во частиц
+float rad_imp; //импульсы в секунду
+float rad_imp_m; //импульсы в минуту
+float rad_imp_cm2; //общее кол-во частиц
 
 uint16_t maxLevel = 22; //максимальный уровень маштабирования графика
 uint16_t maxLevel_back = 15; //максимальный уровень маштабирования графика
@@ -286,6 +286,7 @@ uint32_t rad_dose_old; //предыдущее значение дозы
 uint64_t time_micros = 0; //счетчик реального времени
 uint32_t time_sec = 0; //секунды
 uint8_t geiger_time_now = 0; //текущий номер набранной секунды счета
+uint8_t graf_time_now = 0; //текущий номер набранной секунды графика
 
 boolean scr_mode = 0; //текущий режим(фон/доза)
 boolean dose_mode = 0; //режим отображения дозы(текущая/общая)
@@ -1584,9 +1585,11 @@ void graf_update(void) //обновление графика
 
   if (++cnt >= GRAF_TIME) { //расчет показаний в зависимости от фона
     uint16_t graf_max = 0;
+    uint32_t temp_buf = 0; //временный буфер расчета имп
 
 #if TYPE_GRAF_MOVE //слева-направо
     if (!serch_disable) {
+      if (graf_time_now < 76) graf_time_now++;
 
       for (uint8_t i = 75; i > 0; i--) {
         graf_buff[i] = graf_buff[i - 1]; //сдвигаем массив
@@ -1601,12 +1604,15 @@ void graf_update(void) //обновление графика
       if (graf_max > 22) maxLevel = graf_max * GRAF_COEF_MAX; //если текущий замер больше максимума
       else maxLevel = 22;
 
-      rad_imp = rad_buff[1] * (1000.00 / GRAF_TIME_MS); //персчет импульсов в сек.
+      for (uint8_t i = 0; i < graf_time_now; i++) temp_buf += graf_buff[i]; //сдвигаем массив
+      temp_buf = temp_buf / graf_time_now;
+      rad_imp = temp_buf * (1000.00 / GRAF_TIME_MS); //персчет импульсов в сек.
       rad_imp_m = rad_imp * 60; //персчет импульсов в мин.
       rad_imp_cm2 = rad_imp * 60 / GRAF_GEIGER_AREA; //считаем частиц/см2*мин
     }
 #else //справа-налево
     if (!serch_disable) {
+      if (graf_time_now < 76) graf_time_now++;
 
       for (uint8_t i = 0; i < 75; i++) {
         graf_buff[i] = graf_buff[i + 1]; //сдвигаем массив
@@ -1621,7 +1627,9 @@ void graf_update(void) //обновление графика
       if (graf_max > 22) maxLevel = graf_max * GRAF_COEF_MAX; //если текущий замер больше максимума
       else maxLevel = 22;
 
-      rad_imp = rad_buff[1] * (1000.00 / GRAF_TIME_MS); //персчет импульсов в сек.
+      for (uint8_t i = 0; i < graf_time_now; i++) temp_buf += graf_buff[i]; //сдвигаем массив
+      temp_buf = temp_buf / graf_time_now;
+      rad_imp = temp_buf * (1000.00 / GRAF_TIME_MS); //персчет импульсов в сек.
       rad_imp_m = rad_imp * 60; //персчет импульсов в мин.
       rad_imp_cm2 = rad_imp * 60 / GRAF_GEIGER_AREA; //считаем частиц/см2*мин
     }
@@ -1674,27 +1682,27 @@ void graf_init(void) //инициализация графика
         case 0:
           drawBitmap(57, 8, imp_s_img, 26, 8); //имп/с
 #if (TYPE_CHAR_FILL > 44)
-          printNumI(rad_imp, 54, 16, 5, TYPE_CHAR_FILL); //строка 1
+          printNumF(rad_imp, (rad_imp < 10) ? 1 : 0, 54, 16, 46, 5, TYPE_CHAR_FILL); //строка 1
 #else
-          printNumI(rad_imp, 54, 16, 5, 32); //строка 1
+          printNumF(rad_imp, (rad_imp < 10) ? 1 : 0, 54, 16, 46, 5, 32); //строка 1
 #endif
           break;
 
         case 1:
           drawBitmap(57, 8, imp_m_img, 27, 8); //имп/м
 #if (TYPE_CHAR_FILL > 44)
-          printNumI(rad_imp_m, 54, 16, 5, TYPE_CHAR_FILL); //строка 1
+          printNumF(rad_imp_m, (rad_imp_m < 10) ? 1 : 0, 54, 16, 46, 5, TYPE_CHAR_FILL); //строка 1
 #else
-          printNumI(rad_imp_m, 54, 16, 5, 32); //строка 1
+          printNumF(rad_imp_m, (rad_imp_m < 10) ? 1 : 0, 54, 16, 46, 5, 32); //строка 1
 #endif
           break;
 
         case 2:
           drawBitmap(58, 8, imp_all_img, 24, 8); //ч/см2
 #if (TYPE_CHAR_FILL > 44)
-          printNumI(rad_imp_cm2, 54, 16, 5, TYPE_CHAR_FILL); //строка 1
+          printNumF(rad_imp_cm2, (rad_imp_cm2 < 10) ? 1 : 0, 54, 16, 46, 5, TYPE_CHAR_FILL); //строка 1
 #else
-          printNumI(rad_imp_cm2, 54, 16, 5, 32); //строка 1
+          printNumF(rad_imp_cm2, (rad_imp_cm2 < 10) ? 1 : 0, 54, 16, 46, 5, 32); //строка 1
 #endif
           break;
       }
@@ -1723,7 +1731,9 @@ void graf_init(void) //инициализация графика
         rad_imp = 0; //сбрасываем имп/с
         rad_imp_m = 0; //сбрасываем имп/м
         rad_imp_cm2 = 0; //сбрасываем счет импульсов
+        graf_time_now = 0; //сбрасываем время счета графика
         rad_buff[0] = 0; //сбрасываем буфер
+        rad_buff[1] = 0; //сбрасываем буфер
         serch_disable = 0; //разрешаем обновление графика
         for (uint8_t i = 0; i < 76; i++) graf_buff[i] = 0; //очищаем буфер графика
         scr = 0; //разрешаем обновления экрана
@@ -1744,8 +1754,8 @@ void graf_init(void) //инициализация графика
         break;
 
       case 6: //hold select key //настройки
-        rad_buff[1] = 0; //сбрасываем счетчик импульсов
         rad_buff[0] = 0; //сбрасываем счетчик импульсов
+        rad_buff[1] = 0; //сбрасываем счетчик импульсов
         serch = 0; //устанавливаем флаг поиска
         scr = 0; //разрешаем обновления экрана
         return;
