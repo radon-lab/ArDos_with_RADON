@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.1.4 low_pwr 17.10.20 специально для проекта ArDos
+  Версия программы RADON v3.1.5 low_pwr 21.10.20 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr
   Желательна установка лёгкого ядра https://alexgyver.github.io/package_GyverCore_index.json и загрузчика OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -444,7 +444,7 @@ int main(void)  //инициализация
 
   setFont(RusFont); //установка шрифта
   print("-=HFLJY=-", CENTER, 32); //-=РАДОН=-
-  print("3.1.4", CENTER, 40); //версия по
+  print("3.1.5", CENTER, 40); //версия по
 
   bat_check(); //опрос батареи
 
@@ -680,10 +680,8 @@ void data_convert(void) //преобразование данных
 
               if (now > coef || now < (1.00 / coef)) { //если видим скачок или спад
                 tmp_buff = 0; //сбрасываем текущий буфер
-                uint8_t min_bit = pgm_read_byte(&time_mass[0][0]); //находим минимальный счет
-                for (uint8_t i = min_bit; i < MAX_GEIGER_TIME; i++) rad_buff[i + 1] = 0; //стираем все лишнее
-                geiger_time_now = min_bit; //возврачаемся к первым двух секундным замерам
-                for (uint8_t i = 0; i < min_bit; i++) tmp_buff += rad_buff[i + 1]; //запоняем буффер первого плеча
+                for (uint8_t i = 0; i < pgm_read_byte(&time_mass[0][0]); i++) tmp_buff += rad_buff[i + 1]; //запоняем буффер первого плеча
+                geiger_time_now = pgm_read_byte(&time_mass[0][0]); //устанавливаем текущий размер буфера
                 mass_switch = 0; //сбрасываем позицию переключения
                 rad_mid_buff = 0; //стираем буфер усреднения
                 first_mid = 0; //показываем что это первый замер
@@ -706,10 +704,10 @@ void data_convert(void) //преобразование данных
 
         case TIME_FACT_8: //средний и максимальный фон
           if (geiger_time_now >= GEIGER_CYCLE) { //если достаточно данных в массиве
-            rad_mid_buff += rad_back; //заполняем буфер усреднения
+            rad_mid_buff += rad_buff[1]; //заполняем буфер усреднения
 
             if (++tmr_mid >= (mid_rad_time[mid_level] * 60)) { //если время пришло, усредняем значение
-              rad_mid = rad_mid_buff / (mid_rad_time[mid_level] * 60); //усредняем фон, добавляем в расчет предыдущее усреденение
+              rad_mid = rad_mid_buff * ((float)GEIGER_TIME / (mid_rad_time[mid_level] * 60)); //усредняем фон, добавляем в расчет предыдущее усреденение
               rad_mid_buff = 0; //сбрасываем буфер усреднения
               tmr_mid = 0; //сбрасываем таймер усреднения
               first_mid = 1; //устанавливаем флаг запрета первичного посекундного усреднения
@@ -732,7 +730,7 @@ void data_convert(void) //преобразование данных
           for (uint8_t i = 0; i > 76; i--) if (rad_buff[i + 1] > graf_max) graf_max = rad_buff[i + 1]; //ищем максимум
 
           if (graf_max > 15) maxLevel_back = graf_max * GRAF_COEF_MAX; //если текущий замер больше максимума
-          else maxLevel_back = 15;
+          else maxLevel_back = 15; //иначе устанавливаем минимум
           break;
 
         case TIME_FACT_11: //обработка тревоги
@@ -1608,7 +1606,7 @@ void graf_update(void) //обновление графика
       temp_buf = temp_buf / graf_time_now;
       rad_imp = temp_buf * (1000.00 / GRAF_TIME_MS); //персчет импульсов в сек.
       rad_imp_m = rad_imp * 60; //персчет импульсов в мин.
-      rad_imp_cm2 = rad_imp * 60 / GRAF_GEIGER_AREA; //считаем частиц/см2*мин
+      rad_imp_cm2 = rad_imp_m / GRAF_GEIGER_AREA; //считаем частиц/см2*мин
     }
 #else //справа-налево
     if (!serch_disable) {
@@ -1631,7 +1629,7 @@ void graf_update(void) //обновление графика
       temp_buf = temp_buf / graf_time_now;
       rad_imp = temp_buf * (1000.00 / GRAF_TIME_MS); //персчет импульсов в сек.
       rad_imp_m = rad_imp * 60; //персчет импульсов в мин.
-      rad_imp_cm2 = rad_imp * 60 / GRAF_GEIGER_AREA; //считаем частиц/см2*мин
+      rad_imp_cm2 = rad_imp_m / GRAF_GEIGER_AREA; //считаем частиц/см2*мин
     }
 #endif
     cnt = 0; //сброс
@@ -1682,27 +1680,27 @@ void graf_init(void) //инициализация графика
         case 0:
           drawBitmap(57, 8, imp_s_img, 26, 8); //имп/с
 #if (TYPE_CHAR_FILL > 44)
-          printNumF(rad_imp, (rad_imp < 10) ? 1 : 0, 54, 16, 46, 5, TYPE_CHAR_FILL); //строка 1
+          printNumF(rad_imp, (rad_imp < 100) ? 0 : 0, 54, 16, 46, 5, TYPE_CHAR_FILL); //строка 1
 #else
-          printNumF(rad_imp, (rad_imp < 10) ? 1 : 0, 54, 16, 46, 5, 32); //строка 1
+          printNumF(rad_imp, (rad_imp < 100) ? 2 : 0, 54, 16, 46, 5, 32); //строка 1
 #endif
           break;
 
         case 1:
           drawBitmap(57, 8, imp_m_img, 27, 8); //имп/м
 #if (TYPE_CHAR_FILL > 44)
-          printNumF(rad_imp_m, (rad_imp_m < 10) ? 1 : 0, 54, 16, 46, 5, TYPE_CHAR_FILL); //строка 1
+          printNumF(rad_imp_m, (rad_imp_m < 100) ? 2 : 0, 54, 16, 46, 5, TYPE_CHAR_FILL); //строка 1
 #else
-          printNumF(rad_imp_m, (rad_imp_m < 10) ? 1 : 0, 54, 16, 46, 5, 32); //строка 1
+          printNumF(rad_imp_m, (rad_imp_m < 100) ? 2 : 0, 54, 16, 46, 5, 32); //строка 1
 #endif
           break;
 
         case 2:
           drawBitmap(58, 8, imp_all_img, 24, 8); //ч/см2
 #if (TYPE_CHAR_FILL > 44)
-          printNumF(rad_imp_cm2, (rad_imp_cm2 < 10) ? 1 : 0, 54, 16, 46, 5, TYPE_CHAR_FILL); //строка 1
+          printNumF(rad_imp_cm2, (rad_imp_cm2 < 100) ? 2 : 0, 54, 16, 46, 5, TYPE_CHAR_FILL); //строка 1
 #else
-          printNumF(rad_imp_cm2, (rad_imp_cm2 < 10) ? 1 : 0, 54, 16, 46, 5, 32); //строка 1
+          printNumF(rad_imp_cm2, (rad_imp_cm2 < 100) ? 2 : 0, 54, 16, 46, 5, 32); //строка 1
 #endif
           break;
       }
@@ -2880,7 +2878,7 @@ void _alarm_init(uint8_t waint, uint8_t alarm) //индикация тревог
       case 0: drawBitmap(60, 0, buzz_alt_off_img, 7, 8); break; //тревога выключена
       case 1: drawBitmap(60, 0, buzz_alt_img, 7, 8); break; //только звук
       case 2: drawBitmap(60, 0, beep_alt_vibro_img, 7, 8); break; //только вибрация
-      case 3: drawBitmap(60, 0, beep_alt_img, 8, 8); break;
+      case 3: drawBitmap(60, 0, beep_alt_img, 8, 8); break; //звук и вибрация
     }
   }
 }
