@@ -1583,7 +1583,7 @@ void graf_update(void) //обновление графика
   static uint8_t now_pos; //переключатель динамического изменения времени
 
   if (++cnt >= (graf_pos != 8) ? pgm_read_word(&graf_time[graf_pos]) : pgm_read_word(&graf_time[now_pos]) / (wdt_period / 100.0)) { //расчет показаний
-    uint16_t graf_max = 0;
+    uint16_t graf_max = 0; //максимум графика
     uint32_t temp_buf = 0; //временный буфер расчета имп
 
     if (graf_time_now < SEARCH_BUF_SCORE) graf_time_now++;
@@ -1625,7 +1625,7 @@ void graf_update(void) //обновление графика
     rad_imp_m = rad_imp * 60; //персчет импульсов в мин.
     rad_imp_cm2 = rad_imp_m / SEARCH_GEIGER_AREA; //считаем частиц/см2*мин
 
-    if (graf_pos == 8) now_pos = map(constrain(rad_imp, 0, SEARCH_IND_MAX), 0, SEARCH_IND_MAX, 0, 7);
+    if (graf_pos == 8) now_pos = map(constrain(rad_imp, 0, SEARCH_IND_MAX), 0, SEARCH_IND_MAX, 7, 0);
 
     cnt = 0; //сброс
     graf = 0; //разрешаем обновление графика
