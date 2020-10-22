@@ -2095,14 +2095,14 @@ void _setings_data_up(uint8_t pos) //прибавление данных
         case 1: buzz_switch = 2; break;
       }
       break;
+    case 5: knock_disable = 0; break; //Зв.кнопок
 
-case 5: if (measur_pos < 9) measur_pos++; break; //Разн.зам
-    case 6: if (mid_pos < 9) mid_pos++; else mid_pos = 0; break; //Средн.зам
-    case 7: if (sigma_pos < 2) sigma_pos++; else sigma_pos = 0; break; //Сигма
-    case 8: if (graf_pos < 8) graf_pos++; else graf_pos = 0; break; //График
-    case 9: rad_mode = 1; break; //Ед.измер
+    case 6: if (measur_pos < 9) measur_pos++; break; //Разн.зам
+    case 7: if (mid_pos < 9) mid_pos++; else mid_pos = 0; break; //Средн.зам
+    case 8: if (sigma_pos < 2) sigma_pos++; else sigma_pos = 0; break; //Сигма
+    case 9: if (graf_pos < 8) graf_pos++; else graf_pos = 0; break; //График
+    case 10: rad_mode = 1; break; //Ед.измер
 
-    case 10: knock_disable = 0; break; //Зв.кнопок
     case 11: if (alarm_back < 3) alarm_back++; break; //Тревога Ф
     case 12: if (warn_level_back < 300) warn_level_back += 5; else warn_level_back = 30; break; //Порог Ф1
     case 13: if (alarm_level_back < 500) alarm_level_back += 10; else if (alarm_level_back < 1000) alarm_level_back += 50; else if (alarm_level_back < 65000) alarm_level_back += 100; else alarm_level_back = 300; break; //Порог Ф2
@@ -2135,7 +2135,7 @@ void _setings_data_down(uint8_t pos) //убавление данных
       break;
     case 5: knock_disable = 1; break; //Зв.кнопок
 
-case 6: if (measur_pos > 0) measur_pos--;  break; //Разн.зам
+    case 6: if (measur_pos > 0) measur_pos--;  break; //Разн.зам
     case 7: if (mid_pos > 0) mid_pos--; else mid_pos = 9; break; //Средн.зам
     case 8: if (sigma_pos > 0) sigma_pos--; else sigma_pos = 2; break; //Сигма
     case 9: if (graf_pos > 0) graf_pos--; else graf_pos = 8; break; //График
