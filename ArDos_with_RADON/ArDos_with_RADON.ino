@@ -2955,7 +2955,7 @@ void main_screen(void)
           case 1: //максимальный и средний фон
             setFont(RusFont); //установка шрифта
             drawBitmap(0, 32, dose_mid_img, 26, 8);       //строка 2 средн:
-            drawBitmap(0, 40, dose_max_img, 22, 8);       //строка 3 макс:
+            drawBitmap(0, 40, dose_max_img, 23, 8);       //строка 3 макс:
             _init_rads_unit(0, rad_mid, 1, 4, 29, 32, 0, 54, 32); //строка 2 средний
             if (!first_mid) print("----", 29, 32); //если первый средний замер не готов
             _init_rads_unit(0, rad_max, 1, 4, 29, 40, 0, 54, 40); //строка 3 максимальный
