@@ -110,7 +110,7 @@
   3.1.3 16.10.20 - мелкие исправления, добавлен подрежим экрана "фон" - "бета и гамма", добавленны доверительные интервалы(сигма) и точность в %.
   3.1.4 17.10.20 - в режиме "поиск" - удален пункт "всего", добавлен - "частиц/см2*мин".
   3.1.5 21.10.20 - график фона теперь не стирается при автосбросе, единицы в режиме поиск теперь имеют разрешение 2 знака после запятой до значения в 100 единиц, счет среднего фона теперь идет от накопления общего количества частиц.
-  3.1.6 22.10.20 - файл "SETUP" удалён, все настройки перенесены в "config", в настройки добавлен пункт "график", позволяет настроить время обновления графика в режиме "поиск", настроить пресеты можно в "config" массив "graf_time",  
+  3.1.6 22.10.20 - файл "SETUP" удалён, все настройки перенесены в "config", в настройки добавлен пункт "график", позволяет настроить время обновления графика в режиме "поиск", настроить пресеты можно в "config" массив "graf_time",
                    настроить площадь датчика можно в "config" пункт "SEARCH_GEIGER_AREA", настроить количество ячеек для обработки единиц в режиме "поиск" можно в "config" параметр "SEARCH_BUF_SCORE".
 
   Внимание!!! При выключении пункта "СОН" в меню настроек влечет увеличением энергопотребления, но тем самым увеличивается производительность устройства.
@@ -118,7 +118,7 @@
   Для сброса настроек необходимо зажать клавишу "ОК" и включить питание(если нужно сбросить ещё и настройки преобразователя то "ОК" + "ВВЕРХ"), появится сообщение об успешном сбросе.
   Если что-то идет или работает не так, в первую очередь пробуйте сброс настроек хот-кеем как описано выше!!!
 
-  Не забудьте установить свои настройки ADC_value и k_delitel в файле SETUP, если вы не настраивали параметры утилитой ранее!!! Этот файл также можно сохранить отдельно и вставлять в новые версии программы.
+  Не забудьте установить свои настройки ADC_value и k_delitel в файле "config", если вы не настраивали параметры утилитой ранее!!! Этот файл также можно сохранить отдельно и вставлять в новые версии программы.
 
   После выключения устройства при низком напряжении акб, включить его можно или передергиванием выключателя питания или зажать кнопку "OK" более чем на 2 сек.
 
@@ -143,13 +143,13 @@
   -Действия клавиш-
 
   - На экране ФОН
-  Вверх - выбор - график | средн. и макс. фон | бета и гамма, удерж. - вкл/выкл фонарик
-  Вниз - сбросить текущий фон и график/средн. и макс., удерж. - вкл/выкл подсветку
-  Ок - переключить экран, удерж. - выход в меню
+  Вверх - выбор (график | средн. и макс. фон | бета и гамма), удерж. - вкл/выкл фонарик
+  Вниз - сбросить текущий фон и (график | средн. и макс. фон | бета и гамма), удерж. - вкл/выкл подсветку
+  Ок - переключить экран (фон | доза), удерж. - выход в меню
 
   - На экране ДОЗА
-  Вверх - смена подрежима(текущая доза / доза за все время), удерж. - вкл/выкл фонарик
-  Вниз - сброс показаний текущей дозы / дозы за все время, удерж. - вкл/выкл подсветку
+  Вверх - смена подрежима(текущая доза | доза за все время), удерж. - вкл/выкл фонарик
+  Вниз - сброс показаний(текущей дозы | дозы за все время), удерж. - вкл/выкл подсветку
   Ок - переключить экран, удерж. - выход в меню
 
   - На экране ПОИСК
@@ -325,7 +325,7 @@ uint16_t warn_level_dose = 10; //указатель на уровень трев
 uint16_t alarm_level_dose = 300; //указатель на уровень тревоги 2 дозы в массиве
 
 uint8_t mid_pos = 0; //указатель на время замера среднего фона в массиве
-uint8_t graf_pos = 7; //указатель на время время обновления графика в массиве
+uint8_t graf_pos = 8; //указатель на время время обновления графика в массиве
 uint8_t measur_pos = 0; //указатель на время разностного замера в массиве
 uint8_t rad_flash = 1; //индикация попадания частиц
 
@@ -1986,80 +1986,80 @@ void _setings_item_switch(boolean set, boolean inv, uint8_t num, uint8_t pos) //
       }
       break;
 
-    case 6: //Тревога Ф
-      switch (set) {
-        case 0: print("Nhtdjuf A&", LEFT, pos_row); break; //Тревога Ф:
-        case 1: if (!alarm_back) print("DSRK", RIGHT, pos_row); else if (alarm_back == 1) print("PDER", RIGHT, pos_row); else if (alarm_back == 2) print("DB<H", RIGHT, pos_row); else print("D+PD", RIGHT, pos_row); break;
-      }
-      break;
-
-    case 7: //Порог Ф1
-      switch (set) {
-        case 0: print("Gjhju A1&", LEFT, pos_row); break; //Порог Ф1:
-        case 1: printNumI(warn_level_back, RIGHT, pos_row); break;
-      }
-      break;
-
-    case 8: //Порог Ф2
-      switch (set) {
-        case 0: print("Gjhju A2&", LEFT, pos_row); break; //Порог Ф2:
-        case 1: printNumI(alarm_level_back, RIGHT, pos_row); break;
-      }
-      break;
-
-    case 9: //Тревога Д
-      switch (set) {
-        case 0: print("Nhtdjuf L&", LEFT, pos_row); break; //Тревога Д:
-        case 1: if (!alarm_dose) print("DSRK", RIGHT, pos_row); else if (alarm_dose == 1) print("PDER", RIGHT, pos_row); else if (alarm_dose == 2) print("DB<H", RIGHT, pos_row); else print("D+PD", RIGHT, pos_row); break;
-      }
-      break;
-
-    case 10: //Порог Д1
-      switch (set) {
-        case 0: print("Gjhju L1&", LEFT, pos_row); break; //Порог Д1:
-        case 1: printNumI(warn_level_dose, RIGHT, pos_row); break;
-      }
-      break;
-
-    case 11: //Порог Д2
-      switch (set) {
-        case 0: print("Gjhju L2&", LEFT, pos_row); break; //Порог Д2:
-        case 1: printNumI(alarm_level_dose, RIGHT, pos_row); break;
-      }
-      break;
-
-    case 12: //Разн.зам
+    case 6: //Разн.зам
       switch (set) {
         case 0: print("Hfpy.pfv&", LEFT, pos_row); break; //Разн.зам:
         case 1: printNumI(pgm_read_byte(&diff_measuring[measur_pos]), RIGHT, pos_row); break;
       }
       break;
 
-    case 13: //Средн.зам
+    case 7: //Средн.зам
       switch (set) {
         case 0: print("Chtly.pfv&", LEFT, pos_row); break; //Средн.зам:
         case 1: printNumI(pgm_read_byte(&mid_rad_time[mid_pos]), RIGHT, pos_row); break;
       }
       break;
 
-    case 14: //Сигма
+    case 8: //Сигма
       switch (set) {
         case 0: print("Cbuvf&", LEFT, pos_row); break; //Сигма:
         case 1: printNumI(sigma_pos + 1, RIGHT, pos_row); break;
       }
       break;
 
-    case 15: //График
+    case 9: //График
       switch (set) {
         case 0: print("Uhfabr&", LEFT, pos_row); break; //График:
-        case 1: if (graf_pos != 8) printNumI(pgm_read_word(&graf_time[graf_pos]), RIGHT, pos_row); else print("Fdnj", RIGHT, pos_row); break;
+        case 1: if (graf_pos != 8) printNumI(pgm_read_word(&graf_time[graf_pos]), RIGHT, pos_row); else print("FDNJ", RIGHT, pos_row); break;
       }
       break;
 
-    case 16: //Ед.измер
+    case 10: //Ед.измер
       switch (set) {
         case 0: print("Tl.bpvth&", LEFT, pos_row); break; //Ед.измер:
         case 1: if (!rad_mode) print("vrH", RIGHT, pos_row); else print("vrPd", RIGHT, pos_row); break;
+      }
+      break;
+
+    case 11: //Тревога Ф
+      switch (set) {
+        case 0: print("Nhtdjuf A&", LEFT, pos_row); break; //Тревога Ф:
+        case 1: if (!alarm_back) print("DSRK", RIGHT, pos_row); else if (alarm_back == 1) print("PDER", RIGHT, pos_row); else if (alarm_back == 2) print("DB<H", RIGHT, pos_row); else print("D+PD", RIGHT, pos_row); break;
+      }
+      break;
+
+    case 12: //Порог Ф1
+      switch (set) {
+        case 0: print("Gjhju A1&", LEFT, pos_row); break; //Порог Ф1:
+        case 1: printNumI(warn_level_back, RIGHT, pos_row); break;
+      }
+      break;
+
+    case 13: //Порог Ф2
+      switch (set) {
+        case 0: print("Gjhju A2&", LEFT, pos_row); break; //Порог Ф2:
+        case 1: printNumI(alarm_level_back, RIGHT, pos_row); break;
+      }
+      break;
+
+    case 14: //Тревога Д
+      switch (set) {
+        case 0: print("Nhtdjuf L&", LEFT, pos_row); break; //Тревога Д:
+        case 1: if (!alarm_dose) print("DSRK", RIGHT, pos_row); else if (alarm_dose == 1) print("PDER", RIGHT, pos_row); else if (alarm_dose == 2) print("DB<H", RIGHT, pos_row); else print("D+PD", RIGHT, pos_row); break;
+      }
+      break;
+
+    case 15: //Порог Д1
+      switch (set) {
+        case 0: print("Gjhju L1&", LEFT, pos_row); break; //Порог Д1:
+        case 1: printNumI(warn_level_dose, RIGHT, pos_row); break;
+      }
+      break;
+
+    case 16: //Порог Д2
+      switch (set) {
+        case 0: print("Gjhju L2&", LEFT, pos_row); break; //Порог Д2:
+        case 1: printNumI(alarm_level_dose, RIGHT, pos_row); break;
       }
       break;
   }
@@ -2096,19 +2096,19 @@ void _setings_data_up(uint8_t pos) //прибавление данных
       }
       break;
 
-    case 5: knock_disable = 0; break; //Зв.кнопок
-    case 6: if (alarm_back < 3) alarm_back++; break; //Тревога Ф
-    case 7: if (warn_level_back < 300) warn_level_back += 5; else warn_level_back = 30; break; //Порог Ф1
-    case 8: if (alarm_level_back < 500) alarm_level_back += 10; else if (alarm_level_back < 1000) alarm_level_back += 50; else if (alarm_level_back < 65000) alarm_level_back += 100; else alarm_level_back = 300; break; //Порог Ф2
-    case 9: if (alarm_dose < 3) alarm_dose++; break; //Тревога Д
-    case 10: if (warn_level_dose < 300) warn_level_dose += 5; else warn_level_dose = 10; break; //Порог Д1
-    case 11: if (alarm_level_dose < 500) alarm_level_dose += 10; else if (alarm_level_dose < 1000) alarm_level_dose += 50; else if (alarm_level_dose < 65000) alarm_level_dose += 100; else alarm_level_dose = 300; break; //Порог Д2
+case 5: if (measur_pos < 9) measur_pos++; break; //Разн.зам
+    case 6: if (mid_pos < 9) mid_pos++; else mid_pos = 0; break; //Средн.зам
+    case 7: if (sigma_pos < 2) sigma_pos++; else sigma_pos = 0; break; //Сигма
+    case 8: if (graf_pos < 8) graf_pos++; else graf_pos = 0; break; //График
+    case 9: rad_mode = 1; break; //Ед.измер
 
-    case 12: if (measur_pos < 9) measur_pos++; break; //Разн.зам
-    case 13: if (mid_pos < 9) mid_pos++; else mid_pos = 0; break; //Средн.зам
-    case 14: if (sigma_pos < 2) sigma_pos++; else sigma_pos = 0; break; //Сигма
-    case 15: if (graf_pos < 8) graf_pos++; else graf_pos = 0; break; //График
-    case 16: rad_mode = 1; break; //Ед.измер
+    case 10: knock_disable = 0; break; //Зв.кнопок
+    case 11: if (alarm_back < 3) alarm_back++; break; //Тревога Ф
+    case 12: if (warn_level_back < 300) warn_level_back += 5; else warn_level_back = 30; break; //Порог Ф1
+    case 13: if (alarm_level_back < 500) alarm_level_back += 10; else if (alarm_level_back < 1000) alarm_level_back += 50; else if (alarm_level_back < 65000) alarm_level_back += 100; else alarm_level_back = 300; break; //Порог Ф2
+    case 14: if (alarm_dose < 3) alarm_dose++; break; //Тревога Д
+    case 15: if (warn_level_dose < 300) warn_level_dose += 5; else warn_level_dose = 10; break; //Порог Д1
+    case 16: if (alarm_level_dose < 500) alarm_level_dose += 10; else if (alarm_level_dose < 1000) alarm_level_dose += 50; else if (alarm_level_dose < 65000) alarm_level_dose += 100; else alarm_level_dose = 300; break; //Порог Д2
   }
 }
 //------------------------------------Убавление данных------------------------------------------------------
@@ -2135,18 +2135,18 @@ void _setings_data_down(uint8_t pos) //убавление данных
       break;
     case 5: knock_disable = 1; break; //Зв.кнопок
 
-    case 6: if (alarm_back > 0) alarm_back--; break; //Тревога Ф
-    case 7: if (warn_level_back > 30) warn_level_back -= 5; else warn_level_back = 300; break; //Порог Ф1
-    case 8: if (alarm_level_back > 1000) alarm_level_back -= 100; else if (alarm_level_back > 500) alarm_level_back -= 50; else if (alarm_level_back > 300) alarm_level_back -= 10; else alarm_level_back = 65000; break; //Порог Ф2
-    case 9: if (alarm_dose > 0) alarm_dose--; break; //Тревога Д
-    case 10: if (warn_level_dose > 10) warn_level_dose -= 5; else warn_level_dose = 300; break; //Порог Д1
-    case 11: if (alarm_level_dose > 1000) alarm_level_dose -= 100; else if (alarm_level_dose > 500) alarm_level_dose -= 50; else if (alarm_level_dose > 300) alarm_level_dose -= 10; else alarm_level_dose = 65000; break; //Порог Д2
+case 6: if (measur_pos > 0) measur_pos--;  break; //Разн.зам
+    case 7: if (mid_pos > 0) mid_pos--; else mid_pos = 9; break; //Средн.зам
+    case 8: if (sigma_pos > 0) sigma_pos--; else sigma_pos = 2; break; //Сигма
+    case 9: if (graf_pos > 0) graf_pos--; else graf_pos = 8; break; //График
+    case 10: rad_mode = 0; break; //Ед.измер
 
-    case 12: if (measur_pos > 0) measur_pos--;  break; //Разн.зам
-    case 13: if (mid_pos > 0) mid_pos--; else mid_pos = 9; break; //Средн.зам
-    case 14: if (sigma_pos > 0) sigma_pos--; else sigma_pos = 2; break; //Сигма
-    case 15: if (graf_pos > 0) graf_pos--; else graf_pos = 8; break; //График
-    case 16: rad_mode = 0; break; //Ед.измер
+    case 11: if (alarm_back > 0) alarm_back--; break; //Тревога Ф
+    case 12: if (warn_level_back > 30) warn_level_back -= 5; else warn_level_back = 300; break; //Порог Ф1
+    case 13: if (alarm_level_back > 1000) alarm_level_back -= 100; else if (alarm_level_back > 500) alarm_level_back -= 50; else if (alarm_level_back > 300) alarm_level_back -= 10; else alarm_level_back = 65000; break; //Порог Ф2
+    case 14: if (alarm_dose > 0) alarm_dose--; break; //Тревога Д
+    case 15: if (warn_level_dose > 10) warn_level_dose -= 5; else warn_level_dose = 300; break; //Порог Д1
+    case 16: if (alarm_level_dose > 1000) alarm_level_dose -= 100; else if (alarm_level_dose > 500) alarm_level_dose -= 50; else if (alarm_level_dose > 300) alarm_level_dose -= 10; else alarm_level_dose = 65000; break; //Порог Д2
   }
 }
 //------------------------------------Настройки------------------------------------------------------
@@ -2698,7 +2698,7 @@ void setings_save(boolean sw) //сохранить настройки
         TIME_SLEEP == eeprom_read_byte(50) &&
         rad_mode == eeprom_read_byte(57) &&
         rad_flash == eeprom_read_byte(59) &&
-        sigma_pos == eeprom_read_word(60) &&
+        sigma_pos == eeprom_read_byte(60) &&
         graf_pos == eeprom_read_byte(61) &&
         warn_level_back == eeprom_read_word(62) &&
         alarm_level_back == eeprom_read_word(64) &&
