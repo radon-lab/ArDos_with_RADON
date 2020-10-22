@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.1.5 low_pwr 21.10.20 специально для проекта ArDos
+  Версия программы RADON v3.1.6 low_pwr 22.10.20 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr
   Желательна установка лёгкого ядра https://alexgyver.github.io/package_GyverCore_index.json и загрузчика OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -40,7 +40,7 @@
                  скорость графика теперь указывается в мс, заряд акб теперь указывается не только графически, но и в процентах левее от указателя,
                  добавлена возможность выключения у-ва из быстрого меню.
   1.6.5 28.05.20 - графические изменения, скорость накачки убрана из статистики, добавлено прямое/обратное движение графика, параметр в "SETUP" - "TYPE_GRAF_MOVE",
-                 добавлена индикация имп/с шкалой, предел выбирается в "config" - "GRAF_IND_MAX", добавлены тайм-ауты при бездействии в "настройки"/"статистика"/"быстрое меню",
+                 добавлена индикация имп/с шкалой, предел выбирается в "config" - "SEARCH_IND_MAX", добавлены тайм-ауты при бездействии в "настройки"/"статистика"/"быстрое меню",
                  параметр в "config" - "TIME_OUT_SETTINGS"/"TIME_OUT_STATISTIC"/"TIME_OUT_FAST".
   1.6.5 29.05.20 - добавлена графическая индикация накопления дозы до сохранения её в память(если нету времени ждать, можно сохранить выключив у-во из быстрого меню),
                  добавлено автоматическое отключение тревоги при падении фона ниже порога, параметр в "SETUP" - "ALARM_AUTO_DISABLE",
@@ -109,6 +109,9 @@
   3.1.2 14.10.20 - мелкие исправления, перераотаны алгоритмы батареи/замера/сна/накачки/ошибок.
   3.1.3 16.10.20 - мелкие исправления, добавлен подрежим экрана "фон" - "бета и гамма", добавленны доверительные интервалы(сигма) и точность в %.
   3.1.4 17.10.20 - в режиме "поиск" - удален пункт "всего", добавлен - "частиц/см2*мин".
+  3.1.5 21.10.20 - график фона теперь не стирается при автосбросе, единицы в режиме поиск теперь имеют разрешение 2 знака после запятой до значения в 100 единиц, счет среднего фона теперь идет от накопления общего количества частиц.
+  3.1.6 22.10.20 - файл "SETUP" удалён, все настройки перенесены в "config", в настройки добавлен пункт "график", позволяет настроить время обновления графика в режиме "поиск", настроить площадь датчика можно в "config" пункт "SEARCH_GEIGER_AREA",
+                   настроить количество ячеек для обработки единиц в режиме "поиск" можно в "config" параметр "SEARCH_BUF_SCORE".
 
   Внимание!!! При выключении пункта "СОН" в меню настроек влечет увеличением энергопотребления, но тем самым увеличивается производительность устройства.
 
@@ -209,7 +212,6 @@
 
 //---------------Конфигурации---------------
 #include "LCD.h"
-#include "SETUP.h"
 #include "config.h"
 #include "resources.c"
 #include "connection.h"
@@ -219,7 +221,7 @@
 #define ALARM_AUTO_GISTERESIS  (1.00 - (ALARM_AUTO_GIST / 100.00)) //инвертируем проценты
 #define IMP_PWR_GISTERESIS  (1.00 - (IMP_PWR_GIST / 100.00)) //инвертируем проценты
 
-#define GRAF_TIME (GRAF_TIME_MS / (wdt_period / 100.0)) //максимальное время обновления графика
+#define GRAF_TIME (pgm_read_word(&graf_time[graf_pos]) / (wdt_period / 100.0)) //максимальное время обновления графика
 
 #define MASS_TIME_FACT (MASS_TIME - 1) //фактический номер элемента массивов секунд
 #define MASS_BACK_FACT (MASS_BACK - 1) //фактический номер элемента массивов фона
@@ -227,7 +229,6 @@
 #define GEIGER_MASS (pgm_read_byte(&time_mass[MASS_TIME_FACT][0]) + pgm_read_byte(&time_mass[MASS_TIME_FACT][1])) //максимум секунд для окончания смещения коэффициентов
 
 #define MAX_GEIGER_TIME (BUFF_LENGTHY - 1) //максимальное время счета
-#define MIN_GEIGER_TIME 2 //минимальное время счета
 
 volatile uint16_t rad_buff[BUFF_LENGTHY]; //массив секундных замеров для расчета фона
 uint16_t graf_buff[76]; //буфер графика
@@ -325,8 +326,9 @@ uint16_t alarm_level_back = 300; //указатель на уровень тре
 uint16_t warn_level_dose = 10; //указатель на уровень тревоги 1 дозы в массиве
 uint16_t alarm_level_dose = 300; //указатель на уровень тревоги 2 дозы в массиве
 
-uint8_t mid_level = 0; //указатель на время замера среднего фона в массиве
-uint8_t pos_measur = 0; //указатель на время разностного замера в массиве
+uint8_t mid_pos = 0; //указатель на время замера среднего фона в массиве
+uint8_t graf_pos = 7; //указатель на время время обновления графика в массиве
+uint8_t measur_pos = 0; //указатель на время разностного замера в массиве
 uint8_t rad_flash = 1; //индикация попадания частиц
 
 uint8_t TIME_SLEEP = 10; //время до ухода в сон(должно быть больше чем время подсветки) (10..250)(s)
@@ -444,7 +446,7 @@ int main(void)  //инициализация
 
   setFont(RusFont); //установка шрифта
   print("-=HFLJY=-", CENTER, 32); //-=РАДОН=-
-  print("3.1.5", CENTER, 40); //версия по
+  print("3.1.6", CENTER, 40); //версия по
 
   bat_check(); //опрос батареи
 
@@ -608,7 +610,7 @@ void data_convert(void) //преобразование данных
 
     if (!measur && !serch) {
       time_micros += wdt_period; //микросекунды * 10
-      
+
       switch (time_wdt) {
         case TIME_FACT_2: //обновление статистики
           if (++stat_upd_tmr >= STAT_UPD_TIME) { //если пришло время, обновляем статистику
@@ -706,8 +708,8 @@ void data_convert(void) //преобразование данных
           if (geiger_time_now >= GEIGER_CYCLE) { //если достаточно данных в массиве
             rad_mid_buff += rad_buff[1]; //заполняем буфер усреднения
 
-            if (++tmr_mid >= (mid_rad_time[mid_level] * 60)) { //если время пришло, усредняем значение
-              rad_mid = rad_mid_buff * ((float)GEIGER_TIME / (mid_rad_time[mid_level] * 60)); //усредняем фон, добавляем в расчет предыдущее усреденение
+            if (++tmr_mid >= (pgm_read_byte(&mid_rad_time[mid_pos]) * 60)) { //если время пришло, усредняем значение
+              rad_mid = rad_mid_buff * ((float)GEIGER_TIME / (pgm_read_byte(&mid_rad_time[mid_pos]) * 60)); //усредняем фон, добавляем в расчет предыдущее усреденение
               rad_mid_buff = 0; //сбрасываем буфер усреднения
               tmr_mid = 0; //сбрасываем таймер усреднения
               first_mid = 1; //устанавливаем флаг запрета первичного посекундного усреднения
@@ -802,13 +804,13 @@ void data_convert(void) //преобразование данных
 
       case TIME_FACT_15: //разностный замер
         switch (measur) { //выбираем режим замера
-          case 1: if (time_switch < (diff_measuring[pos_measur] * 60)) time_switch ++; //прибавляем секунду
+          case 1: if (time_switch < (pgm_read_byte(&diff_measuring[measur_pos]) * 60)) time_switch ++; //прибавляем секунду
             else next_measur = 1; //иначе время вышло
             if (!next_measur) first_froze += rad_buff[0]; //если идет замер, заполняем буфер первого замера
             rad_buff[1] = rad_buff[0]; //смещаем 0-й элемент в 1-й для дальнейшей работы с ним
             rad_buff[0] = 0; //сбрасывает счетчик частиц
             break;
-          case 2: if (time_switch < (diff_measuring[pos_measur] * 60)) time_switch ++; //прибавляем секунду
+          case 2: if (time_switch < (pgm_read_byte(&diff_measuring[measur_pos]) * 60)) time_switch ++; //прибавляем секунду
             else next_measur = 1; //иначе время вышло
             if (!next_measur) second_froze += rad_buff[0]; //если идет замер, заполняем буфер второго замера
             rad_buff[1] = rad_buff[0]; //смещаем 0-й элемент в 1-й для дальнейшей работы с ним
@@ -1191,8 +1193,8 @@ void measur_menu(void) //режим замера
 
       switch (measur) {
         case 0: //результат
-          if (first_froze > second_froze) result = (first_froze - second_froze) / ((60.0 / GEIGER_TIME) * diff_measuring[pos_measur]); //рассчитываем результат замера
-          else result = (second_froze - first_froze) / ((60.0 / GEIGER_TIME) * diff_measuring[pos_measur]); //рассчитываем результат замера
+          if (first_froze > second_froze) result = (first_froze - second_froze) / ((60.0 / GEIGER_TIME) * pgm_read_byte(&diff_measuring[measur_pos])); //рассчитываем результат замера
+          else result = (second_froze - first_froze) / ((60.0 / GEIGER_TIME) * pgm_read_byte(&diff_measuring[measur_pos])); //рассчитываем результат замера
 
           _init_rads_unit(1, result, 1, 4, 1, 8, 0, 54, 16); //результат
 
@@ -1244,17 +1246,17 @@ void measur_menu(void) //режим замера
       if (measur) { //если идет замер
         setFont(RusFont); //установка шрифта
         print("bvg", 66, 16);          //строка 1 имп
-        printNumI(diff_measuring[pos_measur], 50, 40, 2, 32); //минут всего
+        printNumI(pgm_read_byte(&diff_measuring[measur_pos]), 50, 40, 2, 32); //минут всего
         print("vby", RIGHT, 40);            //строка 1 мин
 #if (TYPE_CHAR_FILL > 44)
-        printNumI(((diff_measuring[pos_measur] * 60 - time_switch) / 60), 0, 40, 2, TYPE_CHAR_FILL); //минут
+        printNumI(((pgm_read_byte(&diff_measuring[measur_pos]) * 60 - time_switch) / 60), 0, 40, 2, TYPE_CHAR_FILL); //минут
 #else
-        printNumI(((diff_measuring[pos_measur] * 60 - time_switch) / 60), 0, 40, 2, 32); //минут
+        printNumI(((pgm_read_byte(&diff_measuring[measur_pos]) * 60 - time_switch) / 60), 0, 40, 2, 32); //минут
 #endif
         print("&", 12, 40);            //строка 2
-        printNumI((diff_measuring[pos_measur] * 60 - time_switch) % 60, 18, 40, 2, 48); //секунд
+        printNumI((pgm_read_byte(&diff_measuring[measur_pos]) * 60 - time_switch) % 60, 18, 40, 2, 48); //секунд
 
-        _screen_line(0, map(time_switch, 0, diff_measuring[pos_measur] * 60, 5, 82), 1, 1, 32); //шкала времени до сохранения дозы
+        _screen_line(0, map(time_switch, 0, pgm_read_byte(&diff_measuring[measur_pos]) * 60, 5, 82), 1, 1, 32); //шкала времени до сохранения дозы
       }
     }
     //+++++++++++++++++++++  опрос кнопок  +++++++++++++++++++++++++++
@@ -1581,13 +1583,13 @@ void graf_update(void) //обновление графика
 {
   static uint16_t cnt; //счетчик тиков графика
 
-  if (++cnt >= GRAF_TIME) { //расчет показаний в зависимости от фона
+  if (++cnt >= GRAF_TIME) { //расчет показаний
     uint16_t graf_max = 0;
     uint32_t temp_buf = 0; //временный буфер расчета имп
 
 #if TYPE_GRAF_MOVE //слева-направо
     if (!serch_disable) {
-      if (graf_time_now < 76) graf_time_now++;
+      if (graf_time_now < SEARCH_BUF_SCORE) graf_time_now++;
 
       for (uint8_t i = 75; i > 0; i--) {
         graf_buff[i] = graf_buff[i - 1]; //сдвигаем массив
@@ -1604,13 +1606,13 @@ void graf_update(void) //обновление графика
 
       for (uint8_t i = 0; i < graf_time_now; i++) temp_buf += graf_buff[i]; //сдвигаем массив
       temp_buf = temp_buf / graf_time_now;
-      rad_imp = temp_buf * (1000.00 / GRAF_TIME_MS); //персчет импульсов в сек.
+      rad_imp = temp_buf * (1000.00 / pgm_read_word(&graf_time[graf_pos])); //персчет импульсов в сек.
       rad_imp_m = rad_imp * 60; //персчет импульсов в мин.
-      rad_imp_cm2 = rad_imp_m / GRAF_GEIGER_AREA; //считаем частиц/см2*мин
+      rad_imp_cm2 = rad_imp_m / SEARCH_GEIGER_AREA; //считаем частиц/см2*мин
     }
 #else //справа-налево
     if (!serch_disable) {
-      if (graf_time_now < 76) graf_time_now++;
+      if (graf_time_now < SEARCH_BUF_SCORE) graf_time_now++;
 
       for (uint8_t i = 0; i < 75; i++) {
         graf_buff[i] = graf_buff[i + 1]; //сдвигаем массив
@@ -1627,9 +1629,9 @@ void graf_update(void) //обновление графика
 
       for (uint8_t i = 0; i < graf_time_now; i++) temp_buf += graf_buff[i]; //сдвигаем массив
       temp_buf = temp_buf / graf_time_now;
-      rad_imp = temp_buf * (1000.00 / GRAF_TIME_MS); //персчет импульсов в сек.
+      rad_imp = temp_buf * (1000.00 / pgm_read_word(&graf_time[graf_pos])); //персчет импульсов в сек.
       rad_imp_m = rad_imp * 60; //персчет импульсов в мин.
-      rad_imp_cm2 = rad_imp_m / GRAF_GEIGER_AREA; //считаем частиц/см2*мин
+      rad_imp_cm2 = rad_imp_m / SEARCH_GEIGER_AREA; //считаем частиц/см2*мин
     }
 #endif
     cnt = 0; //сброс
@@ -1666,9 +1668,9 @@ void graf_init(void) //инициализация графика
       static uint16_t n;
       static uint16_t f;
 
-      if (rad_imp > GRAF_IND_MAX) n = GRAF_IND_MAX; //устанавливаем точки максимумов
+      if (rad_imp > SEARCH_IND_MAX) n = SEARCH_IND_MAX; //устанавливаем точки максимумов
       else n = rad_imp;
-      n = map(n, 0, GRAF_IND_MAX, 2, 54); //корректируем под коэфициент
+      n = map(n, 0, SEARCH_IND_MAX, 2, 54); //корректируем под коэфициент
       if (n < f) f--; //добавляем плавности при уменьшении
       else f = n; //если увеличелось, отображаем сразу
 
@@ -1991,73 +1993,80 @@ void _setings_item_switch(boolean set, boolean inv, uint8_t num, uint8_t pos) //
       }
       break;
 
-    case 6: //Разн.зам
-      switch (set) {
-        case 0: print("Hfpy.pfv&", LEFT, pos_row); break; //Разн.зам:
-        case 1: printNumI(diff_measuring[pos_measur], RIGHT, pos_row); break;
-      }
-      break;
-
-    case 7: //Средн.зам
-      switch (set) {
-        case 0: print("Chtly.pfv&", LEFT, pos_row); break; //Средн.зам:
-        case 1: printNumI(mid_rad_time[mid_level], RIGHT, pos_row); break;
-      }
-      break;
-
-    case 8: //Сигма
-      switch (set) {
-        case 0: print("Cbuvf&", LEFT, pos_row); break; //Сигма:
-        case 1: printNumI(sigma_pos + 1, RIGHT, pos_row); break;
-      }
-      break;
-
-    case 9: //Ед.измер
-      switch (set) {
-        case 0: print("Tl.bpvth&", LEFT, pos_row); break; //Ед.измер:
-        case 1: if (!rad_mode) print("vrH", RIGHT, pos_row); else print("vrPd", RIGHT, pos_row); break;
-      }
-      break;
-
-    case 10: //Тревога Ф
+    case 6: //Тревога Ф
       switch (set) {
         case 0: print("Nhtdjuf A&", LEFT, pos_row); break; //Тревога Ф:
         case 1: if (!alarm_back) print("DSRK", RIGHT, pos_row); else if (alarm_back == 1) print("PDER", RIGHT, pos_row); else if (alarm_back == 2) print("DB<H", RIGHT, pos_row); else print("D+PD", RIGHT, pos_row); break;
       }
       break;
 
-    case 11: //Порог Ф1
+    case 7: //Порог Ф1
       switch (set) {
         case 0: print("Gjhju A1&", LEFT, pos_row); break; //Порог Ф1:
         case 1: printNumI(warn_level_back, RIGHT, pos_row); break;
       }
       break;
 
-    case 12: //Порог Ф2
+    case 8: //Порог Ф2
       switch (set) {
         case 0: print("Gjhju A2&", LEFT, pos_row); break; //Порог Ф2:
         case 1: printNumI(alarm_level_back, RIGHT, pos_row); break;
       }
       break;
 
-    case 13: //Тревога Д
+    case 9: //Тревога Д
       switch (set) {
         case 0: print("Nhtdjuf L&", LEFT, pos_row); break; //Тревога Д:
         case 1: if (!alarm_dose) print("DSRK", RIGHT, pos_row); else if (alarm_dose == 1) print("PDER", RIGHT, pos_row); else if (alarm_dose == 2) print("DB<H", RIGHT, pos_row); else print("D+PD", RIGHT, pos_row); break;
       }
       break;
 
-    case 14: //Порог Д1
+    case 10: //Порог Д1
       switch (set) {
         case 0: print("Gjhju L1&", LEFT, pos_row); break; //Порог Д1:
         case 1: printNumI(warn_level_dose, RIGHT, pos_row); break;
       }
       break;
 
-    case 15: //Порог Д2
+    case 11: //Порог Д2
       switch (set) {
         case 0: print("Gjhju L2&", LEFT, pos_row); break; //Порог Д2:
         case 1: printNumI(alarm_level_dose, RIGHT, pos_row); break;
+      }
+      break;
+
+    case 12: //Разн.зам
+      switch (set) {
+        case 0: print("Hfpy.pfv&", LEFT, pos_row); break; //Разн.зам:
+        case 1: printNumI(pgm_read_byte(&diff_measuring[measur_pos]), RIGHT, pos_row); break;
+      }
+      break;
+
+    case 13: //Средн.зам
+      switch (set) {
+        case 0: print("Chtly.pfv&", LEFT, pos_row); break; //Средн.зам:
+        case 1: printNumI(pgm_read_byte(&mid_rad_time[mid_pos]), RIGHT, pos_row); break;
+      }
+      break;
+
+    case 14: //Сигма
+      switch (set) {
+        case 0: print("Cbuvf&", LEFT, pos_row); break; //Сигма:
+        case 1: printNumI(sigma_pos + 1, RIGHT, pos_row); break;
+      }
+      break;
+
+    case 15: //График
+      switch (set) {
+        case 0: print("Uhfabr&", LEFT, pos_row); break; //График:
+        case 1: printNumI(pgm_read_word(&graf_time[graf_pos]), RIGHT, pos_row); break;
+      }
+      break;
+
+    case 16: //Ед.измер
+      switch (set) {
+        case 0: print("Tl.bpvth&", LEFT, pos_row); break; //Ед.измер:
+        case 1: if (!rad_mode) print("vrH", RIGHT, pos_row); else print("vrPd", RIGHT, pos_row); break;
       }
       break;
   }
@@ -2093,17 +2102,20 @@ void _setings_data_up(uint8_t pos) //прибавление данных
         case 1: buzz_switch = 2; break;
       }
       break;
+
     case 5: knock_disable = 0; break; //Зв.кнопок
-    case 6: if (pos_measur < 9) pos_measur++; break; //Разн.зам
-    case 7: if (mid_level < 9) mid_level++; else mid_level = 0; break; //Средн.зам
-    case 8: if (sigma_pos < 2) sigma_pos++; else sigma_pos = 0; break; //Сигма
-    case 9: rad_mode = 1; break; //Ед.измер
-    case 10: if (alarm_back < 3) alarm_back++; break; //Тревога Ф
-    case 11: if (warn_level_back < 300) warn_level_back += 5; else warn_level_back = 30; break; //Порог Ф1
-    case 12: if (alarm_level_back < 500) alarm_level_back += 10; else if (alarm_level_back < 1000) alarm_level_back += 50; else if (alarm_level_back < 65000) alarm_level_back += 100; else alarm_level_back = 300; break; //Порог Ф2
-    case 13: if (alarm_dose < 3) alarm_dose++; break; //Тревога Д
-    case 14: if (warn_level_dose < 300) warn_level_dose += 5; else warn_level_dose = 10; break; //Порог Д1
-    case 15: if (alarm_level_dose < 500) alarm_level_dose += 10; else if (alarm_level_dose < 1000) alarm_level_dose += 50; else if (alarm_level_dose < 65000) alarm_level_dose += 100; else alarm_level_dose = 300; break; //Порог Д2
+    case 6: if (alarm_back < 3) alarm_back++; break; //Тревога Ф
+    case 7: if (warn_level_back < 300) warn_level_back += 5; else warn_level_back = 30; break; //Порог Ф1
+    case 8: if (alarm_level_back < 500) alarm_level_back += 10; else if (alarm_level_back < 1000) alarm_level_back += 50; else if (alarm_level_back < 65000) alarm_level_back += 100; else alarm_level_back = 300; break; //Порог Ф2
+    case 9: if (alarm_dose < 3) alarm_dose++; break; //Тревога Д
+    case 10: if (warn_level_dose < 300) warn_level_dose += 5; else warn_level_dose = 10; break; //Порог Д1
+    case 11: if (alarm_level_dose < 500) alarm_level_dose += 10; else if (alarm_level_dose < 1000) alarm_level_dose += 50; else if (alarm_level_dose < 65000) alarm_level_dose += 100; else alarm_level_dose = 300; break; //Порог Д2
+
+    case 12: if (measur_pos < 9) measur_pos++; break; //Разн.зам
+    case 13: if (mid_pos < 9) mid_pos++; else mid_pos = 0; break; //Средн.зам
+    case 14: if (sigma_pos < 2) sigma_pos++; else sigma_pos = 0; break; //Сигма
+    case 15: if (graf_pos < 7) graf_pos++; else graf_pos = 0; break; //График
+    case 16: rad_mode = 1; break; //Ед.измер
   }
 }
 //------------------------------------Убавление данных------------------------------------------------------
@@ -2129,16 +2141,19 @@ void _setings_data_down(uint8_t pos) //убавление данных
       }
       break;
     case 5: knock_disable = 1; break; //Зв.кнопок
-    case 6: if (pos_measur > 0) pos_measur--;  break; //Разн.зам
-    case 7: if (mid_level > 0) mid_level--; else mid_level = 9; break; //Средн.зам
-    case 8: if (sigma_pos > 0) sigma_pos--; else sigma_pos = 2; break; //Сигма
-    case 9: rad_mode = 0; break; //Ед.измер
-    case 10: if (alarm_back > 0) alarm_back--; break; //Тревога Ф
-    case 11: if (warn_level_back > 30) warn_level_back -= 5; else warn_level_back = 300; break; //Порог Ф1
-    case 12: if (alarm_level_back > 1000) alarm_level_back -= 100; else if (alarm_level_back > 500) alarm_level_back -= 50; else if (alarm_level_back > 300) alarm_level_back -= 10; else alarm_level_back = 65000; break; //Порог Ф2
-    case 13: if (alarm_dose > 0) alarm_dose--; break; //Тревога Д
-    case 14: if (warn_level_dose > 10) warn_level_dose -= 5; else warn_level_dose = 300; break; //Порог Д1
-    case 15: if (alarm_level_dose > 1000) alarm_level_dose -= 100; else if (alarm_level_dose > 500) alarm_level_dose -= 50; else if (alarm_level_dose > 300) alarm_level_dose -= 10; else alarm_level_dose = 65000; break; //Порог Д2
+
+    case 6: if (alarm_back > 0) alarm_back--; break; //Тревога Ф
+    case 7: if (warn_level_back > 30) warn_level_back -= 5; else warn_level_back = 300; break; //Порог Ф1
+    case 8: if (alarm_level_back > 1000) alarm_level_back -= 100; else if (alarm_level_back > 500) alarm_level_back -= 50; else if (alarm_level_back > 300) alarm_level_back -= 10; else alarm_level_back = 65000; break; //Порог Ф2
+    case 9: if (alarm_dose > 0) alarm_dose--; break; //Тревога Д
+    case 10: if (warn_level_dose > 10) warn_level_dose -= 5; else warn_level_dose = 300; break; //Порог Д1
+    case 11: if (alarm_level_dose > 1000) alarm_level_dose -= 100; else if (alarm_level_dose > 500) alarm_level_dose -= 50; else if (alarm_level_dose > 300) alarm_level_dose -= 10; else alarm_level_dose = 65000; break; //Порог Д2
+
+    case 12: if (measur_pos > 0) measur_pos--;  break; //Разн.зам
+    case 13: if (mid_pos > 0) mid_pos--; else mid_pos = 9; break; //Средн.зам
+    case 14: if (sigma_pos > 0) sigma_pos--; else sigma_pos = 2; break; //Сигма
+    case 15: if (graf_pos > 0) graf_pos--; else graf_pos = 7; break; //График
+    case 16: rad_mode = 0; break; //Ед.измер
   }
 }
 //------------------------------------Настройки------------------------------------------------------
@@ -2146,7 +2161,7 @@ void setings(void) //настройки
 {
   uint8_t n = 0; //позиция
   uint8_t c = 0; //курсор
-  uint8_t set = 0; //разрешение на настройку
+  boolean set = 0; //разрешение на настройку
   uint8_t time_out = 0; //таймер автовыхода
   scr = 0; //разрешаем обновления экрана
 
@@ -2188,7 +2203,7 @@ void setings(void) //настройки
       case 2: //Down key //вниз
         switch (set) {
           case 0:
-            if (n < 15) { //изменяем позицию
+            if (n < 16) { //изменяем позицию
               n++;
               if (c < 4) c++; //изменяем положение курсора
             }
@@ -2211,7 +2226,7 @@ void setings(void) //настройки
               if (c > 0) c--; //изменяем положение курсора
             }
             else { //иначе конец списка
-              n = 15;
+              n = 16;
               c = 4;
             }
             break;
@@ -2254,7 +2269,7 @@ void _menu_item_switch(boolean inv, uint8_t num, uint8_t pos) //отрисовк
     case 2: print("Ht;bv gjbcrf", CENTER, pos_row); break; //Режим поиска
     case 3: print("Pfvth ,tnf", CENTER, pos_row); break; //Замер бета
     case 4: print("Yfcnhjqrb", CENTER, pos_row); break; //Настройки
-    case 5: print("Gfhfvtnhs", CENTER, pos_row); break; //Параметры
+    case 5: print("Gfhfvtnhs", CENTER, pos_row); //Параметры
     case 6: print("Dsrk/xtybt", CENTER, pos_row); break; //Выключение
 
       break;
@@ -2399,7 +2414,7 @@ void error_messege(void) //сообщение об ошибке
       case 1:
         print("Rfkb,hjdrf", CENTER, 16); //Калибровка
         print("nfqvthf", CENTER, 24); //таймера
-         print("yt elfkfcm!", CENTER, 32); //не удалась!
+        print("yt elfkfcm!", CENTER, 32); //не удалась!
         break;
 
       case 2:
@@ -2475,18 +2490,19 @@ void setings_read(void) //чтение настроек
 {
   scr_mode = eeprom_read_byte(40);
   contrast = eeprom_read_byte(41);
-  mid_level = eeprom_read_byte(42);
+  mid_pos = eeprom_read_byte(42);
   alarm_back = eeprom_read_byte(43);
   buzz_read();
   knock_disable = eeprom_read_byte(45);
-  pos_measur = eeprom_read_byte(46);
+  measur_pos = eeprom_read_byte(46);
   alarm_dose = eeprom_read_byte(47);
   sleep_switch = eeprom_read_byte(48);
   TIME_BRIGHT = eeprom_read_byte(49);
   TIME_SLEEP = eeprom_read_byte(50);
   rad_mode = eeprom_read_byte(57);
   rad_flash_read();
-  sigma_pos = eeprom_read_word(60);
+  sigma_pos = eeprom_read_byte(60);
+  graf_pos = eeprom_read_byte(61);
   warn_level_back = eeprom_read_word(62);
   alarm_level_back = eeprom_read_word(64);
   warn_level_dose = eeprom_read_word(66);
@@ -2498,18 +2514,19 @@ void setings_update(void) //обновление настроек
 {
   scr_mode_update();
   eeprom_update_byte(41, contrast);
-  eeprom_update_byte(42, mid_level);
+  eeprom_update_byte(42, mid_pos);
   eeprom_update_byte(43, alarm_back);
   eeprom_update_byte(44, buzz_switch);
   eeprom_update_byte(45, knock_disable);
-  eeprom_update_byte(46, pos_measur);
+  eeprom_update_byte(46, measur_pos);
   eeprom_update_byte(47, alarm_dose);
   eeprom_update_byte(48, sleep_switch);
   eeprom_update_byte(49, TIME_BRIGHT);
   eeprom_update_byte(50, TIME_SLEEP);
   eeprom_update_byte(57, rad_mode);
   eeprom_update_byte(59, rad_flash);
-  eeprom_update_word(60, sigma_pos);
+  eeprom_update_byte(60, sigma_pos);
+  eeprom_update_byte(61, graf_pos);
   eeprom_update_word(62, warn_level_back);
   eeprom_update_word(64, alarm_level_back);
   eeprom_update_word(66, warn_level_dose);
@@ -2677,11 +2694,11 @@ void setings_save(boolean sw) //сохранить настройки
     case 0:
       if (
         contrast == eeprom_read_byte(41) &&
-        mid_level == eeprom_read_byte(42) &&
+        mid_pos == eeprom_read_byte(42) &&
         alarm_back == eeprom_read_byte(43) &&
         buzz_switch == eeprom_read_byte(44) &&
         knock_disable == eeprom_read_byte(45) &&
-        pos_measur == eeprom_read_byte(46) &&
+        measur_pos == eeprom_read_byte(46) &&
         alarm_dose == eeprom_read_byte(47) &&
         sleep_switch == eeprom_read_byte(48) &&
         TIME_BRIGHT == eeprom_read_byte(49) &&
@@ -2689,6 +2706,7 @@ void setings_save(boolean sw) //сохранить настройки
         rad_mode == eeprom_read_byte(57) &&
         rad_flash == eeprom_read_byte(59) &&
         sigma_pos == eeprom_read_word(60) &&
+        graf_pos == eeprom_read_byte(61) &&
         warn_level_back == eeprom_read_word(62) &&
         alarm_level_back == eeprom_read_word(64) &&
         warn_level_dose == eeprom_read_word(66) &&
