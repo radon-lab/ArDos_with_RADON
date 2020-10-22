@@ -110,8 +110,8 @@
   3.1.3 16.10.20 - мелкие исправления, добавлен подрежим экрана "фон" - "бета и гамма", добавленны доверительные интервалы(сигма) и точность в %.
   3.1.4 17.10.20 - в режиме "поиск" - удален пункт "всего", добавлен - "частиц/см2*мин".
   3.1.5 21.10.20 - график фона теперь не стирается при автосбросе, единицы в режиме поиск теперь имеют разрешение 2 знака после запятой до значения в 100 единиц, счет среднего фона теперь идет от накопления общего количества частиц.
-  3.1.6 22.10.20 - файл "SETUP" удалён, все настройки перенесены в "config", в настройки добавлен пункт "график", позволяет настроить время обновления графика в режиме "поиск", настроить площадь датчика можно в "config" пункт "SEARCH_GEIGER_AREA",
-                   настроить количество ячеек для обработки единиц в режиме "поиск" можно в "config" параметр "SEARCH_BUF_SCORE".
+  3.1.6 22.10.20 - файл "SETUP" удалён, все настройки перенесены в "config", в настройки добавлен пункт "график", позволяет настроить время обновления графика в режиме "поиск", настроить пресеты можно в "config" массив "graf_time",  
+                   настроить площадь датчика можно в "config" пункт "SEARCH_GEIGER_AREA", настроить количество ячеек для обработки единиц в режиме "поиск" можно в "config" параметр "SEARCH_BUF_SCORE".
 
   Внимание!!! При выключении пункта "СОН" в меню настроек влечет увеличением энергопотребления, но тем самым увеличивается производительность устройства.
 
@@ -220,8 +220,6 @@
 //-------------Для разработчиков-------------
 #define ALARM_AUTO_GISTERESIS  (1.00 - (ALARM_AUTO_GIST / 100.00)) //инвертируем проценты
 #define IMP_PWR_GISTERESIS  (1.00 - (IMP_PWR_GIST / 100.00)) //инвертируем проценты
-
-#define GRAF_TIME (pgm_read_word(&graf_time[graf_pos]) / (wdt_period / 100.0)) //максимальное время обновления графика
 
 #define MASS_TIME_FACT (MASS_TIME - 1) //фактический номер элемента массивов секунд
 #define MASS_BACK_FACT (MASS_BACK - 1) //фактический номер элемента массивов фона
@@ -1582,15 +1580,16 @@ void stat_bat(void) //заряд батареи
 void graf_update(void) //обновление графика
 {
   static uint16_t cnt; //счетчик тиков графика
+  static uint8_t now_pos; //переключатель динамического изменения времени
 
-  if (++cnt >= GRAF_TIME) { //расчет показаний
+  if (++cnt >= (graf_pos != 8) ? pgm_read_word(&graf_time[graf_pos]) : pgm_read_word(&graf_time[now_pos]) / (wdt_period / 100.0)) { //расчет показаний
     uint16_t graf_max = 0;
     uint32_t temp_buf = 0; //временный буфер расчета имп
 
+    if (graf_time_now < SEARCH_BUF_SCORE) graf_time_now++;
+
 #if TYPE_GRAF_MOVE //слева-направо
     if (!serch_disable) {
-      if (graf_time_now < SEARCH_BUF_SCORE) graf_time_now++;
-
       for (uint8_t i = 75; i > 0; i--) {
         graf_buff[i] = graf_buff[i - 1]; //сдвигаем массив
         if (graf_buff[i] > graf_max) graf_max = graf_buff[i];
@@ -1601,19 +1600,9 @@ void graf_update(void) //обновление графика
       rad_buff[0] = 0; //сбрасываем счетчик импульсов
 
       if (graf_buff[0] > graf_max) graf_max = graf_buff[0];
-      if (graf_max > 22) maxLevel = graf_max * GRAF_COEF_MAX; //если текущий замер больше максимума
-      else maxLevel = 22;
-
-      for (uint8_t i = 0; i < graf_time_now; i++) temp_buf += graf_buff[i]; //сдвигаем массив
-      temp_buf = temp_buf / graf_time_now;
-      rad_imp = temp_buf * (1000.00 / pgm_read_word(&graf_time[graf_pos])); //персчет импульсов в сек.
-      rad_imp_m = rad_imp * 60; //персчет импульсов в мин.
-      rad_imp_cm2 = rad_imp_m / SEARCH_GEIGER_AREA; //считаем частиц/см2*мин
     }
 #else //справа-налево
     if (!serch_disable) {
-      if (graf_time_now < SEARCH_BUF_SCORE) graf_time_now++;
-
       for (uint8_t i = 0; i < 75; i++) {
         graf_buff[i] = graf_buff[i + 1]; //сдвигаем массив
         if (graf_buff[i] > graf_max) graf_max = graf_buff[i];
@@ -1624,16 +1613,20 @@ void graf_update(void) //обновление графика
       rad_buff[0] = 0; //сбрасываем счетчик импульсов
 
       if (graf_buff[75] > graf_max) graf_max = graf_buff[75];
-      if (graf_max > 22) maxLevel = graf_max * GRAF_COEF_MAX; //если текущий замер больше максимума
-      else maxLevel = 22;
-
-      for (uint8_t i = 0; i < graf_time_now; i++) temp_buf += graf_buff[i]; //сдвигаем массив
-      temp_buf = temp_buf / graf_time_now;
-      rad_imp = temp_buf * (1000.00 / pgm_read_word(&graf_time[graf_pos])); //персчет импульсов в сек.
-      rad_imp_m = rad_imp * 60; //персчет импульсов в мин.
-      rad_imp_cm2 = rad_imp_m / SEARCH_GEIGER_AREA; //считаем частиц/см2*мин
     }
 #endif
+
+    if (graf_max > 22) maxLevel = graf_max * GRAF_COEF_MAX; //если текущий замер больше максимума
+    else maxLevel = 22;
+
+    for (uint8_t i = 0; i < graf_time_now; i++) temp_buf += graf_buff[i]; //сдвигаем массив
+    temp_buf = temp_buf / graf_time_now;
+    rad_imp = temp_buf * (1000.00 / (graf_pos != 8) ? pgm_read_word(&graf_time[graf_pos]) : pgm_read_word(&graf_time[now_pos])); //персчет импульсов в сек.
+    rad_imp_m = rad_imp * 60; //персчет импульсов в мин.
+    rad_imp_cm2 = rad_imp_m / SEARCH_GEIGER_AREA; //считаем частиц/см2*мин
+
+    if (graf_pos == 8) now_pos = map(constrain(rad_imp, 0, SEARCH_IND_MAX), 0, SEARCH_IND_MAX, 0, 7);
+
     cnt = 0; //сброс
     graf = 0; //разрешаем обновление графика
   }
@@ -2059,7 +2052,7 @@ void _setings_item_switch(boolean set, boolean inv, uint8_t num, uint8_t pos) //
     case 15: //График
       switch (set) {
         case 0: print("Uhfabr&", LEFT, pos_row); break; //График:
-        case 1: printNumI(pgm_read_word(&graf_time[graf_pos]), RIGHT, pos_row); break;
+        case 1: if (graf_pos != 8) printNumI(pgm_read_word(&graf_time[graf_pos]), RIGHT, pos_row); else print("Fdnj", RIGHT, pos_row); break;
       }
       break;
 
@@ -2114,7 +2107,7 @@ void _setings_data_up(uint8_t pos) //прибавление данных
     case 12: if (measur_pos < 9) measur_pos++; break; //Разн.зам
     case 13: if (mid_pos < 9) mid_pos++; else mid_pos = 0; break; //Средн.зам
     case 14: if (sigma_pos < 2) sigma_pos++; else sigma_pos = 0; break; //Сигма
-    case 15: if (graf_pos < 7) graf_pos++; else graf_pos = 0; break; //График
+    case 15: if (graf_pos < 8) graf_pos++; else graf_pos = 0; break; //График
     case 16: rad_mode = 1; break; //Ед.измер
   }
 }
@@ -2152,7 +2145,7 @@ void _setings_data_down(uint8_t pos) //убавление данных
     case 12: if (measur_pos > 0) measur_pos--;  break; //Разн.зам
     case 13: if (mid_pos > 0) mid_pos--; else mid_pos = 9; break; //Средн.зам
     case 14: if (sigma_pos > 0) sigma_pos--; else sigma_pos = 2; break; //Сигма
-    case 15: if (graf_pos > 0) graf_pos--; else graf_pos = 7; break; //График
+    case 15: if (graf_pos > 0) graf_pos--; else graf_pos = 8; break; //График
     case 16: rad_mode = 0; break; //Ед.измер
   }
 }
@@ -2269,7 +2262,7 @@ void _menu_item_switch(boolean inv, uint8_t num, uint8_t pos) //отрисовк
     case 2: print("Ht;bv gjbcrf", CENTER, pos_row); break; //Режим поиска
     case 3: print("Pfvth ,tnf", CENTER, pos_row); break; //Замер бета
     case 4: print("Yfcnhjqrb", CENTER, pos_row); break; //Настройки
-    case 5: print("Gfhfvtnhs", CENTER, pos_row); //Параметры
+    case 5: print("Gfhfvtnhs", CENTER, pos_row); break; //Параметры
     case 6: print("Dsrk/xtybt", CENTER, pos_row); break; //Выключение
 
       break;
