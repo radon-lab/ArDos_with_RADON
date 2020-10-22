@@ -2122,12 +2122,7 @@ void _setings_data_down(uint8_t pos) //убавление данных
       }
       else if (sleep_switch == 2) sleep_switch = 1; break;
     case 1:
-      if (TIME_BRIGHT > 5) TIME_BRIGHT -= 5;
-      else {
-        sleep_switch = 0;
-        LIGHT_OFF;
-      }
-      break; //Подсветка
+      if (TIME_BRIGHT > 5) TIME_BRIGHT -= 5; else sleep_switch = 0; break; //Подсветка
     case 2: if (contrast > 0) contrast--; setContrast(contrast); break; //Контраст
     case 3: switch (rad_flash) { //Вспышки
         case 1: rad_flash = 0; break;
