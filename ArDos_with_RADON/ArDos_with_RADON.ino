@@ -110,7 +110,7 @@
   3.1.3 16.10.20 - мелкие исправления, добавлен подрежим экрана "фон" - "бета и гамма", добавленны доверительные интервалы(сигма) и точность в %.
   3.1.4 17.10.20 - в режиме "поиск" - удален пункт "всего", добавлен - "частиц/см2*мин".
   3.1.5 21.10.20 - график фона теперь не стирается при автосбросе, единицы в режиме поиск теперь имеют разрешение 2 знака после запятой до значения в 100 единиц, счет среднего фона теперь идет от накопления общего количества частиц.
-  3.1.6 22.10.20 - файл "SETUP" удалён, все настройки перенесены в "config", в настройки добавлен пункт "график", позволяет настроить время обновления графика в режиме "поиск", настроить пресеты можно в "config" массив "graf_time",
+  3.1.6 22.10.20 - файл "SETUP" удалён, все настройки перенесены в "config", в настройки добавлен пункт "график", позволяет настроить время обновления графика в режиме "поиск", настроить пресеты можно в "config" массив "search_time",
                    настроить площадь датчика можно в "config" пункт "SEARCH_GEIGER_AREA", настроить количество ячеек для обработки единиц в режиме "поиск" можно в "config" параметр "SEARCH_BUF_SCORE".
 
   Внимание!!! При выключении пункта "СОН" в меню настроек влечет увеличением энергопотребления, но тем самым увеличивается производительность устройства.
@@ -229,7 +229,7 @@
 #define MAX_GEIGER_TIME (BUFF_LENGTHY - 1) //максимальное время счета
 
 volatile uint16_t rad_buff[BUFF_LENGTHY]; //массив секундных замеров для расчета фона
-uint16_t graf_buff[76]; //буфер графика
+uint16_t search_buff[76]; //буфер поиска
 uint32_t rad_mid_buff; //буфер среднего замера
 
 uint16_t wdt_period; //период тика wdt
@@ -285,7 +285,7 @@ uint32_t rad_dose_old; //предыдущее значение дозы
 uint64_t time_micros = 0; //счетчик реального времени
 uint32_t time_sec = 0; //секунды
 uint8_t geiger_time_now = 0; //текущий номер набранной секунды счета
-uint8_t graf_time_now = 0; //текущий номер набранной секунды графика
+uint8_t search_time_now = 0; //текущий номер набранной секунды графика
 
 boolean scr_mode = 0; //текущий режим(фон/доза)
 boolean dose_mode = 0; //режим отображения дозы(текущая/общая)
@@ -325,7 +325,7 @@ uint16_t warn_level_dose = 10; //указатель на уровень трев
 uint16_t alarm_level_dose = 300; //указатель на уровень тревоги 2 дозы в массиве
 
 uint8_t mid_pos = 0; //указатель на время замера среднего фона в массиве
-uint8_t graf_pos = 8; //указатель на время время обновления графика в массиве
+uint8_t search_pos = 8; //указатель на время время обновления графика в массиве
 uint8_t measur_pos = 0; //указатель на время разностного замера в массиве
 uint8_t rad_flash = 1; //индикация попадания частиц
 
@@ -604,7 +604,7 @@ void data_convert(void) //преобразование данных
 
     if (++time_wdt >= TIME_FACT_1) time_wdt = 0; //расчет времени один раз в секунду
 
-    if (serch) graf_update(); //обновляем график
+    if (serch) search_update(); //обновляем график
 
     if (!measur && !serch) {
       time_micros += wdt_period; //микросекунды * 10
@@ -1548,7 +1548,6 @@ void stat_bat(void) //заряд батареи
     bat_check(); //опрос батареи
   }
 
-  //--------------------------------------------------------------------------------------
   if (!low_bat_massege && bat_adc >= LOW_BAT_STAT) { //если флаг разрешения сообщения поднят и заряд ниже 3v, то выводим предупреждение
     low_bat_massege = 1; //запрещаем вывод сообщения
 
@@ -1576,63 +1575,65 @@ void stat_bat(void) //заряд батареи
     if (bat_adc >= LOW_BAT_POWER) power_down(); //выключение устройства
   }
 }
-//-------------------------Обновление графика----------------------------------------------------
-void graf_update(void) //обновление графика
+//-------------------------Обновление данных поиска----------------------------------------------------
+void search_update(void) //обновление данных поиска
 {
   static uint16_t cnt; //счетчик тиков графика
   static uint8_t now_pos; //переключатель динамического изменения времени
 
-  if (++cnt >= (graf_pos != 8) ? pgm_read_word(&graf_time[graf_pos]) : pgm_read_word(&graf_time[now_pos]) / (wdt_period / 100.0)) { //расчет показаний
+  if (++cnt >= now_pos) { //расчет показаний
     uint16_t graf_max = 0; //максимум графика
     uint32_t temp_buf = 0; //временный буфер расчета имп
 
-    if (graf_time_now < SEARCH_BUF_SCORE) graf_time_now++;
+    if (search_time_now < SEARCH_BUF_SCORE) search_time_now++;
 
 #if TYPE_GRAF_MOVE //слева-направо
     if (!serch_disable) {
       for (uint8_t i = 75; i > 0; i--) {
-        graf_buff[i] = graf_buff[i - 1]; //сдвигаем массив
-        if (graf_buff[i] > graf_max) graf_max = graf_buff[i];
+        search_buff[i] = search_buff[i - 1]; //сдвигаем массив
+        if (search_buff[i] > graf_max) graf_max = search_buff[i];
       }
 
-      graf_buff[0] = rad_buff[0]; //новое значение в последнюю ячейку
+      search_buff[0] = rad_buff[0]; //новое значение в последнюю ячейку
       rad_buff[1] = rad_buff[0]; //смещаем 0-й элемент в 1-й для дальнейшей работы с ним
       rad_buff[0] = 0; //сбрасываем счетчик импульсов
 
-      if (graf_buff[0] > graf_max) graf_max = graf_buff[0];
+      if (search_buff[0] > graf_max) graf_max = search_buff[0];
     }
 #else //справа-налево
     if (!serch_disable) {
       for (uint8_t i = 0; i < 75; i++) {
-        graf_buff[i] = graf_buff[i + 1]; //сдвигаем массив
-        if (graf_buff[i] > graf_max) graf_max = graf_buff[i];
+        search_buff[i] = search_buff[i + 1]; //сдвигаем массив
+        if (search_buff[i] > graf_max) graf_max = search_buff[i];
       }
 
-      graf_buff[75] = rad_buff[0]; //новое значение в последнюю ячейку
+      search_buff[75] = rad_buff[0]; //новое значение в последнюю ячейку
       rad_buff[1] = rad_buff[0]; //смещаем 0-й элемент в 1-й для дальнейшей работы с ним
       rad_buff[0] = 0; //сбрасываем счетчик импульсов
 
-      if (graf_buff[75] > graf_max) graf_max = graf_buff[75];
+      if (search_buff[75] > graf_max) graf_max = search_buff[75];
     }
 #endif
 
     if (graf_max > 22) maxLevel = graf_max * GRAF_COEF_MAX; //если текущий замер больше максимума
     else maxLevel = 22;
 
-    for (uint8_t i = 0; i < graf_time_now; i++) temp_buf += graf_buff[i]; //сдвигаем массив
-    temp_buf = temp_buf / graf_time_now;
-    rad_imp = temp_buf * (1000.00 / (graf_pos != 8) ? pgm_read_word(&graf_time[graf_pos]) : pgm_read_word(&graf_time[now_pos])); //персчет импульсов в сек.
+    uint16_t time_to_update = (search_pos != 8) ? pgm_read_word(&search_time[search_pos]) : pgm_read_word(&search_time[map(constrain(rad_imp, 0, SEARCH_IND_MAX), 0, SEARCH_IND_MAX, 7, 0)]);
+
+    for (uint8_t i = 0; i < search_time_now; i++) temp_buf += search_buff[i]; //сдвигаем массив
+    temp_buf = temp_buf / search_time_now;
+    rad_imp = temp_buf * (1000.00 / time_to_update); //персчет импульсов в сек.
     rad_imp_m = rad_imp * 60; //персчет импульсов в мин.
     rad_imp_cm2 = rad_imp_m / SEARCH_GEIGER_AREA; //считаем частиц/см2*мин
 
-    if (graf_pos == 8) now_pos = map(constrain(rad_imp, 0, SEARCH_IND_MAX), 0, SEARCH_IND_MAX, 7, 0);
+    now_pos = time_to_update / (wdt_period / 100.0);
 
     cnt = 0; //сброс
     graf = 0; //разрешаем обновление графика
   }
 }
-//-------------------------Инициализация графика-----------------------------------------
-void graf_init(void) //инициализация графика
+//-------------------------Инициализация режима поиск-----------------------------------------
+void search_menu(void) //инициализация режима поиск
 {
   uint8_t c = 0; //переключатель единиц графика
   serch = 1; //устанавливаем флаг поиска
@@ -1705,11 +1706,11 @@ void graf_init(void) //инициализация графика
 
 #if TYPE_GRAF_MOVE //слева-направо
         for (uint8_t i = 4; i < 80; i++) {
-          graf_lcd(map(graf_buff[i - 4], 0, maxLevel, 0, 22), i, 22, 3); //инициализируем график
+          graf_lcd(map(search_buff[i - 4], 0, maxLevel, 0, 22), i, 22, 3); //инициализируем график
         }
 #else //справа-налево
         for (uint8_t i = 79; i > 3; i--) {
-          graf_lcd(map(graf_buff[i - 4], 0, maxLevel, 0, 22), i, 22, 3); //инициализируем график
+          graf_lcd(map(search_buff[i - 4], 0, maxLevel, 0, 22), i, 22, 3); //инициализируем график
         }
 #endif
       }
@@ -1724,11 +1725,11 @@ void graf_init(void) //инициализация графика
         rad_imp = 0; //сбрасываем имп/с
         rad_imp_m = 0; //сбрасываем имп/м
         rad_imp_cm2 = 0; //сбрасываем счет импульсов
-        graf_time_now = 0; //сбрасываем время счета графика
+        search_time_now = 0; //сбрасываем время счета графика
         rad_buff[0] = 0; //сбрасываем буфер
         rad_buff[1] = 0; //сбрасываем буфер
         serch_disable = 0; //разрешаем обновление графика
-        for (uint8_t i = 0; i < 76; i++) graf_buff[i] = 0; //очищаем буфер графика
+        for (uint8_t i = 0; i < 76; i++) search_buff[i] = 0; //очищаем буфер графика
         scr = 0; //разрешаем обновления экрана
         break;
 
@@ -2007,10 +2008,10 @@ void _setings_item_switch(boolean set, boolean inv, uint8_t num, uint8_t pos) //
       }
       break;
 
-    case 9: //График
+    case 9: //Поиск
       switch (set) {
-        case 0: print("Uhfabr&", LEFT, pos_row); break; //График:
-        case 1: if (graf_pos != 8) printNumI(pgm_read_word(&graf_time[graf_pos]), RIGHT, pos_row); else print("FDNJ", RIGHT, pos_row); break;
+        case 0: print("Gjbcr&", LEFT, pos_row); break; //Поиск:
+        case 1: if (search_pos != 8) printNumI(pgm_read_word(&search_time[search_pos]), RIGHT, pos_row); else print("FDNJ", RIGHT, pos_row); break;
       }
       break;
 
@@ -2100,7 +2101,7 @@ void _setings_data_up(uint8_t pos) //прибавление данных
     case 6: if (measur_pos < 9) measur_pos++; break; //Разн.зам
     case 7: if (mid_pos < 9) mid_pos++; else mid_pos = 0; break; //Средн.зам
     case 8: if (sigma_pos < 2) sigma_pos++; else sigma_pos = 0; break; //Сигма
-    case 9: if (graf_pos < 8) graf_pos++; else graf_pos = 0; break; //График
+    case 9: if (search_pos < 8) search_pos++; else search_pos = 0; break; //Поиск
     case 10: rad_mode = 1; break; //Ед.измер
 
     case 11: if (alarm_back < 3) alarm_back++; break; //Тревога Ф
@@ -2139,7 +2140,7 @@ void _setings_data_down(uint8_t pos) //убавление данных
     case 6: if (measur_pos > 0) measur_pos--;  break; //Разн.зам
     case 7: if (mid_pos > 0) mid_pos--; else mid_pos = 9; break; //Средн.зам
     case 8: if (sigma_pos > 0) sigma_pos--; else sigma_pos = 2; break; //Сигма
-    case 9: if (graf_pos > 0) graf_pos--; else graf_pos = 8; break; //График
+    case 9: if (search_pos > 0) search_pos--; else search_pos = 8; break; //Поиск
     case 10: rad_mode = 0; break; //Ед.измер
 
     case 11: if (alarm_back > 0) alarm_back--; break; //Тревога Ф
@@ -2348,7 +2349,7 @@ void menu(void) //меню
             sleep_disable = 0; //разрешаем сон
             scr = 0; //разрешаем обновления экрана
             return;
-          case 2: graf_init(); break;
+          case 2: search_menu(); break;
           case 3: measur_menu(); break;
           case 4: setings(); break;
           case 5: parameters(); break;
@@ -2496,7 +2497,7 @@ void setings_read(void) //чтение настроек
   rad_mode = eeprom_read_byte(57);
   rad_flash_read();
   sigma_pos = eeprom_read_byte(60);
-  graf_pos = eeprom_read_byte(61);
+  search_pos = eeprom_read_byte(61);
   warn_level_back = eeprom_read_word(62);
   alarm_level_back = eeprom_read_word(64);
   warn_level_dose = eeprom_read_word(66);
@@ -2520,7 +2521,7 @@ void setings_update(void) //обновление настроек
   eeprom_update_byte(57, rad_mode);
   eeprom_update_byte(59, rad_flash);
   eeprom_update_byte(60, sigma_pos);
-  eeprom_update_byte(61, graf_pos);
+  eeprom_update_byte(61, search_pos);
   eeprom_update_word(62, warn_level_back);
   eeprom_update_word(64, alarm_level_back);
   eeprom_update_word(66, warn_level_dose);
@@ -2700,7 +2701,7 @@ void setings_save(boolean sw) //сохранить настройки
         rad_mode == eeprom_read_byte(57) &&
         rad_flash == eeprom_read_byte(59) &&
         sigma_pos == eeprom_read_byte(60) &&
-        graf_pos == eeprom_read_byte(61) &&
+        search_pos == eeprom_read_byte(61) &&
         warn_level_back == eeprom_read_word(62) &&
         alarm_level_back == eeprom_read_word(64) &&
         warn_level_dose == eeprom_read_word(66) &&
@@ -3049,10 +3050,6 @@ void main_screen(void)
               rad_back = 0; //сбрасываем фон
 
               switch (back_mode) {
-                case 0:
-                  for (uint8_t i = 0; i < 76; i++) graf_buff[i] = 0; //очищаем буфер графика
-                  break;
-
                 case 1:
                   rad_mid = 0; //сбрасываем среднее значение фона
                   rad_max = 0; //сбрасываем максимальное значение фона
