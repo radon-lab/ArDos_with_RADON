@@ -2254,13 +2254,12 @@ void _menu_item_switch(boolean inv, uint8_t num, uint8_t pos) //отрисовк
   }
 
   switch (num) {
-    case 0: print("Ntreobq ajy", CENTER, pos_row); break; //Текущий фон
-    case 1: print("Ntreofz ljpf", CENTER, pos_row); break; //Текущая доза
-    case 2: print("Ht;bv gjbcrf", CENTER, pos_row); break; //Режим поиска
-    case 3: print("Pfvth ,tnf", CENTER, pos_row); break; //Замер бета
-    case 4: print("Yfcnhjqrb", CENTER, pos_row); break; //Настройки
-    case 5: print("Gfhfvtnhs", CENTER, pos_row); break; //Параметры
-    case 6: print("Dsrk/xtybt", CENTER, pos_row); break; //Выключение
+    case 0: print("Ajy | Ljpf", CENTER, pos_row); break; //Фон / Доза
+    case 1: print("Ht;bv gjbcrf", CENTER, pos_row); break; //Режим поиска
+    case 2: print("Pfvth ,tnf", CENTER, pos_row); break; //Замер бета
+    case 3: print("Yfcnhjqrb", CENTER, pos_row); break; //Настройки
+    case 4: print("Gfhfvtnhs", CENTER, pos_row); break; //Параметры
+    case 5: print("Dsrk/xtybt", CENTER, pos_row); break; //Выключение
 
       break;
   }
@@ -2269,8 +2268,8 @@ void _menu_item_switch(boolean inv, uint8_t num, uint8_t pos) //отрисовк
 //------------------------------------Меню------------------------------------------------------
 void menu(void) //меню
 {
-  uint8_t n = scr_mode; //позиция
-  uint8_t c = scr_mode; //курсор
+  uint8_t n = 0; //позиция
+  uint8_t c = 0; //курсор
   uint8_t time_out = 0; //таймер автовыхода
 
   sleep_disable = 1; //запрещаем сон
@@ -2338,17 +2337,14 @@ void menu(void) //меню
       case 5: //select key //выбор
         switch (n) {
           case 0:
-          case 1:
-            scr_mode = n; //устанавливаем основной режим
-            scr_mode_update(); //обновление текущего экрана
             sleep_disable = 0; //разрешаем сон
             scr = 0; //разрешаем обновления экрана
             return;
-          case 2: search_menu(); break;
-          case 3: measur_menu(); break;
-          case 4: setings(); break;
-          case 5: parameters(); break;
-          case 6: power_down(); scr = 0; return;
+          case 1: search_menu(); break;
+          case 2: measur_menu(); break;
+          case 3: setings(); break;
+          case 4: parameters(); break;
+          case 5: power_down(); scr = 0; return;
         }
         time_out = 0; //сбрасываем авто-выход
         scr = 0; //разрешаем обновления экрана
@@ -2474,7 +2470,6 @@ void wdt_calibrate(void) //калибровка wdt
 //------------------------------------Чтение настроек----------------------------------------------
 void setings_read(void) //чтение настроек
 {
-  scr_mode = eeprom_read_byte(40);
   contrast = eeprom_read_byte(41);
   mid_pos = eeprom_read_byte(42);
   alarm_back = eeprom_read_byte(43);
@@ -2498,7 +2493,6 @@ void setings_read(void) //чтение настроек
 //---------------------------------------Обновление настроек------------------------------------------------
 void setings_update(void) //обновление настроек
 {
-  scr_mode_update();
   eeprom_update_byte(41, contrast);
   eeprom_update_byte(42, mid_pos);
   eeprom_update_byte(43, alarm_back);
@@ -2557,11 +2551,6 @@ void buzz_read(void) //чтение состояния щелчков
 void rad_flash_read(void) //чтение состояния вспышек
 {
   rad_flash = eeprom_read_byte(59);
-}
-//--------------------------------Обновление текущего экрана--------------------------------------------
-void scr_mode_update(void) //обновление текущего экрана
-{
-  eeprom_update_byte(40, scr_mode);
 }
 //---------------------------------------Сброс текущей дозы--------------------------------------------
 void dose_reset(void) //сброс текущей дозы
@@ -3069,7 +3058,7 @@ void main_screen(void)
 
     case 5: //Select key //выбор режима
       switch (alarm_switch) { //режим тревоги
-        case 0: scr_mode = (scr_mode) ? 0 : 1; scr_mode_update(); break; //переключение фон/доза
+        case 0: scr_mode = (scr_mode) ? 0 : 1; break; //переключение фон/доза
         case 3: warn_back_wait = 1; alarm_switch = 0; _vibro_off(); buzz_read(); break; //фон
         case 4: warn_dose_wait = rad_dose; alarm_switch = 0; _vibro_off(); buzz_read(); break; //доза
       }
