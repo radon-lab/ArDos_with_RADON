@@ -335,6 +335,7 @@ boolean sleep = 0; //флаг активного сна
 boolean light = 0; //флаг выключенной подсветки
 
 boolean light_switch = 1; //переключатель вкл/выкл дисплея
+volatile boolean light_pwm_on; //флаг активности шим подсветки
 volatile uint16_t cnt_light; //счетчик шим подсветки
 uint8_t contrast = 70; //контрастность дисплея
 
@@ -848,7 +849,7 @@ void data_convert(void) //преобразование данных
 void low_pwr(void)
 {
   if (sleep_switch == 2 && power_manager) { //если сон разрешен и и разрешено энергосбережение
-    if (buzz_on || alarm_switch) waint_pwr(); //если включен бузер или тревога - режим ожидания
+    if (buzz_on || light_pwm_on || alarm_switch) waint_pwr(); //если включен бузер или шим подсветки или тревога - режим ожидания
     else if (sleep && power_manager == 2) sleep_pwr(); //если спим и разрешено глубокое энергосбережение
     else save_pwr(); //иначе - режим энергосбережения
   }
@@ -950,23 +951,23 @@ void power_down(void) //выключение устройства
 //---------------------------------Плавная подсветка---------------------------------------
 ISR(TIMER2_OVF_vect) //плавная подсветка
 {
-  LIGHT_ON;
-  switch (light_switch) {
-    case 0: if (--cnt_light == 0) {
-        TCCR2B = TIMSK2 = TCNT2 = 0;
-        LIGHT_OFF;
+  LIGHT_ON; //включаем подсветку
+  switch (light_switch) { //выбераем режим 1 - разгорание | 0 - затухание
+    case 0: if (--cnt_light == 0) { //убавляем счетчик циклов шим
+        TCCR2B = TIMSK2 = TCNT2 = light_pwm_on = 0; //выключаем все
+        LIGHT_OFF; //выключаем подсветку
       }
       break;
-    case 1: if (++cnt_light == 512) {
-        TCCR2B = TIMSK2 = TCNT2 = 0;
-        LIGHT_ON;
+    case 1: if (++cnt_light == 512) { //прибавляем счетчик циклов шим
+        TCCR2B = TIMSK2 = TCNT2 = light_pwm_on = 0; //выключаем все
+        LIGHT_ON; //включаем подсветку
       }
       break;
   }
-  OCR2A = cnt_light >> 1;
+  OCR2A = cnt_light >> 1; //устанавливаем шим
 }
 ISR(TIMER2_COMPA_vect) {
-  LIGHT_OFF;
+  LIGHT_OFF; //выключаем подсветку
 }
 //---------------------------------Прерывание сигнала для пищалки---------------------------------------
 ISR(TIMER1_COMPA_vect) //прерывание сигнала для пищалки
