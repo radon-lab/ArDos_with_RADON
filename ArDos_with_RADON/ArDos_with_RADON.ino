@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.1.6 low_pwr 22.10.20 специально для проекта ArDos
+  Версия программы RADON v3.1.7 low_pwr 27.10.20 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr
   Желательна установка лёгкого ядра https://alexgyver.github.io/package_GyverCore_index.json и загрузчика OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -258,8 +258,6 @@ uint16_t tmr_mid; //таймер расчета среднего фона
 
 uint32_t rad_sum; //сумма импульсов за все время
 uint32_t rad_back; //текущий фон
-uint32_t rad_beta; //текущий фон бета
-uint32_t rad_gamma; //текущий фон гамма
 uint32_t rad_dose; //текущая доза
 uint32_t rad_mid; //усредненный фон
 uint32_t rad_max; //максимальный фон
@@ -305,7 +303,6 @@ boolean scr = 0; //флаг обновления экрана
 boolean graf = 0; //флаг обновления графика
 boolean serch = 0; //флаг работы поиска
 boolean first_mid = 0; //флаг первого усреднения
-boolean first_beta = 0; //флаг начала отображения бета/гамма
 boolean knock_disable = 0; //флаг запрет треска кнопками
 uint8_t buzz_switch = 0; //указатель на тип треска пищалкой
 uint8_t error = 0; //указатель на номер ошибки
@@ -337,7 +334,8 @@ boolean sleep_disable = 0; //флаг запрета сна
 boolean sleep = 0; //флаг активного сна
 boolean light = 0; //флаг выключенной подсветки
 
-boolean light_lcd = 1; //подсветка дисплея
+boolean light_switch = 1; //переключатель вкл/выкл дисплея
+volatile uint16_t cnt_light; //счетчик шим подсветки
 uint8_t contrast = 70; //контрастность дисплея
 
 volatile uint8_t tick_wdt; //счетчик тиков для обработки данных
@@ -373,7 +371,7 @@ int atexit(void (* /*func*/ )()) { //инициализация функций
 //--------------------------------------Инициализация---------------------------------------------------
 int main(void)  //инициализация
 {
-  initTimer(); //инициализация таймера millis();
+  initTimers(); //инициализация таймера millis();
 
   CONV_INIT; //инициализация преобразователя
   BUZZ_INIT; //инициализация бузера
@@ -409,20 +407,16 @@ int main(void)  //инициализация
     statistic_read(); //считываем статистику
   }
 
-  PRR |= lowByte(_BV(7) | _BV(6) | _BV(2) | _BV(1)); //отключаем все лишнее (I2C | TIMER2 | SPI | UART)
+  PRR |= lowByte(_BV(7) | _BV(2) | _BV(1)); //отключаем все лишнее (I2C | SPI | UART)
   ACSR |= 1 << ACD; //отключаем компаратор
 
   InitLCD(contrast); //инициализируем дисплей
 
-  LIGHT_ON; // включаем подсветку, если была включена настройками
+  _LIGHT_ON; // включаем подсветку, если была включена настройками
 
   drawBitmap(0, 0, logo_img, 84, 24);//выводим лого
   setFont(RusFont); //установка шрифта
   print("pfuheprf...", CENTER, 40); //загрузка...
-
-  TIMSK1 = 0; //отключаем прерывания Таймера1
-  TCCR1A = 0; //отключаем OC1A/OC1B
-  TCCR1B = 0b00000100; //пределитель 256
 
   TIME_FACT_1 = 100000 / wdt_period; //расчитываем период для секунд
   buzz_time = (TIME_BUZZ / float(1.00 / FREQ_BUZZ * 1000)); //пересчитываем частоту и время щелчков в циклы таймера
@@ -444,7 +438,7 @@ int main(void)  //инициализация
 
   setFont(RusFont); //установка шрифта
   print("-=HFLJY=-", CENTER, 32); //-=РАДОН=-
-  print("3.1.6", CENTER, 40); //версия по
+  print("3.1.7", CENTER, 40); //версия по
 
   bat_check(); //опрос батареи
 
@@ -472,21 +466,15 @@ int main(void)  //инициализация
   return 0;
 }
 //------------------------Инициализация таймера 0--------------------------------------------------
-void initTimer(void) //инициализация таймера 0
+void initTimers(void) //инициализация таймера 0
 {
-  sei(); //запрещаем прерывания глобально
+  TCCR0A = 0b00000011; //устанавливаем режим шим
+  TCCR0B = 0b00000011; //пределитель 64
+  TIMSK0 = 0b00000001; //прерывание по переполнению
 
-  //устанавливаем режим шим
-  bitSet(TCCR0A, WGM01);
-  bitSet(TCCR0A, WGM00);
-
-  //устанавливаем пределитель 64
-  bitSet(TCCR0B, CS01);
-  bitSet(TCCR0B, CS00);
-
-  //утанавливаем прерывание по переполнению таймера 0
-  bitSet(TIMSK0, TOIE0);
-
+  TIMSK1 = 0; //отключаем прерывания Таймера1
+  TCCR1A = 0; //отключаем OC1A/OC1B
+  TCCR1B = 0b00000100; //пределитель 256
 }
 //-------------------------------Включение WDT----------------------------------------------------
 void WDT_enable(void) //включение WDT
@@ -685,7 +673,6 @@ void data_convert(void) //преобразование данных
                 mass_switch = 0; //сбрасываем позицию переключения
                 rad_mid_buff = 0; //стираем буфер усреднения
                 first_mid = 0; //показываем что это первый замер
-                first_beta = 0; //запрещаяем отображения бета/гамма
                 tmr_mid = 0; //обнуляем таймер среднего замера
               }
             }
@@ -707,6 +694,9 @@ void data_convert(void) //преобразование данных
             rad_mid_buff += rad_buff[1]; //заполняем буфер усреднения
 
             if (++tmr_mid >= (pgm_read_byte(&mid_rad_time[mid_pos]) * 60)) { //если время пришло, усредняем значение
+#if GEIGER_OWN_BACK
+              if (rad_mid > (pgm_read_byte(&mid_rad_time[mid_pos]) * 60) * OWN_BACK) tmp_buff -= (pgm_read_byte(&mid_rad_time[mid_pos]) * 60) * OWN_BACK; //убираем собственный фон счетчика
+#endif
               rad_mid = rad_mid_buff * ((float)GEIGER_TIME / (pgm_read_byte(&mid_rad_time[mid_pos]) * 60)); //усредняем фон, добавляем в расчет предыдущее усреденение
               rad_mid_buff = 0; //сбрасываем буфер усреднения
               tmr_mid = 0; //сбрасываем таймер усреднения
@@ -743,7 +733,7 @@ void data_convert(void) //преобразование данных
             break;
           }
 
-          if (geiger_time_now >= GEIGER_CYCLE || rad_back >= RAD_PRE_WARN) {
+          if (accur_percent <= RAD_ACCUR_WARN) {
             if (alarm_back && !alarm_back_wait && rad_back >= alarm_level_back) {
               alarm_switch = 1;  //превышение фона 2
               break;
@@ -766,14 +756,6 @@ void data_convert(void) //преобразование данных
 
         case TIME_FACT_12: //рассчитываем точность и бета фон
           accur_percent = (1 / sqrtf((float)tmp_buff)) * 100 * (sigma_pos + 1);
-          if (geiger_time_now == GEIGER_TIME) {
-            beta_buff = tmp_buff;
-            first_beta = 1; //устанавливаем флаг отображения бета/гамма
-          }
-          if (first_beta) {
-            if (rad_back > beta_buff) rad_beta = rad_back - beta_buff; else rad_beta = 0;
-            if (rad_back > rad_beta) rad_gamma = rad_back - rad_beta; else rad_gamma = 0;
-          }
           break;
 
         case TIME_FACT_13: //считаем пройденное время
@@ -878,7 +860,7 @@ void low_pwr(void)
     buzz_switch = 0; //запрещаем щелчки
   }
   else if (cnt_pwr == TIME_BRIGHT) { //если пришло время выключить подсветку
-    LIGHT_OFF; //выключаем подсветку
+    _LIGHT_OFF; //выключаем подсветку
     light = 1; //выставляем флаг выключенной подсветки
   }
   else if (!cnt_pwr) sleep_out(); //если пора проснуться
@@ -889,7 +871,7 @@ void sleep_out(void) //выход из сна
   if (sleep) //если спали
   {
     disableSleep(contrast); //выводим дисплей из сна
-    LIGHT_ON; //включаем подсветку
+    _LIGHT_ON; //включаем подсветку
     sleep = 0; //сбрасываем флаг сна
     light = 0; //сбрасываем флаг подсветки
     buzz_read(); //восстанавливаем настройку щелчков
@@ -897,7 +879,7 @@ void sleep_out(void) //выход из сна
   }
   if (light) //если выключели подсветку
   {
-    LIGHT_ON; //включаем подсветку
+    _LIGHT_ON; //включаем подсветку
     light = 0; //сбрасываем флаг подсветки
   }
 }
@@ -963,8 +945,29 @@ void power_down(void) //выключение устройства
 
   while (power_off) sleep_pwr();
 }
-//---------------------------------Прерывание Timer1---------------------------------------
-ISR(TIMER1_COMPA_vect) //прерывание Timer1 - сигнал для пищалки
+//---------------------------------Плавная подсветка---------------------------------------
+ISR(TIMER2_OVF_vect) //плавная подсветка
+{
+  LIGHT_ON;
+  switch (light_switch) {
+    case 0: if (--cnt_light == 0) {
+        TCCR2B = TIMSK2 = TCNT2 = 0;
+        LIGHT_OFF;
+      }
+      break;
+    case 1: if (++cnt_light == 512) {
+        TCCR2B = TIMSK2 = TCNT2 = 0;
+        LIGHT_ON;
+      }
+      break;
+  }
+  OCR2A = cnt_light >> 1;
+}
+ISR(TIMER2_COMPA_vect) {
+  LIGHT_OFF;
+}
+//---------------------------------Прерывание сигнала для пищалки---------------------------------------
+ISR(TIMER1_COMPA_vect) //прерывание сигнала для пищалки
 {
   TCNT1 = TIMER1_PRELOAD; //устанавливаем частоту
 
@@ -1637,7 +1640,7 @@ void search_menu(void) //инициализация режима поиск
 {
   uint8_t c = 0; //переключатель единиц графика
   serch = 1; //устанавливаем флаг поиска
-  scr = 0; //разрешаем обновление экрана
+  graf = 0; //разрешаем обновление экрана
 
   while (1) {
     low_pwr(); //отключение дисплея и подсветки, уход в сон для экономии энергии
@@ -1646,17 +1649,14 @@ void search_menu(void) //инициализация режима поиск
     stat_bat(); //обновление состояния батареи
     error_messege(); //обработка ошибок
 
-    if (!scr) { //обновление дисплея
-      scr = 1; //сброс флага
+    if (!graf) {
+      graf = 1; //запрещаем обновление графика
 
       clrRow(0); //очистка строки 0
       clrRow(1); //очистка строки 1
       clrRow(2); //очистка строки 2
 
       drawBitmap(0, 0, serch_img, 84, 8); //отрисовываем фон
-    }
-
-    if (!sleep) { //если мы не спим
       drawBitmap(0, 8, scan_ind_scale_img, 55, 8); //рисуем шкалу
       //--------------------------------------------------------------//
       static uint16_t n;
@@ -1700,20 +1700,16 @@ void search_menu(void) //инициализация режима поиск
 #endif
           break;
       }
-      //---------------------------//
-      if (!graf) {
-        graf = 1; //запрещаем обновление графика
 
 #if TYPE_GRAF_MOVE //слева-направо
-        for (uint8_t i = 4; i < 80; i++) {
-          graf_lcd(map(search_buff[i - 4], 0, maxLevel, 0, 22), i, 22, 3); //инициализируем график
-        }
-#else //справа-налево
-        for (uint8_t i = 79; i > 3; i--) {
-          graf_lcd(map(search_buff[i - 4], 0, maxLevel, 0, 22), i, 22, 3); //инициализируем график
-        }
-#endif
+      for (uint8_t i = 4; i < 80; i++) {
+        graf_lcd(map(search_buff[i - 4], 0, maxLevel, 0, 22), i, 22, 3); //инициализируем график
       }
+#else //справа-налево
+      for (uint8_t i = 79; i > 3; i--) {
+        graf_lcd(map(search_buff[i - 4], 0, maxLevel, 0, 22), i, 22, 3); //инициализируем график
+      }
+#endif
     }
     //+++++++++++++++++++++  опрос кнопок  +++++++++++++++++++++++++++
     switch (check_keys()) {
@@ -2073,7 +2069,7 @@ void _setings_data_up(uint8_t pos) //прибавление данных
   {
     case 0: //Сон
       switch (sleep_switch) {
-        case 0: sleep_switch = 2; LIGHT_ON; break;
+        case 0: sleep_switch = 2; _LIGHT_ON; break;
         case 1: sleep_switch = 2; TIME_BRIGHT = 5; break;
         case 2: if (TIME_SLEEP < 250) TIME_SLEEP += 5; break;
       }
@@ -2377,13 +2373,11 @@ void fast_flash(void) //вкл/выкл фонарика
 void fast_light(void) //вкл/выкл подсветки
 {
   if (!sleep_switch) { //если сон выключен
-    if (light_lcd) {
-      LIGHT_OFF;  //выключаем подсветку, если была включена настройками
-      light_lcd = 0;
+    if (light_switch) {
+      _LIGHT_OFF; //выключаем подсветку, если была включена настройками
     }
     else {
-      LIGHT_ON;  //включаем подсветку
-      light_lcd = 1;
+      _LIGHT_ON; //включаем подсветку
     }
   }
   return;
@@ -2962,17 +2956,6 @@ void main_screen(void)
             if (!first_mid) print("----", 29, 32); //если первый средний замер не готов
             _init_rads_unit(0, rad_max, 1, 4, 29, 40, 0, 54, 40); //строка 3 максимальный
             break;
-
-          case 2: //фон бета
-            setFont(RusFont); //установка шрифта
-            drawBitmap(0, 32, beta_back_img, 22, 8);       //строка 2 бета:
-            drawBitmap(0, 40, gamma_back_img, 28, 8);       //строка 3 гамма:
-            _init_rads_unit(0, rad_beta, 1, 4, 29, 32, 0, 54, 32); //строка 2 бета
-            if (!first_beta) print("----", 29, 32); //если бета/гамма не рассчитаны
-            _init_rads_unit(0, rad_gamma, 1, 4, 29, 40, 0, 54, 40); //строка 3 гамма
-            if (!first_beta) print("----", 29, 40); //если бета/гамма не рассчитаны
-
-            break;
         }
 
         setFont(TinyNumbersUp); //установка шрифта
@@ -3057,12 +3040,6 @@ void main_screen(void)
                   first_mid = 0; //сбрасываем флаг первого среднего замера фона
                   rad_mid_buff = 0; //сбрасываем буфер среднего замера фона
                   break;
-
-                case 2:
-                  rad_beta = 0; //сбрасываем бета фон
-                  rad_gamma = 0; //сбрасываем гамма фон
-                  first_beta = 0; //запрещаяем отображения бета/гамма
-                  break;
               }
               break;
 
@@ -3079,7 +3056,7 @@ void main_screen(void)
       switch (alarm_switch) { //режим тревоги
         case 0:
           switch (scr_mode) { //основные экраны
-            case 0: if (back_mode < 2) back_mode++; else back_mode = 0; break; //переключаем экраны фона
+            case 0: back_mode = (back_mode) ? 0 : 1; break; //переключаем экраны фона
             case 1: dose_mode = (dose_mode) ? 0 : 1; break; //переключаем экраны дозы
           }
           break;

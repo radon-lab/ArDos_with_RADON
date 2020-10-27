@@ -78,6 +78,10 @@
 #define TIMER1_START       (bitSet(TIMSK1,OCIE1A))
 #define TIMER1_STOP        (bitClear(TIMSK1,OCIE1A))
 
+//подсветка старт/стоп
+#define _LIGHT_ON       TIMSK2 = 0b00000011; TCCR2B = 0b00000110; light_switch = 1
+#define _LIGHT_OFF      TIMSK2 = 0b00000011; TCCR2B = 0b00000110; light_switch = 0
+
 #define DDR_REG(portx)  (*(&portx-1))
 
 //пин пищалки
