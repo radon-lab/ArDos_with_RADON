@@ -79,9 +79,9 @@
 #define TIMER1_STOP        PRR |= (1 << 3); TIMSK1 = 0b00000000
 
 //подсветка старт/стоп
-#define _LIGHT_ON       PRR &= ~(1 << 6); TCCR2B = 0b00000101; TIMSK2 = 0b00000011; light_switch = 1
-#define _LIGHT_OFF      PRR &= ~(1 << 6); TCCR2B = 0b00000101; TIMSK2 = 0b00000011; light_switch = 0
-#define _LIGHT_STOP     TCNT2 = TCCR2B = TIMSK2 = 0b00000000; PRR |= (1 << 6)
+#define _LIGHT_ON       PRR &= ~(1 << 6); TIMSK2 = 0b00000011; light_switch = 1
+#define _LIGHT_OFF      PRR &= ~(1 << 6); TIMSK2 = 0b00000011; light_switch = 0
+#define _LIGHT_STOP     TCNT2 = TIMSK2 = 0b00000000; PRR |= (1 << 6)
 
 #define DDR_REG(portx)  (*(&portx-1))
 
