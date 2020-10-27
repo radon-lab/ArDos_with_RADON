@@ -335,7 +335,6 @@ boolean sleep = 0; //флаг активного сна
 boolean light = 0; //флаг выключенной подсветки
 
 boolean light_switch = 1; //переключатель вкл/выкл дисплея
-volatile uint16_t cnt_light; //счетчик шим подсветки
 uint8_t contrast = 70; //контрастность дисплея
 
 volatile uint8_t tick_wdt; //счетчик тиков для обработки данных
@@ -406,7 +405,7 @@ int main(void)  //инициализация
     statistic_read(); //считываем статистику
   }
 
-  PRR |= lowByte(_BV(7) | _BV(2) | _BV(1)); //отключаем все лишнее (I2C | SPI | UART)
+  PRR = 0b11001110; //отключаем все лишнее (I2C | TIMER2 | TIMER1 | SPI | UART)
   ACSR |= 1 << ACD; //отключаем компаратор
 
   InitLCD(contrast); //инициализируем дисплей
@@ -756,7 +755,7 @@ void data_convert(void) //преобразование данных
           break;
 
         case TIME_FACT_12: //рассчитываем точность и бета фон
-          accur_percent = ((sigma_pos + 1) / sqrtf((float)tmp_buff)) * 100;
+          accur_percent = constrain(((sigma_pos + 1) / sqrtf((float)tmp_buff)) * 100, 1, 99);
           break;
 
         case TIME_FACT_13: //считаем пройденное время
@@ -801,12 +800,10 @@ void data_convert(void) //преобразование данных
         break;
 
       case TIME_FACT_16: //считаем время до ухода в сон
-        if (!sleep_disable) { //если сон не запрещен
           switch (sleep_switch) { //выбераем счет времени
             case 1: if (cnt_pwr < TIME_BRIGHT + 1) cnt_pwr++; break; //счет выключения подсветки
-            case 2: if (cnt_pwr < TIME_SLEEP + 1) cnt_pwr++; break; //счет выключения подсветки и ухода в сон
+            case 2: if (cnt_pwr < TIME_SLEEP + 1 && !sleep_disable) cnt_pwr++; break; //счет ухода в сон
           }
-        }
         break;
 
       case TIME_FACT_17: //управление энергосбережением
@@ -949,23 +946,26 @@ void power_down(void) //выключение устройства
 //---------------------------------Плавная подсветка---------------------------------------
 ISR(TIMER2_OVF_vect) //плавная подсветка
 {
-  LIGHT_ON; //включаем подсветку
-  switch (light_switch) { //выбераем режим 1 - разгорание | 0 - затухание
-    case 0: if (--cnt_light == 0) { //убавляем счетчик циклов шим
-        TCCR2B = TIMSK2 = TCNT2 = 0; //выключаем все
-        LIGHT_OFF; //выключаем подсветку
+  LIGHT_ON;
+  switch (light_switch) {
+    case 0: 
+    if (OCR2A > 0) OCR2A--;
+    else {
+        LIGHT_OFF;
+        _LIGHT_STOP;
       }
       break;
-    case 1: if (++cnt_light == 512) { //прибавляем счетчик циклов шим
-        TCCR2B = TIMSK2 = TCNT2 = 0; //выключаем все
-        LIGHT_ON; //включаем подсветку
+    case 1: 
+    if (OCR2A < 255) OCR2A++;
+    else {
+        LIGHT_ON;
+        _LIGHT_STOP;
       }
       break;
   }
-  OCR2A = cnt_light >> 1; //устанавливаем шим
 }
 ISR(TIMER2_COMPA_vect) {
-  LIGHT_OFF; //выключаем подсветку
+  LIGHT_OFF;
 }
 //---------------------------------Прерывание сигнала для пищалки---------------------------------------
 ISR(TIMER1_COMPA_vect) //прерывание сигнала для пищалки
@@ -977,7 +977,7 @@ ISR(TIMER1_COMPA_vect) //прерывание сигнала для пищалк
     case 1: BUZZ_CLR; break; //выключаем бузер
   }
 
-  switch (cnt_puls--) { //считаем циклы времени работы бузера
+  switch (--cnt_puls) { //считаем циклы времени работы бузера
     case 0: BUZZ_CLR; TIMER1_STOP; break; //если циклы кончились, выключаем таймер
   }
 }
@@ -2366,7 +2366,6 @@ void fast_flash(void) //вкл/выкл фонарика
 {
   if (is_FLASH_ON) FLASH_OFF;
   else FLASH_ON;
-  return;
 }
 //-----------------------------------Вкл/выкл подсветки---------------------------------
 void fast_light(void) //вкл/выкл подсветки
@@ -2379,7 +2378,6 @@ void fast_light(void) //вкл/выкл подсветки
       _LIGHT_ON; //включаем подсветку
     }
   }
-  return;
 }
 //---------------------------------Сообщение об ошибке---------------------------------------
 void error_messege(void) //сообщение об ошибке
@@ -2959,7 +2957,7 @@ void main_screen(void)
 
         setFont(TinyNumbersUp); //установка шрифта
         drawBitmap(54, 8, plus_minus_img, 3, 8); //±
-        printNumI(constrain(accur_percent, 1, 99), 58, 8, 2, 48); //точность
+        printNumI(accur_percent, 58, 8, 2, 48); //точность
         drawBitmap(66, 8, percent_img, 6, 8); //%
         printNumI(sigma_pos + 1, 75, 8); //сигма
         drawBitmap(79, 8, sigma_img, 5, 8); //σ
