@@ -802,7 +802,7 @@ void data_convert(void) //преобразование данных
       case TIME_FACT_16: //считаем время до ухода в сон
           switch (sleep_switch) { //выбераем счет времени
             case 1: if (cnt_pwr < TIME_BRIGHT + 1) cnt_pwr++; break; //счет выключения подсветки
-            case 2: if (cnt_pwr < TIME_SLEEP + 1 && !sleep_disable) cnt_pwr++; break; //счет ухода в сон
+            case 2: if (cnt_pwr < TIME_SLEEP + 1) cnt_pwr++; break; //счет ухода в сон
           }
         break;
 
@@ -852,7 +852,7 @@ void low_pwr(void)
 
   if (rad_back > RAD_SLEEP_OUT) cnt_pwr = 0; //если фон выше установленного предела - просыпаемся
 
-  if (cnt_pwr == TIME_SLEEP && sleep_switch == 2) { //если пришло время спать и сон не запрещен
+  if (cnt_pwr == TIME_SLEEP && sleep_switch == 2 && !sleep_disable) { //если пришло время спать и сон не запрещен
     enableSleep(); //уводим в сон дисплей
     sleep = 1; //выставляем флаг сна
     buzz_switch = 0; //запрещаем щелчки
@@ -3012,14 +3012,14 @@ void main_screen(void)
       switch (alarm_switch) { //режим тревоги
         case 0:
           switch (scr_mode) { //основные экраны
-            case 0: //сбрасываем максимальный фон и средний фон
+            case 0: //сбрасываем фон
               for (uint8_t i = 0; i < geiger_time_now; i++) rad_buff[i + 1] = 0; //очищаем буфер фона
               rad_buff[0] = 0; //очищаем буфер счета
               geiger_time_now = 0; //сбрасываем счетчик накопления импульсов в буфере
               rad_back = 0; //сбрасываем фон
 
               switch (back_mode) {
-                case 1:
+                case 1: //сбрасываем максимальный фон и средний фон
                   rad_mid = 0; //сбрасываем среднее значение фона
                   rad_max = 0; //сбрасываем максимальное значение фона
                   tmr_mid = 0; //сбрасываем счетчик среднего фона
