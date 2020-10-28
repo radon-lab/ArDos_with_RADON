@@ -723,7 +723,7 @@ void data_convert(void) //преобразование данных
           break;
 
         case TIME_FACT_9: //минимальный и максимальный фон
-          if (accur_percent > RAD_ACCUR_START) { //если достаточно данных в массиве
+          if (accur_percent <= RAD_ACCUR_START) { //если достаточно данных в массиве
             if (rad_back < rad_min) rad_min = rad_back; //фиксируем минимум фона
             if (rad_back > rad_max) rad_max = rad_back; //фиксируем максимум фона
           }
@@ -2950,7 +2950,7 @@ void main_screen(void)
             drawBitmap(0, 32, dose_min_img, 23, 8);       //строка 2 средн:
             drawBitmap(0, 40, dose_max_img, 23, 8);       //строка 3 макс:
             _init_rads_unit(0, rad_min, 1, 4, 29, 32, 0, 54, 32); //строка 2 минимальный
-            if (accur_percent > RAD_ACCUR_START) print("----", 29, 32); //если недостаточно точности
+            if (accur_percent <= RAD_ACCUR_START) print("----", 29, 32); //если недостаточно точности
             _init_rads_unit(0, rad_max, 1, 4, 29, 40, 0, 54, 40); //строка 3 максимальный
             break;
         }
