@@ -717,7 +717,7 @@ void data_convert(void) //преобразование данных
           if (tmp_buff > geiger_time_now * OWN_BACK) tmp_buff -= geiger_time_now * OWN_BACK; //убираем собственный фон счетчика
 #endif
           if (tmp_buff > 9999999) tmp_buff = 9999999; //переполнение буфера импульсов
-          if (geiger_time_now > 1) rad_back = tmp_buff * ((float)GEIGER_TIME / geiger_time_now); //расчет фона мкР/ч
+          if (geiger_time_now > 1) rad_back = tmp_buff * ((float)GEIGER_TIME / (geiger_time_now + mid_time_now * BUFF_LENGTHY)); //расчет фона мкР/ч
 
           for (uint8_t k = MAX_GEIGER_TIME; k > 0; k--) rad_buff[k] = rad_buff[k - 1]; //перезапись массива
           break;
@@ -727,6 +727,7 @@ void data_convert(void) //преобразование данных
             if (rad_back < rad_min) rad_min = rad_back; //фиксируем минимум фона
             if (rad_back > rad_max) rad_max = rad_back; //фиксируем максимум фона
           }
+          else rad_min = rad_back; //фиксируем минимум фона
           break;
 
         case TIME_FACT_10: //расчет текущей дозы
@@ -2011,63 +2012,63 @@ void _setings_item_switch(boolean set, boolean inv, uint8_t num, uint8_t pos) //
       }
       break;
 
-    case 8: //Сигма
+    case 7: //Сигма
       switch (set) {
         case 0: print("Cbuvf&", LEFT, pos_row); break; //Сигма:
         case 1: printNumI(sigma_pos + 1, RIGHT, pos_row); break;
       }
       break;
 
-    case 9: //Поиск
+    case 8: //Поиск
       switch (set) {
         case 0: print("Gjbcr&", LEFT, pos_row); break; //Поиск:
         case 1: if (search_pos != 8) printNumI(pgm_read_word(&search_time[search_pos]), RIGHT, pos_row); else print("FDNJ", RIGHT, pos_row); break;
       }
       break;
 
-    case 10: //Ед.измер
+    case 9: //Ед.измер
       switch (set) {
         case 0: print("Tl.bpvth&", LEFT, pos_row); break; //Ед.измер:
         case 1: if (!rad_mode) print("vrH", RIGHT, pos_row); else print("vrPd", RIGHT, pos_row); break;
       }
       break;
 
-    case 11: //Тревога Ф
+    case 10: //Тревога Ф
       switch (set) {
         case 0: print("Nhtdjuf A&", LEFT, pos_row); break; //Тревога Ф:
         case 1: if (!alarm_back) print("DSRK", RIGHT, pos_row); else if (alarm_back == 1) print("PDER", RIGHT, pos_row); else if (alarm_back == 2) print("DB<H", RIGHT, pos_row); else print("D+PD", RIGHT, pos_row); break;
       }
       break;
 
-    case 12: //Порог Ф1
+    case 11: //Порог Ф1
       switch (set) {
         case 0: print("Gjhju A1&", LEFT, pos_row); break; //Порог Ф1:
         case 1: printNumI(warn_level_back, RIGHT, pos_row); break;
       }
       break;
 
-    case 13: //Порог Ф2
+    case 12: //Порог Ф2
       switch (set) {
         case 0: print("Gjhju A2&", LEFT, pos_row); break; //Порог Ф2:
         case 1: printNumI(alarm_level_back, RIGHT, pos_row); break;
       }
       break;
 
-    case 14: //Тревога Д
+    case 13: //Тревога Д
       switch (set) {
         case 0: print("Nhtdjuf L&", LEFT, pos_row); break; //Тревога Д:
         case 1: if (!alarm_dose) print("DSRK", RIGHT, pos_row); else if (alarm_dose == 1) print("PDER", RIGHT, pos_row); else if (alarm_dose == 2) print("DB<H", RIGHT, pos_row); else print("D+PD", RIGHT, pos_row); break;
       }
       break;
 
-    case 15: //Порог Д1
+    case 14: //Порог Д1
       switch (set) {
         case 0: print("Gjhju L1&", LEFT, pos_row); break; //Порог Д1:
         case 1: printNumI(warn_level_dose, RIGHT, pos_row); break;
       }
       break;
 
-    case 16: //Порог Д2
+    case 15: //Порог Д2
       switch (set) {
         case 0: print("Gjhju L2&", LEFT, pos_row); break; //Порог Д2:
         case 1: printNumI(alarm_level_dose, RIGHT, pos_row); break;
@@ -2109,16 +2110,16 @@ void _setings_data_up(uint8_t pos) //прибавление данных
     case 5: knock_disable = 0; break; //Зв.кнопок
 
     case 6: if (measur_pos < 9) measur_pos++; break; //Разн.зам
-    case 8: if (sigma_pos < 2) sigma_pos++; else sigma_pos = 0; break; //Сигма
-    case 9: if (search_pos < 8) search_pos++; else search_pos = 0; break; //Поиск
-    case 10: rad_mode = 1; break; //Ед.измер
+    case 7: if (sigma_pos < 2) sigma_pos++; else sigma_pos = 0; break; //Сигма
+    case 8: if (search_pos < 8) search_pos++; else search_pos = 0; break; //Поиск
+    case 9: rad_mode = 1; break; //Ед.измер
 
-    case 11: if (alarm_back < 3) alarm_back++; break; //Тревога Ф
-    case 12: if (warn_level_back < 300) warn_level_back += 5; else warn_level_back = 30; break; //Порог Ф1
-    case 13: if (alarm_level_back < 500) alarm_level_back += 10; else if (alarm_level_back < 1000) alarm_level_back += 50; else if (alarm_level_back < 65000) alarm_level_back += 100; else alarm_level_back = 300; break; //Порог Ф2
-    case 14: if (alarm_dose < 3) alarm_dose++; break; //Тревога Д
-    case 15: if (warn_level_dose < 300) warn_level_dose += 5; else warn_level_dose = 10; break; //Порог Д1
-    case 16: if (alarm_level_dose < 500) alarm_level_dose += 10; else if (alarm_level_dose < 1000) alarm_level_dose += 50; else if (alarm_level_dose < 65000) alarm_level_dose += 100; else alarm_level_dose = 300; break; //Порог Д2
+    case 10: if (alarm_back < 3) alarm_back++; break; //Тревога Ф
+    case 11: if (warn_level_back < 300) warn_level_back += 5; else warn_level_back = 30; break; //Порог Ф1
+    case 12: if (alarm_level_back < 500) alarm_level_back += 10; else if (alarm_level_back < 1000) alarm_level_back += 50; else if (alarm_level_back < 65000) alarm_level_back += 100; else alarm_level_back = 300; break; //Порог Ф2
+    case 13: if (alarm_dose < 3) alarm_dose++; break; //Тревога Д
+    case 14: if (warn_level_dose < 300) warn_level_dose += 5; else warn_level_dose = 10; break; //Порог Д1
+    case 15: if (alarm_level_dose < 500) alarm_level_dose += 10; else if (alarm_level_dose < 1000) alarm_level_dose += 50; else if (alarm_level_dose < 65000) alarm_level_dose += 100; else alarm_level_dose = 300; break; //Порог Д2
   }
 }
 //------------------------------------Убавление данных------------------------------------------------------
@@ -2147,16 +2148,16 @@ void _setings_data_down(uint8_t pos) //убавление данных
     case 5: knock_disable = 1; break; //Зв.кнопок
 
     case 6: if (measur_pos > 0) measur_pos--;  break; //Разн.зам
-    case 8: if (sigma_pos > 0) sigma_pos--; else sigma_pos = 2; break; //Сигма
-    case 9: if (search_pos > 0) search_pos--; else search_pos = 8; break; //Поиск
-    case 10: rad_mode = 0; break; //Ед.измер
+    case 7: if (sigma_pos > 0) sigma_pos--; else sigma_pos = 2; break; //Сигма
+    case 8: if (search_pos > 0) search_pos--; else search_pos = 8; break; //Поиск
+    case 9: rad_mode = 0; break; //Ед.измер
 
-    case 11: if (alarm_back > 0) alarm_back--; break; //Тревога Ф
-    case 12: if (warn_level_back > 30) warn_level_back -= 5; else warn_level_back = 300; break; //Порог Ф1
-    case 13: if (alarm_level_back > 1000) alarm_level_back -= 100; else if (alarm_level_back > 500) alarm_level_back -= 50; else if (alarm_level_back > 300) alarm_level_back -= 10; else alarm_level_back = 65000; break; //Порог Ф2
-    case 14: if (alarm_dose > 0) alarm_dose--; break; //Тревога Д
-    case 15: if (warn_level_dose > 10) warn_level_dose -= 5; else warn_level_dose = 300; break; //Порог Д1
-    case 16: if (alarm_level_dose > 1000) alarm_level_dose -= 100; else if (alarm_level_dose > 500) alarm_level_dose -= 50; else if (alarm_level_dose > 300) alarm_level_dose -= 10; else alarm_level_dose = 65000; break; //Порог Д2
+    case 10: if (alarm_back > 0) alarm_back--; break; //Тревога Ф
+    case 11: if (warn_level_back > 30) warn_level_back -= 5; else warn_level_back = 300; break; //Порог Ф1
+    case 12: if (alarm_level_back > 1000) alarm_level_back -= 100; else if (alarm_level_back > 500) alarm_level_back -= 50; else if (alarm_level_back > 300) alarm_level_back -= 10; else alarm_level_back = 65000; break; //Порог Ф2
+    case 13: if (alarm_dose > 0) alarm_dose--; break; //Тревога Д
+    case 14: if (warn_level_dose > 10) warn_level_dose -= 5; else warn_level_dose = 300; break; //Порог Д1
+    case 15: if (alarm_level_dose > 1000) alarm_level_dose -= 100; else if (alarm_level_dose > 500) alarm_level_dose -= 50; else if (alarm_level_dose > 300) alarm_level_dose -= 10; else alarm_level_dose = 65000; break; //Порог Д2
   }
 }
 //------------------------------------Настройки------------------------------------------------------
