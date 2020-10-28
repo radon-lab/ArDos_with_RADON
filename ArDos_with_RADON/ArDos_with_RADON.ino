@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.1.7 low_pwr 27.10.20 специально для проекта ArDos
+  Версия программы RADON v3.1.7 low_pwr 28.10.20 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr
   Желательна установка лёгкого ядра https://alexgyver.github.io/package_GyverCore_index.json и загрузчика OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -226,9 +226,18 @@
 #define GEIGER_CYCLE (pgm_read_byte(&time_mass[0][0]) + pgm_read_byte(&time_mass[0][1])) //минимум секунд для начала расчетов
 #define GEIGER_MASS (pgm_read_byte(&time_mass[MASS_TIME_FACT][0]) + pgm_read_byte(&time_mass[MASS_TIME_FACT][1])) //максимум секунд для окончания смещения коэффициентов
 
-#define MAX_GEIGER_TIME (BUFF_LENGTHY - 1) //максимальное время счета
+#define MAX_GEIGER_TIME BUFF_LENGTHY //максимальное время счета
+#define MIN_GEIGER_TIME 2 //минимальное время счета
 
-volatile uint16_t rad_buff[BUFF_LENGTHY]; //массив секундных замеров для расчета фона
+//пределитель Timer1 для пищалки
+#define TMR1_PRESCALER  256
+
+//пищалка старт/стоп
+#define TIMER1_START  PRR &= ~(1 << 3); TIMSK1 = 0b00000010
+#define TIMER1_STOP   PRR |= (1 << 3); TIMSK1 = 0b00000000
+
+volatile uint16_t scan_buff; //переменная для счета импульсов от датчика
+uint16_t rad_buff[BUFF_LENGTHY]; //массив секундных замеров для расчета фона
 uint16_t search_buff[76]; //буфер поиска
 uint32_t rad_mid_buff; //буфер среднего замера
 
@@ -410,7 +419,7 @@ int main(void)  //инициализация
 
   InitLCD(contrast); //инициализируем дисплей
 
-  _LIGHT_ON; // включаем подсветку, если была включена настройками
+  _LIGHT_ON(); // включаем подсветку, если была включена настройками
 
   drawBitmap(0, 0, logo_img, 84, 24);//выводим лого
   setFont(RusFont); //установка шрифта
@@ -480,6 +489,21 @@ void initTimers(void) //инициализация таймеров
 
   sei(); //разрешаем прерывания глобально
 }
+//------------------------Подсветка старт/стоп--------------------------------------------------
+void _LIGHT_ON(void) { //подсветка старт
+  PRR &= ~(1 << 6); //включаем питание таймера
+  TIMSK2 = 0b00000011; //разрешаем прерывания
+  light_switch = 1; //устанасвливаем флаг разгорания подсветки
+}
+void _LIGHT_OFF(void) { //подсветка стоп
+  PRR &= ~(1 << 6); //включаем питание таймера
+  TIMSK2 = 0b00000011; //разрешаем прерывания
+  light_switch = 0; //устанасвливаем флаг затухания подсветки
+}
+void _LIGHT_STOP(void) { //подсветка стоп
+  TCNT2 = TIMSK2 = 0b00000000; //сбрасываем счетный регистр и отключаем прерывания
+  PRR |= (1 << 6); //выключаем питание таймера
+}
 //-------------------------------Включение WDT----------------------------------------------------
 void WDT_enable(void) //включение WDT
 {
@@ -501,14 +525,14 @@ void WDT_disable(void) //выключение WDT
 //-------------------------------Включение ADC----------------------------------------------------
 void ADC_enable(void) //включение ADC
 {
-  PRR &= ~ lowByte(_BV(0)); //включаем питание АЦП
-  ADCSRA |= (1 << ADEN); // включаем ацп
+  PRR &= ~ (1 << 0); //включаем питание АЦП
+  ADCSRA |= (1 << ADEN); //включаем ацп
 }
 //-------------------------------Выключение ADC---------------------------------------------------
 void ADC_disable(void) //выключение ADC
 {
-  ADCSRA &= ~ (1 << ADEN); // выключаем ацп
-  PRR |= lowByte(_BV(0)); //выключаем питание ацп
+  ADCSRA &= ~ (1 << ADEN); //выключаем ацп
+  PRR |= (1 << 0); //выключаем питание ацп
 }
 //-------------------------------Включение питания----------------------------------------------------
 #if PWR_ON_RETURN
@@ -553,7 +577,7 @@ ISR(INT1_vect) //внешнее прерывание на пине INT1 - вкл
 //-------------------------------Детектирование частиц------------------------------------------------
 ISR(INT0_vect) //внешнее прерывание на пине INT0 - считаем импульсы от счетчика 1
 {
-  if (rad_buff[0] != 65535) rad_buff[0]++; //нулевой элемент массива - текущий секундный замер
+  if (scan_buff != 65535) scan_buff++; //нулевой элемент массива - текущий секундный замер
 
   switch (rad_flash) {
     case 1: RAD_FLASH_ON; break; //индикация попадания частиц
@@ -616,17 +640,17 @@ void data_convert(void) //преобразование данных
           break;
 
         case TIME_FACT_3: //расчет текущего фона этап-1
-          rad_buff[1] = rad_buff[0]; //смещаем 0-й элемент в 1-й для дальнейшей работы с ним
-          rad_buff[0] = 0; //сбрасываем счетчик импульсов
+          rad_buff[0] = scan_buff; //смещаем 0-й элемент в 1-й для дальнейшей работы с ним
+          scan_buff = 0; //сбрасываем счетчик импульсов
           tmp_buff = 0; //сбрасываем временный буфер
 
           if (geiger_time_now < MAX_GEIGER_TIME) geiger_time_now++; //прибавляем указатель заполненности буффера
 
 #if GEIGER_DEAD_TIME
-          if (rad_buff[1] >= COUNT_RATE) rad_buff[1] = rad_buff[1] / (1 - rad_buff[1] * DEAD_TIME); //если скорость счета больше 100имп/с, учитываем мертвое время счетчика
+          if (rad_buff[0] >= COUNT_RATE) rad_buff[0] = rad_buff[0] / (1 - rad_buff[0] * DEAD_TIME); //если скорость счета больше 100имп/с, учитываем мертвое время счетчика
 #endif
 
-          for (uint8_t i = 0; i < geiger_time_now; i++) tmp_buff += rad_buff[i + 1]; //суммирование всех импульсов для расчета фона
+          for (uint8_t i = 0; i < geiger_time_now; i++) tmp_buff += rad_buff[i]; //суммирование всех импульсов для расчета фона
           break;
 
         case TIME_FACT_4: //расчет текущего фона этап-2
@@ -672,7 +696,7 @@ void data_convert(void) //преобразование данных
 
               if (now > coef || now < (1.00 / coef)) { //если видим скачок или спад
                 tmp_buff = 0; //сбрасываем текущий буфер
-                for (uint8_t i = 0; i < pgm_read_byte(&time_mass[0][0]); i++) tmp_buff += rad_buff[i + 1]; //запоняем буффер первого плеча
+                for (uint8_t i = 0; i < pgm_read_byte(&time_mass[0][0]); i++) tmp_buff += rad_buff[i]; //запоняем буффер первого плеча
                 geiger_time_now = pgm_read_byte(&time_mass[0][0]); //устанавливаем текущий размер буфера
                 mass_switch = 0; //сбрасываем позицию переключения
                 rad_mid_buff = 0; //стираем буфер усреднения
@@ -690,12 +714,12 @@ void data_convert(void) //преобразование данных
           if (tmp_buff > 9999999) tmp_buff = 9999999; //переполнение буфера импульсов
           if (geiger_time_now > 1) rad_back = tmp_buff * ((float)GEIGER_TIME / geiger_time_now); //расчет фона мкР/ч
 
-          for (uint8_t k = MAX_GEIGER_TIME; k > 1; k--) rad_buff[k] = rad_buff[k - 1]; //перезапись массива
+          for (uint8_t k = MAX_GEIGER_TIME; k > 0; k--) rad_buff[k] = rad_buff[k - 1]; //перезапись массива
           break;
 
         case TIME_FACT_8: //средний и максимальный фон
           if (geiger_time_now >= GEIGER_CYCLE) { //если достаточно данных в массиве
-            rad_mid_buff += rad_buff[1]; //заполняем буфер усреднения
+            rad_mid_buff += rad_buff[0]; //заполняем буфер усреднения
 
             if (++tmr_mid >= (pgm_read_byte(&mid_rad_time[mid_pos]) * 60)) { //если время пришло, усредняем значение
 #if GEIGER_OWN_BACK
@@ -712,7 +736,7 @@ void data_convert(void) //преобразование данных
           break;
 
         case TIME_FACT_9: //расчет текущей дозы
-          if ((rad_sum += rad_buff[1]) > 99999999) rad_sum = 99999999; //переполнение суммы импульсов
+          if ((rad_sum += rad_buff[0]) > 99999999) rad_sum = 99999999; //переполнение суммы импульсов
 #if GEIGER_OWN_BACK
           rad_dose = ((rad_sum - time_sec * OWN_BACK) * GEIGER_TIME / 3600); //расчитаем дозу с учетом собственного фона счетчика
 #else
@@ -721,7 +745,7 @@ void data_convert(void) //преобразование данных
           break;
 
         case TIME_FACT_10: //расчет данных для графика
-          for (uint8_t i = 0; i > 76; i--) if (rad_buff[i + 1] > graf_max) graf_max = rad_buff[i + 1]; //ищем максимум
+          for (uint8_t i = 0; i > 76; i--) if (rad_buff[i] > graf_max) graf_max = rad_buff[i]; //ищем максимум
 
           if (graf_max > 15) maxLevel_back = graf_max * GRAF_COEF_MAX; //если текущий замер больше максимума
           else maxLevel_back = 15; //иначе устанавливаем минимум
@@ -771,7 +795,7 @@ void data_convert(void) //преобразование данных
     switch (time_wdt) {
 #if ERRORS_RETURN
       case TIME_FACT_14: //обработка ошибок
-        if (!rad_buff[1]) { //если нету импульсов в обменном буфере
+        if (!rad_buff[0]) { //если нету импульсов в обменном буфере
           if (++nop_imp_tmr >= IMP_ERROR_TIME) { //считаем время до вывода предупреждения
             error = 4; //устанавливаем ошибку 4 - нет импульсов
             nop_imp_tmr = 0; //сбрасываем таймер
@@ -790,15 +814,15 @@ void data_convert(void) //преобразование данных
         switch (measur) { //выбираем режим замера
           case 1: if (time_switch < (pgm_read_byte(&diff_measuring[measur_pos]) * 60)) time_switch ++; //прибавляем секунду
             else next_measur = 1; //иначе время вышло
-            if (!next_measur) first_froze += rad_buff[0]; //если идет замер, заполняем буфер первого замера
-            rad_buff[1] = rad_buff[0]; //смещаем 0-й элемент в 1-й для дальнейшей работы с ним
-            rad_buff[0] = 0; //сбрасывает счетчик частиц
+            if (!next_measur) first_froze += scan_buff; //если идет замер, заполняем буфер первого замера
+            rad_buff[0] = scan_buff; //смещаем 0-й элемент в 1-й для дальнейшей работы с ним
+            scan_buff = 0; //сбрасывает счетчик частиц
             break;
           case 2: if (time_switch < (pgm_read_byte(&diff_measuring[measur_pos]) * 60)) time_switch ++; //прибавляем секунду
             else next_measur = 1; //иначе время вышло
-            if (!next_measur) second_froze += rad_buff[0]; //если идет замер, заполняем буфер второго замера
-            rad_buff[1] = rad_buff[0]; //смещаем 0-й элемент в 1-й для дальнейшей работы с ним
-            rad_buff[0] = 0; //сбрасывает счетчик частиц
+            if (!next_measur) second_froze += scan_buff; //если идет замер, заполняем буфер второго замера
+            rad_buff[0] = scan_buff; //смещаем 0-й элемент в 1-й для дальнейшей работы с ним
+            scan_buff = 0; //сбрасывает счетчик частиц
             break;
         }
         break;
@@ -812,12 +836,12 @@ void data_convert(void) //преобразование данных
 
       case TIME_FACT_17: //управление энергосбережением
         switch (power_manager) {
-          case 0: if (rad_buff[1] <= (IMP_PWR_MANAGER * IMP_PWR_GISTERESIS)) power_manager = 1; break; //если текущее количество импульсов меньше установленного порога включения энергосбережения
+          case 0: if (rad_buff[0] <= (IMP_PWR_MANAGER * IMP_PWR_GISTERESIS)) power_manager = 1; break; //если текущее количество импульсов меньше установленного порога включения энергосбережения
           case 1:
-            if (rad_buff[1] > IMP_PWR_MANAGER) power_manager = 0; //если текущее количество импульсов больше установленного порога отключения энергосбережения
-            else if (rad_buff[1] <= (IMP_PWR_DOWN * IMP_PWR_GISTERESIS)) power_manager = 2; //если текущее количество импульсов меньше установленного порога включения глубокого энергосбережения
+            if (rad_buff[0] > IMP_PWR_MANAGER) power_manager = 0; //если текущее количество импульсов больше установленного порога отключения энергосбережения
+            else if (rad_buff[0] <= (IMP_PWR_DOWN * IMP_PWR_GISTERESIS)) power_manager = 2; //если текущее количество импульсов меньше установленного порога включения глубокого энергосбережения
             break;
-          case 2: if (rad_buff[1] > IMP_PWR_DOWN) power_manager = 1; break; //если текущее количество импульсов больше установленного порога отключения глубокого энергосбережения
+          case 2: if (rad_buff[0] > IMP_PWR_DOWN) power_manager = 1; break; //если текущее количество импульсов больше установленного порога отключения глубокого энергосбережения
         }
         break;
 
@@ -862,7 +886,7 @@ void low_pwr(void)
     buzz_switch = 0; //запрещаем щелчки
   }
   else if (cnt_pwr == TIME_BRIGHT) { //если пришло время выключить подсветку
-    _LIGHT_OFF; //выключаем подсветку
+    _LIGHT_OFF(); //выключаем подсветку
     light = 1; //выставляем флаг выключенной подсветки
   }
   else if (!cnt_pwr) sleep_out(); //если пора проснуться
@@ -873,7 +897,7 @@ void sleep_out(void) //выход из сна
   if (sleep) //если спали
   {
     disableSleep(contrast); //выводим дисплей из сна
-    _LIGHT_ON; //включаем подсветку
+    _LIGHT_ON(); //включаем подсветку
     sleep = 0; //сбрасываем флаг сна
     light = 0; //сбрасываем флаг подсветки
     buzz_read(); //восстанавливаем настройку щелчков
@@ -881,7 +905,7 @@ void sleep_out(void) //выход из сна
   }
   if (light) //если выключели подсветку
   {
-    _LIGHT_ON; //включаем подсветку
+    _LIGHT_ON(); //включаем подсветку
     light = 0; //сбрасываем флаг подсветки
   }
 }
@@ -956,14 +980,14 @@ ISR(TIMER2_OVF_vect) //плавная подсветка
       if (OCR2A > 0) OCR2A--; //убавляем счетчик циклов шим
       else {
         LIGHT_OFF; //выключаем подсветку
-        _LIGHT_STOP; //выключаем все
+        _LIGHT_STOP(); //выключаем все
       }
       break;
     case 1:
       if (OCR2A < 255) OCR2A++; //прибавляем счетчик циклов шим
       else {
         LIGHT_ON; //включаем подсветку
-        _LIGHT_STOP; //выключаем все
+        _LIGHT_STOP(); //выключаем все
       }
       break;
   }
@@ -1128,7 +1152,7 @@ void measur_stop(void) //остановка замера
             alarm_measur = 0; //разрешаем оповещение окончания замера
             first_froze = 0; //сбрасываем счетчик 1-го замера
             second_froze = 0; //сбрасываем счетчик 2-го замера
-            rad_buff[0] = rad_buff[1] = 0; //очищаем 0-й и 1-й элемент буфера
+            scan_buff = rad_buff[0] = 0; //очищаем 0-й и 1-й элемент буфера
             return;
 
           case 0:
@@ -1164,7 +1188,7 @@ void measur_warning(void) //окончание замера
         measur = 0;
         time_switch = 0;
         alarm_measur = 1;
-        rad_buff[0] = rad_buff[1] = 0; //очищаем 0-й и 1-й элемент буфера
+        scan_buff = rad_buff[0] = 0; //очищаем 0-й и 1-й элемент буфера
         break;
     }
     scr = 0; //разрешаем обновления экрана
@@ -1277,7 +1301,7 @@ void measur_menu(void) //режим замера
         alarm_measur = 0; //разрешаем оповещение оканчания замера
         first_froze = 0; //сбрасываем счетчик 1-го замера
         second_froze = 0; //сбрасываем счетчик 2-го замера
-        rad_buff[0] = rad_buff[1] = 0; //очищаем 0-й и 1-й элемент буфера
+        scan_buff = rad_buff[0] = 0; //очищаем 0-й и 1-й элемент буфера
         scr = 0; //разрешаем обновления экрана
         break;
 
@@ -1297,14 +1321,14 @@ void measur_menu(void) //режим замера
           alarm_measur = 0; //разрешаем оповещение оканчания замера
           first_froze = 0; //сбрасываем счетчик 1-го замера
           second_froze = 0; //сбрасываем счетчик 2-го замера
-          rad_buff[0] = 0; //очищаем 0-й элемент буфера
+          scan_buff = 0; //очищаем 0-й элемент буфера
         }
         else if (next_measur && measur == 1) {
           measur = 2;
           next_measur = 0;
           time_switch = 0;
           alarm_measur = 0;
-          rad_buff[0] = 0; //очищаем 0-й элемент буфера
+          scan_buff = 0; //очищаем 0-й элемент буфера
           n = 0;
         }
         scr = 0; //разрешаем обновления экрана
@@ -1600,9 +1624,9 @@ void search_update(void) //обновление данных поиска
         if (search_buff[i] > graf_max) graf_max = search_buff[i];
       }
 
-      search_buff[0] = rad_buff[0]; //новое значение в последнюю ячейку
-      rad_buff[1] = rad_buff[0]; //смещаем 0-й элемент в 1-й для дальнейшей работы с ним
-      rad_buff[0] = 0; //сбрасываем счетчик импульсов
+      search_buff[0] = scan_buff; //новое значение в последнюю ячейку
+      rad_buff[0] = scan_buff; //смещаем 0-й элемент в 1-й для дальнейшей работы с ним
+      scan_buff = 0; //сбрасываем счетчик импульсов
 
       if (search_buff[0] > graf_max) graf_max = search_buff[0];
     }
@@ -1613,9 +1637,9 @@ void search_update(void) //обновление данных поиска
         if (search_buff[i] > graf_max) graf_max = search_buff[i];
       }
 
-      search_buff[75] = rad_buff[0]; //новое значение в последнюю ячейку
-      rad_buff[1] = rad_buff[0]; //смещаем 0-й элемент в 1-й для дальнейшей работы с ним
-      rad_buff[0] = 0; //сбрасываем счетчик импульсов
+      search_buff[75] = scan_buff; //новое значение в последнюю ячейку
+      rad_buff[0] = scan_buff; //смещаем 0-й элемент в 1-й для дальнейшей работы с ним
+      scan_buff = 0; //сбрасываем счетчик импульсов
 
       if (search_buff[75] > graf_max) graf_max = search_buff[75];
     }
@@ -1725,8 +1749,8 @@ void search_menu(void) //инициализация режима поиск
         rad_imp_m = 0; //сбрасываем имп/м
         rad_imp_cm2 = 0; //сбрасываем счет импульсов
         search_time_now = 0; //сбрасываем время счета графика
+        scan_buff = 0; //сбрасываем буфер
         rad_buff[0] = 0; //сбрасываем буфер
-        rad_buff[1] = 0; //сбрасываем буфер
         serch_disable = 0; //разрешаем обновление графика
         for (uint8_t i = 0; i < 76; i++) search_buff[i] = 0; //очищаем буфер графика
         scr = 0; //разрешаем обновления экрана
@@ -1747,8 +1771,8 @@ void search_menu(void) //инициализация режима поиск
         break;
 
       case 6: //hold select key //настройки
+        scan_buff = 0; //сбрасываем счетчик импульсов
         rad_buff[0] = 0; //сбрасываем счетчик импульсов
-        rad_buff[1] = 0; //сбрасываем счетчик импульсов
         serch = 0; //устанавливаем флаг поиска
         scr = 0; //разрешаем обновления экрана
         return;
@@ -2072,7 +2096,7 @@ void _setings_data_up(uint8_t pos) //прибавление данных
   {
     case 0: //Сон
       switch (sleep_switch) {
-        case 0: sleep_switch = 2; _LIGHT_ON; break;
+        case 0: sleep_switch = 2; _LIGHT_ON(); break;
         case 1: sleep_switch = 2; TIME_BRIGHT = 5; break;
         case 2: if (TIME_SLEEP < 250) TIME_SLEEP += 5; break;
       }
@@ -2372,10 +2396,10 @@ void fast_light(void) //вкл/выкл подсветки
 {
   if (!sleep_switch) { //если сон выключен
     if (light_switch) {
-      _LIGHT_OFF; //выключаем подсветку, если была включена настройками
+      _LIGHT_OFF(); //выключаем подсветку, если была включена настройками
     }
     else {
-      _LIGHT_ON; //включаем подсветку
+      _LIGHT_ON(); //включаем подсветку
     }
   }
 }
@@ -2937,7 +2961,7 @@ void main_screen(void)
         }
 
         switch (back_mode) {
-          case 0: for (uint8_t i = 4; i < 80; i++) graf_lcd(map(rad_buff[i - 3], 0, maxLevel_back, 0, 15), i, 15, 2);  break; //инициализируем график
+          case 0: for (uint8_t i = 4; i < 80; i++) graf_lcd(map(rad_buff[i - 4], 0, maxLevel_back, 0, 15), i, 15, 2);  break; //инициализируем график
           case 1: //максимальный и средний фон
             setFont(RusFont); //установка шрифта
             drawBitmap(0, 32, dose_mid_img, 26, 8);       //строка 2 средн:
@@ -3017,8 +3041,8 @@ void main_screen(void)
         case 0:
           switch (scr_mode) { //основные экраны
             case 0: //сбрасываем фон
-              for (uint8_t i = 0; i < geiger_time_now; i++) rad_buff[i + 1] = 0; //очищаем буфер фона
-              rad_buff[0] = 0; //очищаем буфер счета
+              for (uint8_t i = 0; i < geiger_time_now; i++) rad_buff[i] = 0; //очищаем буфер фона
+              scan_buff = 0; //очищаем буфер счета
               geiger_time_now = 0; //сбрасываем счетчик накопления импульсов в буфере
               rad_back = 0; //сбрасываем фон
 

@@ -3,6 +3,8 @@
 //  PORTB (0 - D8 | 1 - D9 | 2 - D10 | 3 - D11 | 4 - D12 | 5 - D13) PINB
 //    PORTC (0 - A0 | 1 - A1 | 2 - A2 | 3 - A3 | 4 - A4 | 5 - A5) PINC
 
+#define DDR_REG(portx)  (*(&portx-1))
+
 //обьявляем дисплей с указанием пинов подключения
 //пин SCK дисплея A1
 #define SCK_BIT  1
@@ -69,21 +71,6 @@
 #define UP_INP   (bitClear((DDR_REG(UP_PORT)), UP_BIT))
 
 #define UP_INIT  UP_SET; UP_INP
-
-
-//пределитель Timer1 для пищалки
-#define TMR1_PRESCALER  256
-
-//пищалка старт/стоп
-#define TIMER1_START       PRR &= ~(1 << 3); TIMSK1 = 0b00000010
-#define TIMER1_STOP        PRR |= (1 << 3); TIMSK1 = 0b00000000
-
-//подсветка старт/стоп
-#define _LIGHT_ON       PRR &= ~(1 << 6); TIMSK2 = 0b00000011; light_switch = 1
-#define _LIGHT_OFF      PRR &= ~(1 << 6); TIMSK2 = 0b00000011; light_switch = 0
-#define _LIGHT_STOP     TCNT2 = TIMSK2 = 0b00000000; PRR |= (1 << 6)
-
-#define DDR_REG(portx)  (*(&portx-1))
 
 //пин пищалки
 #define BUZZ_BIT   6 // D6
