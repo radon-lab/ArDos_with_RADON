@@ -2943,7 +2943,7 @@ void main_screen(void)
         }
 
         switch (back_mode) {
-          case 0: for (uint8_t i = 4; i < 80; i++) graf_lcd(map(rad_buff[i >> 1], 0, maxLevel_back, 0, 15), i, 15, 2);  break; //инициализируем график
+          case 0: for (uint8_t i = 4; i < 80; i++) graf_lcd(map(rad_buff[(i - 4) >> 1], 0, maxLevel_back, 0, 15), i, 15, 2);  break; //инициализируем график
           case 1: //максимальный и средний фон
             setFont(RusFont); //установка шрифта
             drawBitmap(0, 32, dose_mid_img, 26, 8);       //строка 2 средн:
