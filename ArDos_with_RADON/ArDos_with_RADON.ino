@@ -2947,7 +2947,7 @@ void main_screen(void)
           case 0: for (uint8_t i = 4; i < 80; i++) graf_lcd(map(rad_buff[(i - 4) >> 1], 0, maxLevel_back, 0, 15), i, 15, 2);  break; //инициализируем график
           case 1: //максимальный и средний фон
             setFont(RusFont); //установка шрифта
-            drawBitmap(0, 32, dose_mid_img, 26, 8);       //строка 2 средн:
+            drawBitmap(0, 32, dose_min_img, 23, 8);       //строка 2 средн:
             drawBitmap(0, 40, dose_max_img, 23, 8);       //строка 3 макс:
             _init_rads_unit(0, rad_min, 1, 4, 29, 32, 0, 54, 32); //строка 2 минимальный
             if (accur_percent > RAD_ACCUR_START) print("----", 29, 32); //если недостаточно точности
