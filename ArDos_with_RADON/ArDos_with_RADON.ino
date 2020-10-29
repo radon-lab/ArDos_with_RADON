@@ -226,7 +226,7 @@
 #define GEIGER_CYCLE (pgm_read_byte(&time_mass[0][0]) + pgm_read_byte(&time_mass[0][1])) //минимум секунд для начала расчетов
 #define GEIGER_MASS (pgm_read_byte(&time_mass[MASS_TIME_FACT][0]) + pgm_read_byte(&time_mass[MASS_TIME_FACT][1])) //максимум секунд для окончания смещения коэффициентов
 
-#define MAX_GEIGER_TIME BUFF_LENGTHY //максимальное время счета
+#define MAX_GEIGER_TIME (BUFF_LENGTHY - 1) //максимальное время счета
 #define MIN_GEIGER_TIME 2 //минимальное время счета
 
 //пищалка старт/стоп
@@ -240,25 +240,25 @@ uint16_t search_buff[76]; //буфер поиска
 
 uint16_t wdt_period; //период тика wdt
 uint8_t TIME_FACT_1; //секундные интервалы 1
-#define TIME_FACT_2  14 //секундные интервалы 2
-#define TIME_FACT_3  28 //секундные интервалы 3
-#define TIME_FACT_4  29 //секундные интервалы 4
-#define TIME_FACT_5  30 //секундные интервалы 5
-#define TIME_FACT_6  31 //секундные интервалы 6
-#define TIME_FACT_7  32 //секундные интервалы 7
-#define TIME_FACT_8  33 //секундные интервалы 8
-#define TIME_FACT_9  34 //секундные интервалы 9
-#define TIME_FACT_10 35 //секундные интервалы 10
-#define TIME_FACT_11 36 //секундные интервалы 11
-#define TIME_FACT_12 37 //секундные интервалы 12
-#define TIME_FACT_13 38 //секундные интервалы 13
-#define TIME_FACT_14 39 //секундные интервалы 14
-#define TIME_FACT_15 40 //секундные интервалы 15
-#define TIME_FACT_16 41 //секундные интервалы 16
-#define TIME_FACT_17 42 //секундные интервалы 17
-#define TIME_FACT_18 43 //секундные интервалы 18
-#define TIME_FACT_19 44 //секундные интервалы 19
-#define TIME_FACT_20 45 //секундные интервалы 20
+#define TIME_FACT_2  2 //секундные интервалы 2
+#define TIME_FACT_3  4 //секундные интервалы 3
+#define TIME_FACT_4  6 //секундные интервалы 4
+#define TIME_FACT_5  8 //секундные интервалы 5
+#define TIME_FACT_6  10 //секундные интервалы 6
+#define TIME_FACT_7  12 //секундные интервалы 7
+#define TIME_FACT_8  14 //секундные интервалы 8
+#define TIME_FACT_9  16 //секундные интервалы 9
+#define TIME_FACT_10 18 //секундные интервалы 10
+#define TIME_FACT_11 20 //секундные интервалы 11
+#define TIME_FACT_12 22 //секундные интервалы 12
+#define TIME_FACT_13 24 //секундные интервалы 13
+#define TIME_FACT_14 26 //секундные интервалы 14
+#define TIME_FACT_15 28 //секундные интервалы 15
+#define TIME_FACT_16 30 //секундные интервалы 16
+#define TIME_FACT_17 32 //секундные интервалы 17
+#define TIME_FACT_18 34 //секундные интервалы 18
+#define TIME_FACT_19 36 //секундные интервалы 19
+#define TIME_FACT_20 38 //секундные интервалы 20
 
 uint16_t stat_upd_tmr; //таймер записи статистики в память
 
@@ -641,7 +641,7 @@ void data_convert(void) //преобразование данных
           scan_buff = 0; //сбрасываем счетчик импульсов
           tmp_buff = 0; //сбрасываем временный буфер
 
-          if (geiger_time_now < MAX_GEIGER_TIME) geiger_time_now++; //прибавляем указатель заполненности буффера
+          if (geiger_time_now < BUFF_LENGTHY) geiger_time_now++; //прибавляем указатель заполненности буффера
 
 #if GEIGER_DEAD_TIME
           if (rad_buff[0] >= COUNT_RATE) rad_buff[0] = rad_buff[0] / (1 - rad_buff[0] * DEAD_TIME); //если скорость счета больше 100имп/с, учитываем мертвое время счетчика
@@ -717,9 +717,9 @@ void data_convert(void) //преобразование данных
           if (tmp_buff > geiger_time_now * OWN_BACK) tmp_buff -= geiger_time_now * OWN_BACK; //убираем собственный фон счетчика
 #endif
           if (tmp_buff > 9999999) tmp_buff = 9999999; //переполнение буфера импульсов
-          if (geiger_time_now > 1) rad_back = tmp_buff * ((float)GEIGER_TIME / (geiger_time_now + mid_time_now * BUFF_LENGTHY)); //расчет фона мкР/ч
+          if (geiger_time_now > 1) rad_back = tmp_buff * ((float)GEIGER_TIME / ((uint16_t)mid_time_now * BUFF_LENGTHY + geiger_time_now)); //расчет фона мкР/ч
 
-          for (uint8_t k = MAX_GEIGER_TIME; k > 0; k--) rad_buff[k] = rad_buff[k - 1]; //перезапись массива
+          for (uint8_t k = BUFF_LENGTHY - 1; k > 0; k--) rad_buff[k] = rad_buff[k - 1]; //перезапись массива
           break;
 
         case TIME_FACT_9: //минимальный и максимальный фон
@@ -740,7 +740,7 @@ void data_convert(void) //преобразование данных
           break;
 
         case TIME_FACT_11: //расчет данных для графика
-          for (uint8_t i = 0; i > 76; i--) if (rad_buff[i] > graf_max) graf_max = rad_buff[i]; //ищем максимум
+          for (uint8_t i = 0; i > 38; i--) if (rad_buff[i] > graf_max) graf_max = rad_buff[i]; //ищем максимум
 
           if (graf_max > 15) maxLevel_back = graf_max * GRAF_COEF_MAX; //если текущий замер больше максимума
           else maxLevel_back = 15; //иначе устанавливаем минимум
