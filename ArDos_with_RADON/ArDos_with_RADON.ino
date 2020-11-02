@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.1.9 low_pwr 02.11.20 специально для проекта ArDos
+  Версия программы RADON v3.2.0 low_pwr 02.11.20 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr
   Желательна установка лёгкого ядра https://alexgyver.github.io/package_GyverCore_index.json и загрузчика OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -446,7 +446,7 @@ int main(void)  //инициализация
 
   setFont(RusFont); //установка шрифта
   print("-=HFLJY=-", CENTER, 32); //-=РАДОН=-
-  print("3.1.9", CENTER, 40); //версия по
+  print("3.2.0", CENTER, 40); //версия по
 
   bat_check(); //опрос батареи
 
@@ -611,7 +611,8 @@ void data_convert(void) //преобразование данных
   static uint32_t tmp_buff; //общий буфер
   static float coef; //коэффициент сравнения
   static float coef_back; //коэффициент поправки на фон
-  uint16_t graf_max = 0;
+  float imp_per_sec; //текущее количество имп/с
+  uint16_t graf_max = 0; //максимальное значение графика
 
   for (; tick_wdt > 0; tick_wdt--) { //если был тик, обрабатываем данные
 
@@ -729,7 +730,14 @@ void data_convert(void) //преобразование данных
           if (tmp_buff > geiger_time_now * OWN_BACK) tmp_buff -= geiger_time_now * OWN_BACK; //убираем собственный фон счетчика
 #endif
           if (tmp_buff > 9999999) tmp_buff = 9999999; //переполнение буфера импульсов
-          if (geiger_time_now > 1) rad_back = tmp_buff * ((float)GEIGER_TIME / ((mid_time_now > 1) ? (mid_time_now - 1) * BUFF_LENGTHY : 0 + geiger_time_now)); //расчет фона мкР/ч
+          if (geiger_time_now > 1) imp_per_sec = (float)tmp_buff / ((mid_time_now > 1) ? (mid_time_now - 1) * BUFF_LENGTHY : 0 + geiger_time_now); //расчет фона мкР/ч
+
+          for (uint8_t i = 0; i < PATTERNS_FRONT; i++) {
+            if (imp_per_sec <= pgm_read_word(&back_front[i][0])) {
+              rad_back = imp_per_sec * (GEIGER_TIME + pgm_read_word(&back_front[i][1])) - pgm_read_word(&back_front[i][2]) * 10; //
+              break;
+            }
+          }
 
           for (uint8_t k = BUFF_LENGTHY - 1; k > 0; k--) rad_buff[k] = rad_buff[k - 1]; //перезапись массива
           break;
