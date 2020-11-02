@@ -230,7 +230,7 @@
 #define MIN_GEIGER_TIME 2 //минимальное время счета
 
 //пищалка старт/стоп
-#define SOUND_START  PRR &= ~(1 << 3); TIMSK1 = 0b00000001
+#define SOUND_START  PRR &= ~(1 << 3); TIMSK1 = 0b00000010
 #define SOUND_STOP   TIMSK1 = 0b00000000; PRR |= (1 << 3)
 
 //вспышки старт/стоп
@@ -368,7 +368,7 @@ uint32_t first_froze = 0; //счетчик 1-го замера
 uint32_t second_froze = 0; //счетчик 2-го замера
 
 volatile uint16_t cnt_puls; //количество циклов таймера 1 для пищалки
-volatile uint16_t TIMER1_PRELOAD; //частота таймера 1 для пищалки
+volatile uint16_t SOUND_PRELOAD; //частота таймера 1 для пищалки
 
 float now = 0.00; //текущее соотношение ячеек сравнения
 #if COEF_DEBUG //отладка коэффициента
@@ -1013,7 +1013,7 @@ ISR(TIMER2_COMPA_vect) {
 //---------------------------------Прерывание сигнала для пищалки---------------------------------------
 ISR(TIMER1_COMPA_vect) //прерывание сигнала для пищалки
 {
-  TCNT1 = TIMER1_PRELOAD; //устанавливаем частоту
+  TCNT1 = SOUND_PRELOAD; //устанавливаем частоту
 
   switch (is_BUZ_SET) { //проверяем текущее состояния бита бузера
     case 0: BUZZ_SET; break; //включаем бузер
@@ -1028,14 +1028,14 @@ ISR(TIMER1_COMPA_vect) //прерывание сигнала для пищалк
 void buzz_pulse(uint16_t freq, uint8_t time) //генерация частоты бузера (частота 10..10000, длительность мс.)
 {
   cnt_puls = time / float(1.00 / freq * 1000); //пересчитываем частоту и время в циклы таймера
-  TIMER1_PRELOAD = (65536 - (F_CPU / SOUND_PRESCALER) / freq); //устанавливаем частоту таймера
+  SOUND_PRELOAD = (65536 - (F_CPU / SOUND_PRESCALER) / freq); //устанавливаем частоту таймера
   SOUND_START; //запускаем таймер
 }
 //--------------------------------Щелчок пищалкой-------------------------------------------------
 inline void buzz_click(void) //щелчок пищалкой
 {
   cnt_puls = buzz_time; //устанавливаем длительность щелчка
-  TIMER1_PRELOAD = buzz_freq; //устанавливаем частоту щелчка
+  SOUND_PRELOAD = buzz_freq; //устанавливаем частоту щелчка
   SOUND_START; //запускаем таймер
 }
 //---------------------------------Воспроизведение мелодии---------------------------------------
@@ -2970,7 +2970,7 @@ void main_screen(void)
       case 0: //режим измерения текущего фона
         switch (alarm_switch) {
           case 0:
-            _screen_line(map(geiger_time_now, 0, BUFF_LENGTHY, 5, 82), map(mid_time_now, 1, MID_BUFF_LENGTHY, 5, 82), 1, 1, 24); //шкалы точности и усреднения
+            _screen_line(map(geiger_time_now, 0, BUFF_LENGTHY, 5, 82), map(constrain(mid_time_now, 1, MID_BUFF_LENGTHY), 1, MID_BUFF_LENGTHY, 5, 82), 1, 1, 24); //шкалы точности и усреднения
             break;
 
           case 3:
