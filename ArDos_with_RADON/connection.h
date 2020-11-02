@@ -76,12 +76,11 @@
 #define BUZZ_BIT   6 // D6
 #define BUZZ_PORT  PORTD
 
-#define BUZZ_CLR   (bitClear(BUZZ_PORT, BUZZ_BIT))
-#define BUZZ_SET   (bitSet(BUZZ_PORT, BUZZ_BIT))
-#define is_BUZ_SET (bitRead(BUZZ_PORT, BUZZ_BIT))
+#define BUZZ_OFF   (bitClear(BUZZ_PORT, BUZZ_BIT))
+#define BUZZ_INV   (BUZZ_PORT ^= (1 << BUZZ_BIT))
 #define BUZZ_OUT   (bitSet((DDR_REG(BUZZ_PORT)), BUZZ_BIT))
 
-#define BUZZ_INIT  BUZZ_CLR; BUZZ_OUT
+#define BUZZ_INIT  BUZZ_OFF; BUZZ_OUT
 
 //пин детектора
 #define DET_1_BIT   2 // D2
