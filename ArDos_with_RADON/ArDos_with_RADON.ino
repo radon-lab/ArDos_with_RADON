@@ -659,7 +659,7 @@ void data_convert(void) //преобразование данных
           if (rad_buff[0] >= COUNT_RATE) rad_buff[0] = rad_buff[0] / (1 - rad_buff[0] * DEAD_TIME); //если скорость счета больше 100имп/с, учитываем мертвое время счетчика
 #endif
 
-            for (uint8_t i = 0; i < geiger_time_now; i++) tmp_buff += rad_buff[i]; //суммирование всех импульсов для расчета фона
+          for (uint8_t i = 0; i < geiger_time_now; i++) tmp_buff += rad_buff[i]; //суммирование всех импульсов для расчета фона
           break;
 
         case TIME_FACT_4: //расчет текущего фона этап-2
@@ -1678,6 +1678,18 @@ void search_update(void) //обновление данных поиска
     cnt = 0; //сброс
     graf = 0; //разрешаем обновление графика
   }
+  
+  static uint16_t n;
+  static uint16_t f;
+
+  if (rad_imp > SEARCH_IND_MAX) n = SEARCH_IND_MAX; //устанавливаем точки максимумов
+  else n = rad_imp;
+  n = map(n, 0, SEARCH_IND_MAX, 2, 54); //корректируем под коэфициент
+  if (n < f) f--; //добавляем плавности при уменьшении
+  else f = n; //если увеличелось, отображаем сразу
+
+  clrRow(2, f + 1, 54); //убираем лишнее
+  drawBitmap(0, 16, scan_ind_img, f, 8); //рисуем полосу
 }
 //-------------------------Инициализация режима поиск-----------------------------------------
 void search_menu(void) //инициализация режима поиск
@@ -1702,19 +1714,7 @@ void search_menu(void) //инициализация режима поиск
 
       drawBitmap(0, 0, serch_img, 84, 8); //отрисовываем фон
       drawBitmap(0, 8, scan_ind_scale_img, 55, 8); //рисуем шкалу
-      //--------------------------------------------------------------//
-      static uint16_t n;
-      static uint16_t f;
 
-      if (rad_imp > SEARCH_IND_MAX) n = SEARCH_IND_MAX; //устанавливаем точки максимумов
-      else n = rad_imp;
-      n = map(n, 0, SEARCH_IND_MAX, 2, 54); //корректируем под коэфициент
-      if (n < f) f--; //добавляем плавности при уменьшении
-      else f = n; //если увеличелось, отображаем сразу
-
-      clrRow(2, f + 1, 54); //убираем лишнее
-      drawBitmap(0, 16, scan_ind_img, f, 8); //рисуем полосу
-      //--------------------------------------------------------------//
       setFont(RusFont); //установка шрифта
       switch (c) {
         case 0:
