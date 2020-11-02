@@ -596,12 +596,6 @@ ISR(INT0_vect) //внешнее прерывание на пине INT0 - счи
 ISR(WDT_vect) //прерывание по переполнению wdt - 17.5мс
 {
   tick_wdt++; //прибавляем тик
-
-  switch (btn_state) { //таймер опроса кнопок
-    case 0: if (btn_check) btn_tmr++; break; //считаем циклы
-    case 1: if (btn_tmr > 0) btn_tmr--; break; //убираем дребезг
-  }
-  if (is_RAD_FLASH_ON) RAD_FLASH_OFF; //выключаем световую индикацию если была включена
 }
 //----------------------------------Преобразование данных---------------------------------------------------------
 void data_convert(void) //преобразование данных
@@ -622,6 +616,11 @@ void data_convert(void) //преобразование данных
   for (; tick_wdt > 0; tick_wdt--) { //если был тик, обрабатываем данные
 
     if (++time_wdt >= TIME_FACT_1) time_wdt = 0; //расчет времени один раз в секунду
+
+    switch (btn_state) { //таймер опроса кнопок
+      case 0: if (btn_check) btn_tmr++; break; //считаем циклы
+      case 1: if (btn_tmr > 0) btn_tmr--; break; //убираем дребезг
+    }
 
     if (serch) search_update(); //обновляем график
 
@@ -1627,6 +1626,7 @@ void search_update(void) //обновление данных поиска
 {
   static uint16_t cnt; //счетчик тиков графика
   static uint8_t now_pos; //переключатель динамического изменения времени
+  static uint16_t time_to_update; //текущее время обновления
 
   if (++cnt >= now_pos) { //расчет показаний
     uint16_t graf_max = 0; //максимум графика
@@ -1665,7 +1665,7 @@ void search_update(void) //обновление данных поиска
     if (graf_max > 22) maxLevel = graf_max * GRAF_COEF_MAX; //если текущий замер больше максимума
     else maxLevel = 22;
 
-    uint16_t time_to_update = (search_pos != 8) ? pgm_read_word(&search_time[search_pos]) : pgm_read_word(&search_time[map(constrain(rad_imp, 0, SEARCH_IND_MAX), 0, SEARCH_IND_MAX, 7, 0)]);
+    time_to_update = (search_pos != 8) ? pgm_read_word(&search_time[search_pos]) : pgm_read_word(&search_time[map(constrain(rad_imp, 0, SEARCH_IND_MAX), 0, SEARCH_IND_MAX, 7, 0)]);
 
     for (uint8_t i = 0; i < search_time_now; i++) temp_buf += search_buff[i]; //сдвигаем массив
     temp_buf = temp_buf / search_time_now;
@@ -1678,13 +1678,13 @@ void search_update(void) //обновление данных поиска
     cnt = 0; //сброс
     graf = 0; //разрешаем обновление графика
   }
-  
+
   static uint16_t n;
   static uint16_t f;
+  uint32_t imp_s = search_buff[0] * (1000.00 / time_to_update); //персчет импульсов в сек.
 
-  if (rad_imp > SEARCH_IND_MAX) n = SEARCH_IND_MAX; //устанавливаем точки максимумов
-  else n = rad_imp;
-  n = map(n, 0, SEARCH_IND_MAX, 2, 54); //корректируем под коэфициент
+  n = (imp_s > SEARCH_IND_MAX) ? SEARCH_IND_MAX : imp_s; //устанавливаем точки максимумов
+  n = map(n, 0, SEARCH_IND_MAX, 2, 54); //корректируем под коэффициент
   if (n < f) f--; //добавляем плавности при уменьшении
   else f = n; //если увеличелось, отображаем сразу
 
