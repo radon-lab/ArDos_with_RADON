@@ -292,8 +292,8 @@ uint32_t rad_dose_old; //предыдущее значение дозы
 //счетчики времени
 uint64_t time_micros = 0; //счетчик реального времени
 uint32_t time_sec = 0; //секунды
-uint8_t tmr_mid = 0; //таймер счета секунд усреднения
 uint8_t mid_time_now = 0; //текущий номер набранного массива усреднения
+uint8_t back_time_now = 0; //текущий номер набранной секунды счета фона
 uint8_t geiger_time_now = 0; //текущий номер набранной секунды счета
 uint8_t search_time_now = 0; //текущий номер набранной секунды графика
 
@@ -653,22 +653,23 @@ void data_convert(void) //преобразование данных
           tmp_buff = 0; //сбрасываем временный буфер
 
           if (geiger_time_now < BUFF_LENGTHY) geiger_time_now++; //прибавляем указатель заполненности буффера
+          if (back_time_now < BUFF_LENGTHY) back_time_now++;
+          else back_time_now = 1;
 
 #if GEIGER_DEAD_TIME
           if (rad_buff[0] >= COUNT_RATE) rad_buff[0] = rad_buff[0] / (1 - rad_buff[0] * DEAD_TIME); //если скорость счета больше 100имп/с, учитываем мертвое время счетчика
 #endif
 
-          for (uint8_t i = 0; i < geiger_time_now; i++) tmp_buff += rad_buff[i]; //суммирование всех импульсов для расчета фона
+          for (uint8_t i = 0; i < back_time_now; i++) tmp_buff += rad_buff[i]; //суммирование всех импульсов для расчета фона
           break;
 
         case TIME_FACT_4: //расчет текущего фона этап-2
-          if (++tmr_mid >= BUFF_LENGTHY) { //если основной буфер перезаписался
+          if (back_time_now >= BUFF_LENGTHY) { //если основной буфер перезаписался
             for (uint8_t k = MID_BUFF_LENGTHY - 1; k > 0; k--) rad_mid_buff[k] = rad_mid_buff[k - 1]; //перезапись массива
             rad_mid_buff[0] = tmp_buff; //записываем основной массив в массив усреднения
             if (mid_time_now < MID_BUFF_LENGTHY) mid_time_now++; //прибавляем указатель заполненности буффера
-            tmr_mid = 0; //сбрасывем счетчик секунд
           }
-          for (uint8_t i = 1; i < mid_time_now; i++) tmp_buff += rad_mid_buff[i]; //суммирование всех импульсов для расчета фона
+          for (uint8_t i = 0; i < mid_time_now; i++) tmp_buff += rad_mid_buff[i]; //суммирование всех импульсов для расчета фона
           break;
 
         case TIME_FACT_5: //расчет текущего фона этап-3
@@ -715,8 +716,8 @@ void data_convert(void) //преобразование данных
               if (now > coef || now < (1.00 / coef)) { //если видим скачок или спад
                 tmp_buff = 0; //сбрасываем текущий буфер
                 for (uint8_t i = 0; i < pgm_read_byte(&time_mass[0][0]); i++) tmp_buff += rad_buff[i]; //запоняем буффер первого плеча
-                geiger_time_now = pgm_read_byte(&time_mass[0][0]); //устанавливаем текущий размер буфера
-                mid_time_now = tmr_mid = 0; //сбрасываем рассчет среднего
+                back_time_now = geiger_time_now = pgm_read_byte(&time_mass[0][0]); //устанавливаем текущий размер буфера
+                mid_time_now = 0; //сбрасываем рассчет среднего
                 mass_switch = 0; //сбрасываем позицию переключения
               }
             }
@@ -2970,7 +2971,7 @@ void main_screen(void)
       case 0: //режим измерения текущего фона
         switch (alarm_switch) {
           case 0:
-            _screen_line(map(geiger_time_now, 0, BUFF_LENGTHY, 5, 82), map(constrain(mid_time_now, 1, MID_BUFF_LENGTHY), 1, MID_BUFF_LENGTHY, 5, 82), 1, 1, 24); //шкалы точности и усреднения
+            _screen_line(map(geiger_time_now, 0, BUFF_LENGTHY, 5, 82), map(mid_time_now, 0, MID_BUFF_LENGTHY, 5, 82), 1, 1, 24); //шкалы точности и усреднения
             break;
 
           case 3:
@@ -3064,8 +3065,8 @@ void main_screen(void)
             case 0: //сбрасываем фон
               for (uint8_t i = 0; i < geiger_time_now; i++) rad_buff[i] = 0; //очищаем буфер фона
               scan_buff = 0; //очищаем буфер счета
-              geiger_time_now = 0; //сбрасываем счетчик накопления импульсов в буфере
-              mid_time_now = tmr_mid = 0; //сбрасываем рассчет среднего
+              back_time_now = geiger_time_now = 0; //сбрасываем счетчик накопления импульсов в буфере
+              mid_time_now = 0; //сбрасываем рассчет среднего
               rad_back = 0; //сбрасываем фон
 
               switch (back_mode) {
