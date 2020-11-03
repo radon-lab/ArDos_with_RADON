@@ -227,9 +227,6 @@
 #define GEIGER_CYCLE (pgm_read_byte(&time_mass[0][0]) + pgm_read_byte(&time_mass[0][1])) //минимум секунд для начала расчетов
 #define GEIGER_MASS (pgm_read_byte(&time_mass[MASS_TIME_FACT][0]) + pgm_read_byte(&time_mass[MASS_TIME_FACT][1])) //максимум секунд для окончания смещения коэффициентов
 
-#define MAX_GEIGER_TIME BUFF_LENGTHY //максимальное время счета
-#define MIN_GEIGER_TIME 2 //минимальное время счета
-
 //пищалка старт/стоп
 #define SOUND_START  PRR &= ~(1 << 3); TIMSK1 = 0b00000010
 #define SOUND_STOP   TIMSK1 = 0b00000000; PRR |= (1 << 3)
@@ -240,7 +237,7 @@
 
 volatile uint16_t scan_buff; //переменная для счета импульсов от датчика
 uint16_t rad_buff[BUFF_LENGTHY]; //массив секундных замеров для расчета фона
-uint32_t rad_mid_buff[MID_BUFF_LENGTHY]; //массив секундных замеров для расчета фона
+uint32_t rad_mid_buff[MID_BUFF_LENGTHY]; //массив секундных замеров для усреднения фона
 uint16_t search_buff[76]; //буфер поиска
 
 uint16_t wdt_period; //период тика wdt
@@ -357,7 +354,7 @@ uint32_t timer_melody; //таймер отсчета миллисекунд дл
 uint16_t buzz_freq; //рассчитанная частота щелчков
 uint16_t buzz_time; //рассчитанное время щелчков
 
-volatile uint8_t btn_tmr; //таймер тиков обработки
+uint8_t btn_tmr; //таймер тиков обработки
 boolean btn_check; //флаг разрешения опроса кнопки
 boolean btn_state; //флаг текущего состояния кнопки
 
@@ -422,9 +419,7 @@ int main(void)  //инициализация
   ACSR |= 1 << ACD; //отключаем компаратор
 
   InitLCD(contrast); //инициализируем дисплей
-
   _LIGHT_ON(); // включаем подсветку, если была включена настройками
-
   _init_logo(); //вывод логотипа
 
   TIME_FACT_1 = 100000 / wdt_period; //расчитываем период для секунд
@@ -889,8 +884,8 @@ void data_convert(void) //преобразование данных
     }
   }
 }
-//-------------------------Вывод точности замера----------------------------------------------------
-uint8_t _init_accur(uint32_t num) //вывод точности замера
+//-------------------------Расчет точности замера----------------------------------------------------
+uint8_t _init_accur(uint32_t num) //расчет точности замера
 {
   return (num) ? constrain(((sigma_pos + 1) / sqrtf((float)num)) * 100, 1, 99) : 99;
 }
@@ -3040,7 +3035,6 @@ void main_screen(void)
         }
 
         _init_accur_percent(accur_percent); //отрисовка точности
-
         _init_rads_unit(1, rad_back, 1, 4, 1, 8, 0, 54, 16); //строка 1 основной фон
 
         break;
