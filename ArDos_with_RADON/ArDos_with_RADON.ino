@@ -1,6 +1,6 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.2.0 low_pwr 03.11.20 специально для проекта ArDos
-  Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr
+  Версия программы RADON v3.2.1 low_pwr 03.11.20 специально для проекта ArDos
+  Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка лёгкого ядра https://alexgyver.github.io/package_GyverCore_index.json и загрузчика OptiBoot v8 https://github.com/Optiboot/optiboot
 
 
@@ -112,6 +112,7 @@
   3.1.5 21.10.20 - график фона теперь не стирается при автосбросе, единицы в режиме поиск теперь имеют разрешение 2 знака после запятой до значения в 100 единиц, счет среднего фона теперь идет от накопления общего количества частиц.
   3.1.6 22.10.20 - файл "SETUP" удалён, все настройки перенесены в "config", в настройки добавлен пункт "график", позволяет настроить время обновления графика в режиме "поиск", настроить пресеты можно в "config" массив "search_time",
                    настроить площадь датчика можно в "config" пункт "SEARCH_GEIGER_AREA", настроить количество ячеек для обработки единиц в режиме "поиск" можно в "config" параметр "SEARCH_BUF_SCORE".
+  3.2.1 03.11.20 - переработан режим замера "бета", добавлен экспериментальный аппроксимированный счет фона, добавлена возможность выбора алгоритма счета фона, ускорение работы программы.
 
   Внимание!!! При выключении пункта "СОН" в меню настроек влечет увеличением энергопотребления, но тем самым увеличивается производительность устройства.
 
@@ -446,7 +447,7 @@ int main(void)  //инициализация
 
   setFont(RusFont); //установка шрифта
   print("-=HFLJY=-", CENTER, 32); //-=РАДОН=-
-  print("3.2.0", CENTER, 40); //версия по
+  print("3.2.1", CENTER, 40); //версия по
 
   bat_check(); //опрос батареи
 
@@ -742,7 +743,7 @@ void data_convert(void) //преобразование данных
 #if GEIGER_OWN_BACK
           if (tmp_buff > geiger_time_now * OWN_BACK) tmp_buff -= geiger_time_now * OWN_BACK; //убираем собственный фон счетчика
 #endif
-          if (geiger_time_now > 1) rad_back = tmp_buff * ((float)GEIGER_TIME / (mid_time_now * BUFF_LENGTHY + back_time_now); //расчет фона мкР/ч
+          if (geiger_time_now > 1) rad_back = tmp_buff * ((float)GEIGER_TIME / (mid_time_now * BUFF_LENGTHY + back_time_now)); //расчет фона мкР/ч
 #endif
           for (uint8_t k = BUFF_LENGTHY - 1; k > 0; k--) rad_buff[k] = rad_buff[k - 1]; //перезапись массива
           break;
@@ -802,8 +803,8 @@ void data_convert(void) //преобразование данных
           }
           break;
 
-        case TIME_FACT_13: //рассчитываем точность и бета фон
-          if (back_time_now != BUFF_LENGTHY) accur_percent = (tmp_buff) ? constrain(((sigma_pos + 1) / sqrtf((float)tmp_buff)) * 100, 1, 99) : 99;
+        case TIME_FACT_13: //рассчитываем точность
+          if (back_time_now != BUFF_LENGTHY) accur_percent = _init_accur(tmp_buff); //рассчет точности
           break;
 
         case TIME_FACT_14: //считаем пройденное время
@@ -888,8 +889,13 @@ void data_convert(void) //преобразование данных
     }
   }
 }
+//-------------------------Вывод точности замера----------------------------------------------------
+uint8_t _init_accur(uint32_t num) //вывод точности замера
+{
+  return (num) ? constrain(((sigma_pos + 1) / sqrtf((float)num)) * 100, 1, 99) : 99;
+}
 //-------------------------Режим пониженного энергопотребления----------------------------------------------------
-void low_pwr(void)
+void low_pwr(void) //режим пониженного энергопотребления
 {
   if (sleep_switch == 2 && power_manager) { //если сон разрешен и и разрешено энергосбережение
     if (TIMSK1 || TIMSK2 || TIMSK0) waint_pwr(); //если включен бузер или шим подсветки или индикация частиц - режим ожидания
@@ -1223,7 +1229,7 @@ void measur_warning(void) //окончание замера
 //-------------------------------Режим замера----------------------------------------------------------
 void measur_menu(void) //режим замера
 {
-  uint16_t result = 0; //результат
+  uint32_t buff = 0;
   boolean n = 0; //анимация окончания замера
 
   alarm_measur = 1; //запрещаем оповещение окончания замера
@@ -1247,32 +1253,42 @@ void measur_menu(void) //режим замера
 
       switch (measur) {
         case 0: //результат
-          if (first_froze > second_froze) result = (first_froze - second_froze) / ((60.0 / GEIGER_TIME) * pgm_read_byte(&diff_measuring[measur_pos])); //рассчитываем результат замера
-          else result = (second_froze - first_froze) / ((60.0 / GEIGER_TIME) * pgm_read_byte(&diff_measuring[measur_pos])); //рассчитываем результат замера
-
-          _init_rads_unit(1, result, 1, 4, 1, 8, 0, 54, 16); //результат
+          if (first_froze > second_froze) buff = first_froze - second_froze; //рассчитываем результат замера
+          else buff = second_froze - first_froze; //рассчитываем результат замера
 
           if (next_measur) {
             switch (n) {
-              case 0: drawBitmap(19, 24, measur_result_img, 45, 8); n = 1; break; //результат
-              case 1: drawBitmap(11, 24, measur_ok_img, 15, 8); drawBitmap(27, 24, measur_first_img, 47, 8); n = 0; break; //ок - первый замер
+              case 0:
+                drawBitmap(19, 24, measur_result_img, 45, 8); //результат
+                _init_couts_per_cm2(buff / pgm_read_byte(&diff_measuring[measur_pos]) / SEARCH_GEIGER_AREA, 0); //результат ч/см2*м
+                n = 1;
+                break;
+              case 1:
+                drawBitmap(11, 24, measur_ok_img, 15, 8); //ок -
+                drawBitmap(27, 24, measur_first_img, 47, 8); //первый замер
+                _init_rads_unit(1, buff / ((60.0 / GEIGER_TIME) * pgm_read_byte(&diff_measuring[measur_pos])), 1, 4, 1, 8, 0, 54, 16); //результат мкр/ч
+                n = 0;
+                break;
             }
           }
           else drawBitmap(19, 24, measur_result_img, 45, 8); //результат
 
-          print("1-q&", LEFT, 32);            //строка 1 1-й замер
-          print("bvg", 66, 32);          //строка 1 имп
+          _init_accur_percent(_init_accur(buff)); //отрисовка точности
+
+          setFont(RusFont); //установка шрифта
+          print("1-q", LEFT, 32); //строка 1 1-й замер
+          print("x|cv2", 54, 32); //строка 1 ч/см2
 #if (TYPE_CHAR_FILL > 44)
-          printNumI(first_froze, 28, 32, 6, TYPE_CHAR_FILL); //строка 1
+          printNumF(first_froze / pgm_read_byte(&diff_measuring[measur_pos]) / SEARCH_GEIGER_AREA, 0, 22, 32, 46, 5, TYPE_CHAR_FILL); //строка 1
 #else
-          printNumI(first_froze, 28, 32, 6, 32); //строка 1
+          printNumF(first_froze / pgm_read_byte(&diff_measuring[measur_pos]) / SEARCH_GEIGER_AREA, 0, 22, 32, 46, 5, 32); //строка 1
 #endif
-          print("2-q&", LEFT, 40);            //строка 2 2-й замер
-          print("bvg", 66, 40);          //строка 2 имп
+          print("2-q", LEFT, 40); //строка 2 2-й замер
+          print("x|cv2", 54, 40); //строка 2 ч/см2
 #if (TYPE_CHAR_FILL > 44)
-          printNumI(second_froze, 28, 40, 6, TYPE_CHAR_FILL); //строка 2
+          printNumF(second_froze / pgm_read_byte(&diff_measuring[measur_pos]) / SEARCH_GEIGER_AREA, 0, 22, 40, 46, 5, TYPE_CHAR_FILL); //строка 2
 #else
-          printNumI(second_froze, 28, 40, 6, 32); //строка 2
+          printNumF(second_froze / pgm_read_byte(&diff_measuring[measur_pos]) / SEARCH_GEIGER_AREA, 0, 22, 40, 46, 5, 32);
 #endif
 
           break;
@@ -1285,21 +1301,19 @@ void measur_menu(void) //режим замера
             }
           }
           else drawBitmap(18, 24, measur_first_img, 47, 8); //первый замер
-
-          setFont(MediumNumbers); //установка шрифта
-          printNumI(first_froze, 5, 8, 5, TYPE_CHAR_FILL); //строка 1
+          _init_couts_per_cm2(first_froze / (time_switch / 60.0) / SEARCH_GEIGER_AREA, 1); //рассчитываем результат замера в ч*см2/м); //первый замер ч/см2*м
+          _init_accur_percent(_init_accur(first_froze)); //отрисовка точности
           break;
 
         case 2: //2-й замер
-          setFont(MediumNumbers); //установка шрифта
-          printNumI(second_froze, 5, 8, 5, TYPE_CHAR_FILL); //строка 1
+          _init_couts_per_cm2(second_froze / (time_switch / 60.0) / SEARCH_GEIGER_AREA, 1); //второй замер ч/см2*м
+          _init_accur_percent(_init_accur(second_froze)); //отрисовка точности
           drawBitmap(11, 24, measur_second_img, 62, 8); //второй замер
           break;
       }
 
       if (measur) { //если идет замер
         setFont(RusFont); //установка шрифта
-        print("bvg", 66, 16);          //строка 1 имп
         printNumI(pgm_read_byte(&diff_measuring[measur_pos]), 50, 40, 2, 32); //минут всего
         print("vby", RIGHT, 40);            //строка 1 мин
 #if (TYPE_CHAR_FILL > 44)
@@ -1310,7 +1324,7 @@ void measur_menu(void) //режим замера
         print("&", 12, 40);            //строка 2
         printNumI((pgm_read_byte(&diff_measuring[measur_pos]) * 60 - time_switch) % 60, 18, 40, 2, 48); //секунд
 
-        _screen_line(0, map(time_switch, 0, pgm_read_byte(&diff_measuring[measur_pos]) * 60, 5, 82), 1, 1, 32); //шкала времени до сохранения дозы
+        _screen_line(0, map(time_switch, 0, pgm_read_byte(&diff_measuring[measur_pos]) * 60, 5, 82), 1, 1, 32); //шкала пройденого времени
       }
     }
     //+++++++++++++++++++++  опрос кнопок  +++++++++++++++++++++++++++
@@ -1321,13 +1335,16 @@ void measur_menu(void) //режим замера
         break;
 
       case 2: //Down key
-        measur = 0; //выключаем замер
-        time_switch = 0; //сбрасываем таймер
-        next_measur = 0; //сбрасываем флаг следующего замера
-        alarm_measur = 0; //разрешаем оповещение оканчания замера
-        first_froze = 0; //сбрасываем счетчик 1-го замера
-        second_froze = 0; //сбрасываем счетчик 2-го замера
-        scan_buff = rad_buff[0] = 0; //очищаем 0-й и 1-й элемент буфера
+        if (measur) measur_stop(); //если идет замер, спрашиваем нужно ли остановить замер
+        else {
+          measur = 0; //выключаем замер
+          time_switch = 0; //сбрасываем таймер
+          next_measur = 1; //сбрасываем флаг следующего замера
+          alarm_measur = 1; //разрешаем оповещение оканчания замера
+          first_froze = 0; //сбрасываем счетчик 1-го замера
+          second_froze = 0; //сбрасываем счетчик 2-го замера
+          scan_buff = rad_buff[0] = 0; //очищаем 0-й и 1-й элемент буфера
+        }
         scr = 0; //разрешаем обновления экрана
         break;
 
@@ -1369,6 +1386,14 @@ void measur_menu(void) //режим замера
         break;
     }
   }
+}
+//-------------------------------Частиц/см2*мин----------------------------------------------------------
+void _init_couts_per_cm2(float num, boolean counts) //частиц/см2*мин
+{
+  setFont(MediumNumbers); //установка шрифта
+  printNumF(num, (num < 100) ? counts : 0, 1, 8, 46, 4, TYPE_CHAR_FILL); //строка 1
+  setFont(RusFont); //установка шрифта
+  print("x|cv2", 54, 16); //строка 1 ч/см2
 }
 //-------------------------------Выбор тревоги----------------------------------------------------------
 void alarm_warning(void) //выбор тревоги
@@ -2963,6 +2988,16 @@ void task_bar(void) //шапка экрана
   }
 #endif
 }
+//----------------------------------Отрисовка точности------------------------------------------------
+void _init_accur_percent(uint8_t num) //отрисовка точности
+{
+  setFont(TinyNumbersUp); //установка шрифта
+  drawBitmap(54, 8, plus_minus_img, 3, 8); //±
+  printNumI(num, 58, 8, 2, 48); //точность
+  drawBitmap(66, 8, percent_img, 6, 8); //%
+  printNumI(sigma_pos + 1, 75, 8); //сигма
+  drawBitmap(79, 8, sigma_img, 5, 8); //σ
+}
 //----------------------------------Главные экраны------------------------------------------------------
 void main_screen(void)
 {
@@ -3004,12 +3039,7 @@ void main_screen(void)
             break;
         }
 
-        setFont(TinyNumbersUp); //установка шрифта
-        drawBitmap(54, 8, plus_minus_img, 3, 8); //±
-        printNumI(accur_percent, 58, 8, 2, 48); //точность
-        drawBitmap(66, 8, percent_img, 6, 8); //%
-        printNumI(sigma_pos + 1, 75, 8); //сигма
-        drawBitmap(79, 8, sigma_img, 5, 8); //σ
+        _init_accur_percent(accur_percent); //отрисовка точности
 
         _init_rads_unit(1, rad_back, 1, 4, 1, 8, 0, 54, 16); //строка 1 основной фон
 
