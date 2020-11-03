@@ -654,8 +654,8 @@ void data_convert(void) //преобразование данных
           tmp_buff = 0; //сбрасываем временный буфер
 
           if (geiger_time_now < BUFF_LENGTHY) geiger_time_now++; //прибавляем указатель заполненности буффера
-          if (back_time_now < BUFF_LENGTHY) back_time_now++;
-          else back_time_now = 1;
+          if (back_time_now < BUFF_LENGTHY) back_time_now++; //прибавляем указатель заполненности буффера для рассчета фона
+          else back_time_now = 1; //иначе сбрасываем в начало
 
 #if GEIGER_DEAD_TIME
           if (rad_buff[0] >= COUNT_RATE) rad_buff[0] = rad_buff[0] / (1 - rad_buff[0] * DEAD_TIME); //если скорость счета больше 100имп/с, учитываем мертвое время счетчика
@@ -726,19 +726,24 @@ void data_convert(void) //преобразование данных
           break;
 
         case TIME_FACT_8: //расчет текущего фона этап-6
-#if GEIGER_OWN_BACK
-          if (tmp_buff > geiger_time_now * OWN_BACK) tmp_buff -= geiger_time_now * OWN_BACK; //убираем собственный фон счетчика
-#endif
           if (tmp_buff > 9999999) tmp_buff = 9999999; //переполнение буфера импульсов
-          if (geiger_time_now > 1) imp_per_sec = (float)tmp_buff / ((mid_time_now > 1) ? (mid_time_now - 1) * BUFF_LENGTHY : 0 + geiger_time_now); //расчет фона мкР/ч
-
-          for (uint8_t i = 0; i < PATTERNS_FRONT; i++) {
-            if (imp_per_sec <= pgm_read_word(&back_front[i][0])) {
-              rad_back = imp_per_sec * (GEIGER_TIME + pgm_read_word(&back_front[i][1])) - pgm_read_word(&back_front[i][2]) * 10; //
+#if APPROX_BACK_SCORE
+          if (geiger_time_now > 1) imp_per_sec = (float)tmp_buff / (mid_time_now * BUFF_LENGTHY + back_time_now); //расчет имп/с
+#if GEIGER_OWN_BACK
+          if (imp_per_sec > OWN_BACK) imp_per_sec -= OWN_BACK; //убираем собственный фон счетчика
+#endif
+          for (uint8_t i = 0; i < PATTERNS_FRONT; i++) { //выбор паттерна
+            if (imp_per_sec <= pgm_read_word(&back_front[i][0])) { //если имп/с совпадают с паттерном
+              rad_back = imp_per_sec * (GEIGER_TIME + pgm_read_word(&back_front[i][1])) - pgm_read_word(&back_front[i][2]) * 10; //рассчитываем фон в мкр/ч
               break;
             }
           }
-
+#else
+#if GEIGER_OWN_BACK
+          if (tmp_buff > geiger_time_now * OWN_BACK) tmp_buff -= geiger_time_now * OWN_BACK; //убираем собственный фон счетчика
+#endif
+          if (geiger_time_now > 1) rad_back = tmp_buff * ((float)GEIGER_TIME / (mid_time_now * BUFF_LENGTHY + back_time_now); //расчет фона мкР/ч
+#endif
           for (uint8_t k = BUFF_LENGTHY - 1; k > 0; k--) rad_buff[k] = rad_buff[k - 1]; //перезапись массива
           break;
 
@@ -798,7 +803,7 @@ void data_convert(void) //преобразование данных
           break;
 
         case TIME_FACT_13: //рассчитываем точность и бета фон
-          accur_percent = (tmp_buff) ? constrain(((sigma_pos + 1) / sqrtf((float)tmp_buff)) * 100, 1, 99) : 99;
+          if (back_time_now != BUFF_LENGTHY) accur_percent = (tmp_buff) ? constrain(((sigma_pos + 1) / sqrtf((float)tmp_buff)) * 100, 1, 99) : 99;
           break;
 
         case TIME_FACT_14: //считаем пройденное время
@@ -3068,7 +3073,7 @@ void main_screen(void)
         case 0:
           switch (scr_mode) { //основные экраны
             case 0: //сбрасываем фон
-              for (uint8_t i = 0; i < geiger_time_now; i++) rad_buff[i] = 0; //очищаем буфер фона
+              for (uint8_t i = 0; i < BUFF_LENGTHY; i++) rad_buff[i] = 0; //очищаем буфер фона
               scan_buff = 0; //очищаем буфер счета
               back_time_now = geiger_time_now = 0; //сбрасываем счетчик накопления импульсов в буфере
               mid_time_now = 0; //сбрасываем рассчет среднего
