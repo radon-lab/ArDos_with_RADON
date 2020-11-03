@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.2.0 low_pwr 02.11.20 специально для проекта ArDos
+  Версия программы RADON v3.2.0 low_pwr 03.11.20 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr
   Желательна установка лёгкого ядра https://alexgyver.github.io/package_GyverCore_index.json и загрузчика OptiBoot v8 https://github.com/Optiboot/optiboot
 
