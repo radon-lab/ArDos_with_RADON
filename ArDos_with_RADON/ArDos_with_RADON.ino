@@ -2912,7 +2912,7 @@ void _alarm_init(uint8_t waint, uint8_t alarm) //индикация тревог
     switch (alarm) //если тревога запрещена
     {
       case 0: drawBitmap(60, 0, buzz_alt_off_img, 7, 8); break; //тревога выключена
-      case 1: drawBitmap(60, 0, buzz_alt_img, 7, 8); break; //только звук
+      case 1: drawBitmap(60, 0, buzz_alt_on_img, 7, 8); break; //только звук
       case 2: drawBitmap(60, 0, beep_alt_vibro_img, 7, 8); break; //только вибрация
       case 3: drawBitmap(60, 0, beep_alt_img, 8, 8); break; //звук и вибрация
     }
