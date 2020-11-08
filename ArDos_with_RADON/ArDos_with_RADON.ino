@@ -3026,7 +3026,7 @@ void main_screen(void)
                 break;
             }
 
-            _init_rads_unit(1, rad_dose, 10, 5, 1, 8, 1, 62, 16); //строка 1 текущая доза
+            _init_rads_unit(1, rad_dose, 10, 5, 1, 8, 1, 66, 16); //строка 1 текущая доза
             drawBitmap(0, 40, dose_all_img, 24, 8);       //строка 2 всего
             _init_rads_unit(0, rad_dose_save, 10, 5, 32, 40, 1, 66, 40); //строка 2 сохранённая доза
             break;
@@ -3042,7 +3042,7 @@ void main_screen(void)
 
             print("Dctuj pf&", CENTER, 32);          //строка всего за:
 
-            _init_rads_unit(1, rad_dose_save, 10, 5, 1, 8, 1, 62, 16); //строка 1 сохранённая доза
+            _init_rads_unit(1, rad_dose_save, 10, 5, 1, 8, 1, 66, 16); //строка 1 сохранённая доза
             break;
         }
         break;
