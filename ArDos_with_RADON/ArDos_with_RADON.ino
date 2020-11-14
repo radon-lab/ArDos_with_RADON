@@ -536,7 +536,7 @@ void _init_logo(void) //вывод логотипа
 #if PWR_ON_RETURN
 ISR(INT1_vect) //внешнее прерывание на пине INT1 - включение питания
 {
-  _delay_ms(2000); //ждем 2 секунды
+  _delay_ms(POWER_ON_TIME); //ждем 2 секунды
   if (!OK_OUT) { //если кнопка не отжата
     ADC_enable(); //включаем питание АЦП
     bat_check(); //опрос батареи
@@ -1234,14 +1234,13 @@ void measur_menu(void) //режим замера
 
       switch (measur) {
         case 0: //результат
-          if (first_froze > second_froze) buff = first_froze - second_froze; //рассчитываем результат замера
-          else buff = second_froze - first_froze; //рассчитываем результат замера
+          buff = (first_froze < second_froze) ? second_froze - first_froze : 0; //рассчитываем результат замера
 
           if (next_measur) {
             switch (n) {
               case 0:
                 drawBitmap(19, 24, measur_result_img, 45, 8); //результат
-                _init_couts_per_cm2(buff / pgm_read_byte(&diff_measuring[measur_pos]) / SEARCH_GEIGER_AREA, 0); //результат ч/см2*м
+                _init_couts_per_cm2(buff / pgm_read_byte(&diff_measuring[measur_pos]) / SEARCH_GEIGER_AREA, 1); //результат ч/см2*м
                 n = 1;
                 break;
               case 1:
@@ -1257,19 +1256,19 @@ void measur_menu(void) //режим замера
           _init_accur_percent(_init_accur(buff)); //отрисовка точности
 
           setFont(RusFont); //установка шрифта
-          print("1-q", LEFT, 32); //строка 1 1-й замер
+          print("ajy", LEFT, 32); //строка 1 фон
           print("x|cv2", 54, 32); //строка 1 ч/см2
 #if (TYPE_CHAR_FILL > 44)
-          printNumF(first_froze / pgm_read_byte(&diff_measuring[measur_pos]) / SEARCH_GEIGER_AREA, 0, 22, 32, 46, 5, TYPE_CHAR_FILL); //строка 1
+          printNumF(first_froze / pgm_read_byte(&diff_measuring[measur_pos]) / SEARCH_GEIGER_AREA, 1, 22, 32, 46, 4, TYPE_CHAR_FILL); //строка 1
 #else
-          printNumF(first_froze / pgm_read_byte(&diff_measuring[measur_pos]) / SEARCH_GEIGER_AREA, 0, 22, 32, 46, 5, 32); //строка 1
+          printNumF(first_froze / pgm_read_byte(&diff_measuring[measur_pos]) / SEARCH_GEIGER_AREA, 1, 22, 32, 46, 4, 32); //строка 1
 #endif
-          print("2-q", LEFT, 40); //строка 2 2-й замер
+          print("j,h", LEFT, 40); //строка 2 обр
           print("x|cv2", 54, 40); //строка 2 ч/см2
 #if (TYPE_CHAR_FILL > 44)
-          printNumF(second_froze / pgm_read_byte(&diff_measuring[measur_pos]) / SEARCH_GEIGER_AREA, 0, 22, 40, 46, 5, TYPE_CHAR_FILL); //строка 2
+          printNumF(second_froze / pgm_read_byte(&diff_measuring[measur_pos]) / SEARCH_GEIGER_AREA, 1, 22, 40, 46, 4, TYPE_CHAR_FILL); //строка 2
 #else
-          printNumF(second_froze / pgm_read_byte(&diff_measuring[measur_pos]) / SEARCH_GEIGER_AREA, 0, 22, 40, 46, 5, 32);
+          printNumF(second_froze / pgm_read_byte(&diff_measuring[measur_pos]) / SEARCH_GEIGER_AREA, 1, 22, 40, 46, 4, 32);
 #endif
 
           break;
@@ -2300,9 +2299,8 @@ void _menu_item_switch(boolean inv, uint8_t num, uint8_t pos) //отрисовк
     case 2: print("Pfvth ,tnf", CENTER, pos_row); break; //Замер бета
     case 3: print("Yfcnhjqrb", CENTER, pos_row); break; //Настройки
     case 4: print("Gfhfvtnhs", CENTER, pos_row); break; //Параметры
-    case 5: print("Dsrk/xtybt", CENTER, pos_row); break; //Выключение
-
-      break;
+    case 5: print(":ehyfk", CENTER, pos_row); break; //Журнал
+    case 6: print("Dsrk/xtybt", CENTER, pos_row); break; //Выключение
   }
   if (inv) invertText(false); //выключаем инверсию
 }
@@ -2344,7 +2342,7 @@ void menu(void) //меню
         break;
 
       case 2: //Down key //вниз
-        if (n < 5) { //изменяем позицию
+        if (n < 6) { //изменяем позицию
           n++;
           if (c < 4) c++; //изменяем положение курсора
         }
@@ -2362,7 +2360,7 @@ void menu(void) //меню
           if (c > 0) c--; //изменяем положение курсора
         }
         else { //иначе конец списка
-          n = 5;
+          n = 6;
           c = 4;
         }
         time_out = 0; //сбрасываем авто-выход
@@ -2383,7 +2381,138 @@ void menu(void) //меню
           case 2: measur_menu(); break;
           case 3: setings(); break;
           case 4: parameters(); break;
-          case 5: power_down(); scr = 0; return;
+          //case 5: logbook(); break;
+          case 6: power_down(); scr = 0; return;
+        }
+        time_out = 0; //сбрасываем авто-выход
+        scr = 0; //разрешаем обновления экрана
+        break;
+
+      case 6: //hold select key //выход к главным экранам
+        sleep_disable = 0; //разрешаем сон
+        scr = 0; //разрешаем обновления экрана
+        return;
+    }
+  }
+}
+//------------------------------------Отрисовка пунктов------------------------------------------------------
+void _logbook_item_switch(boolean inv, uint8_t num, uint8_t pos) //отрисовка пунктов
+{
+  uint8_t pos_row = (pos << 3) + 8; //переводим позицию в номер строки
+
+  if (inv) {
+    _screen_line(0, 84, 0, 0, pos_row); //рисуем линию
+    invertText(true); //включаем инверсию
+  }
+
+  switch (num) {
+    case 0: print("Nhtdjuf", CENTER, pos_row); break; //Тревога
+    case 1: print("Ghtleght;ltybz", CENTER, pos_row); break; //Предупреждения
+    case 2: print("Pfvths ,tnf", CENTER, pos_row); break; //Замеры бета
+    case 3: print("Jib,rb", CENTER, pos_row); break; //Ошибки
+    case 4: print("Jxbcnbnm", CENTER, pos_row); break; //Очистить
+  }
+  if (inv) invertText(false); //выключаем инверсию
+}
+//------------------------------------Отрисовка информации------------------------------------------------------
+void _logbook_data_switch(boolean inv, uint8_t num, uint8_t pos) //отрисовка информации
+{
+  uint8_t pos_row = (pos << 3) + 8; //переводим позицию в номер строки
+
+  if (inv) {
+    _screen_line(0, 84, 0, 0, pos_row); //рисуем линию
+    invertText(true); //включаем инверсию
+  }
+
+  switch (num) {
+    case 0: print("Nhtdjuf", CENTER, pos_row); break; //Тревога
+    case 1: print("Ghtleght;ltybz", CENTER, pos_row); break; //Предупреждения
+    case 2: print("Pfvths ,tnf", CENTER, pos_row); break; //Замеры бета
+    case 3: print("Jib,rb", CENTER, pos_row); break; //Ошибки
+    case 4: print("Jxbcnbnm", CENTER, pos_row); break; //Очистить
+  }
+  if (inv) invertText(false); //выключаем инверсию
+}
+//------------------------------------Журнал------------------------------------------------------
+void logbook(void) //журнал
+{
+  uint8_t n = 0; //позиция
+  uint8_t c = 0; //курсор
+  uint8_t time_out = 0; //таймер автовыхода
+
+  sleep_disable = 1; //запрещаем сон
+  scr = 0; //разрешаем обновления экрана
+
+  while (1) {
+    data_convert(); //преобразование данных
+
+    //+++++++++++++++++++   вывод информации на экран  +++++++++++++++++++++++++
+    if (!scr) {
+      scr = 1; //запрещаем обновления экрана
+
+#if TIME_OUT_LOGBOOK
+      if (++time_out > TIME_OUT_LOGBOOK) {
+        sleep_disable = 0; //разрешаем сон
+        scr = 0; //разрешаем обновления экрана
+        return;
+      }
+#endif
+
+      clrScr(); // Очистка экрана
+      drawBitmap(0, 0, logbook_img, 84, 8); //отрисовываем фон
+      setFont(RusFont); //установка шрифта
+
+      switch (n) {
+        case 0: for (uint8_t i = 0; i < 5; i++) _logbook_item_switch((i == c) ? 1 : 0, n - c + i, i); break; //отрисовываем пункты настроек
+        case 1:  break;
+        case 2:  break;
+        case 3:  break;
+        case 4:  break;
+      }
+    }
+    //+++++++++++++++++++++  опрос кнопок  +++++++++++++++++++++++++++
+    switch (check_keys()) {
+      case 1: //Down key hold //вкл/выкл посветки
+        fast_light(); //быстрое включение посветки
+        break;
+
+      case 2: //Down key //вниз
+        if (n < 4) { //изменяем позицию
+          n++;
+          if (c < 4) c++; //изменяем положение курсора
+        }
+        else { //иначе начало списка
+          n = 0;
+          c = 0;
+        }
+        time_out = 0; //сбрасываем авто-выход
+        scr = 0; //разрешаем обновления экрана
+        break;
+
+      case 3: //Up key  //вверх
+        if (n > 0) { //изменяем позицию
+          n--;
+          if (c > 0) c--; //изменяем положение курсора
+        }
+        else { //иначе конец списка
+          n = 4;
+          c = 4;
+        }
+        time_out = 0; //сбрасываем авто-выход
+        scr = 0; //разрешаем обновления экрана
+        break;
+
+      case 4: //Up key hold //вкл/выкл фонарика
+        fast_flash(); //быстрое включение фонарика
+        break;
+
+      case 5: //select key //выбор
+        switch (n) {
+          case 0:  return;
+          case 1:  break;
+          case 2:  break;
+          case 3:  break;
+          case 4:  break;
         }
         time_out = 0; //сбрасываем авто-выход
         scr = 0; //разрешаем обновления экрана
