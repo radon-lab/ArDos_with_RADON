@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.2.3 low_pwr 16.11.20 специально для проекта ArDos
+  Версия программы RADON v3.2.3 low_pwr 20.11.20 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка лёгкого ядра https://alexgyver.github.io/package_GyverCore_index.json и загрузчика OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -111,7 +111,7 @@
   3.1.4 17.10.20 - в режиме "поиск" - удален пункт "всего", добавлен - "частиц/см2*мин".
   3.1.5 21.10.20 - график фона теперь не стирается при автосбросе, единицы в режиме поиск теперь имеют разрешение 2 знака после запятой до значения в 100 единиц, счет среднего фона теперь идет от накопления общего количества частиц.
   3.1.6 22.10.20 - файл "SETUP" удалён, все настройки перенесены в "config", в настройки добавлен пункт "график", позволяет настроить время обновления графика в режиме "поиск", настроить пресеты можно в "config" массив "search_time",
-                   настроить площадь датчика можно в "config" пункт "SEARCH_GEIGER_AREA", настроить количество ячеек для обработки единиц в режиме "поиск" можно в "config" параметр "SEARCH_BUF_SCORE".
+                   настроить площадь датчика можно в "config" пункт "GEIGER_AREA", настроить количество ячеек для обработки единиц в режиме "поиск" можно в "config" параметр "SEARCH_BUF_SCORE".
   3.2.1 03.11.20 - переработан режим замера "бета", добавлен экспериментальный аппроксимированный счет фона, добавлена возможность выбора алгоритма счета фона, ускорение работы программы.
 
   Внимание!!! При выключении пункта "СОН" в меню настроек влечет увеличением энергопотребления, но тем самым увеличивается производительность устройства.
@@ -313,7 +313,8 @@ boolean graf = 0; //флаг обновления графика
 boolean serch = 0; //флаг работы поиска
 boolean knock_disable = 0; //флаг запрет треска кнопками
 uint8_t buzz_switch = 0; //указатель на тип треска пищалкой
-uint8_t error = 0; //указатель на номер ошибки
+uint8_t error_switch = 0; //указатель на номер ошибки
+uint8_t logbook_switch = 1; //указатель на активность журнала
 
 uint8_t alarm_switch = 0; //указатель текущей тревоги
 uint8_t alarm_back = 0; //флаг запрета тревоги фона
@@ -764,14 +765,14 @@ void data_convert(void) //преобразование данных
         case TIME_FACT_12: //обработка тревоги
           if (alarm_dose && (rad_dose - alarm_dose_wait) >= alarm_level_dose) {
 #if LOGBOOK_RETURN
-            if (!alarm_switch) _logbook_data_update(0, 2, rad_dose); //обновление журнала
+            if (!alarm_switch && logbook_switch) _logbook_data_update(0, 2, rad_dose); //обновление журнала
 #endif
             alarm_switch = 2;  //превышение дозы 2
             break;
           }
           else if (alarm_dose && (rad_dose - warn_dose_wait) >= warn_level_dose) {
 #if LOGBOOK_RETURN
-            if (!alarm_switch) _logbook_data_update(1, 2, rad_dose); //обновление журнала
+            if (!alarm_switch && logbook_switch) _logbook_data_update(1, 2, rad_dose); //обновление журнала
 #endif
             alarm_switch = 4;  //превышение дозы 1
             break;
@@ -780,22 +781,32 @@ void data_convert(void) //преобразование данных
           if (accur_percent <= RAD_ACCUR_WARN) {
             if (alarm_back && !alarm_back_wait && rad_back >= alarm_level_back) {
 #if LOGBOOK_RETURN
-              if (!alarm_switch) _logbook_data_update(0, 1, rad_back); //обновление журнала
+              if (!alarm_switch && logbook_switch) _logbook_data_update(0, 1, rad_back); //обновление журнала
 #endif
               alarm_switch = 1;  //превышение фона 2
               break;
             }
             else if (alarm_back && !warn_back_wait && rad_back >= warn_level_back) {
 #if LOGBOOK_RETURN
-              if (!alarm_switch) _logbook_data_update(1, 1, rad_back); //обновление журнала
+              if (!alarm_switch && logbook_switch) _logbook_data_update(1, 1, rad_back); //обновление журнала
 #endif
               alarm_switch = 3;  //превышение фона 1
               break;
             }
           }
 
-          if (rad_back < warn_level_back && warn_back_wait) warn_back_wait = 0; //сброс предупреждения
-          if (rad_back < alarm_level_back && alarm_back_wait) alarm_back_wait = 0; //сброс тревоги
+          if (rad_back < (warn_level_back * ALARM_AUTO_GISTERESIS) && warn_back_wait) {
+            warn_back_wait = 0; //сброс предупреждения
+#if LOGBOOK_RETURN
+            if (logbook_switch) logbook_switch = 2;
+#endif
+          }
+          if (rad_back < (alarm_level_back * ALARM_AUTO_GISTERESIS) && alarm_back_wait) {
+            alarm_back_wait = 0; //сброс тревоги
+#if LOGBOOK_RETURN
+            if (logbook_switch) logbook_switch = 2;
+#endif
+          }
 
           if (alarm_switch) { //иначе ждем понижения фона
             _vibro_off(); //выключаем вибрацию
@@ -819,24 +830,24 @@ void data_convert(void) //преобразование данных
       case TIME_FACT_15: //обработка ошибок
         if (!rad_buff[0]) { //если нету импульсов в обменном буфере
           if (++nop_imp_tmr >= IMP_ERROR_TIME) { //считаем время до вывода предупреждения
-            error = 5; //устанавливаем ошибку 5 - нет импульсов
-            _logbook_data_update(3, error, error); //обновление журнала
+            error_switch = 2; //поднимаем флаг ошибки
+            _logbook_data_update(3, 5, 5); //обновление журнала устанавливаем ошибку 5 - нет импульсов
             nop_imp_tmr = 0; //сбрасываем таймер
           }
         }
         else nop_imp_tmr = 0; //иначе импульсы возобновились
 
         if (hv_adc < HV_ADC_ERROR) {
-          error = 3; //устанавливаем ошибку 3 - кз преобразователя
-          _logbook_data_update(3, error, hv_adc); //обновление журнала
+          error_switch = 2; //поднимаем флаг ошибки
+          _logbook_data_update(3, 3, hv_adc); //обновление журнала устанавливаем ошибку 3 - кз преобразователя
         }
         if (hv_adc < ADC_value - HV_ADC_MIN) {
-          error = 4; //устанавливаем ошибку 4 - низкое напряжение
-          _logbook_data_update(3, error, hv_adc); //обновление журнала
+          error_switch = 2; //поднимаем флаг ошибки
+          _logbook_data_update(3, 4, hv_adc); //обновление журнала устанавливаем ошибку 4 - низкое напряжение
         }
         if (speed_pump >= HV_SPEED_ERROR) {
-          error = 2; //устанавливаем ошибку 2 - перегрузка преобразователя
-          _logbook_data_update(3, error, speed_pump); //обновление журнала
+          error_switch = 2; //поднимаем флаг ошибки
+          _logbook_data_update(3, 2, speed_pump); //обновление журнала устанавливаем ошибку 2 - перегрузка преобразователя
         }
         speed_hv = speed_pump; //текущая скорость накачки
         speed_pump = 0; //сбрасываем скорость накачки
@@ -1228,7 +1239,7 @@ void measur_massege(void) //окончание замера
         alarm_measur = 1;
         scan_buff = rad_buff[0] = 0; //очищаем 0-й и 1-й элемент буфера
 #if LOGBOOK_RETURN
-        _logbook_data_update(3, pgm_read_byte(&diff_measuring[measur_pos]), (first_froze < second_froze) ? second_froze - first_froze : 0 / ((60.0 / GEIGER_TIME) * pgm_read_byte(&diff_measuring[measur_pos]))); //обновление журнала
+         if (logbook_switch) _logbook_data_update(3, pgm_read_byte(&diff_measuring[measur_pos]), (first_froze < second_froze) ? second_froze - first_froze : 0 / ((60.0 / GEIGER_TIME) * pgm_read_byte(&diff_measuring[measur_pos]))); //обновление журнала
 #endif
         break;
     }
@@ -1266,7 +1277,7 @@ void measur_menu(void) //режим замера
             switch (n) {
               case 0:
                 drawBitmap(19, 24, measur_result_img, 45, 8); //результат
-                _init_couts_per_cm2(buff / pgm_read_byte(&diff_measuring[measur_pos]) / SEARCH_GEIGER_AREA, 1); //результат ч/см2*м
+                _init_couts_per_cm2(buff / pgm_read_byte(&diff_measuring[measur_pos]) / GEIGER_AREA, 1); //результат ч/см2*м
                 n = 1;
                 break;
               case 1:
@@ -1285,16 +1296,16 @@ void measur_menu(void) //режим замера
           print("ajy", LEFT, 32); //строка 1 фон
           print("x|cv2", 54, 32); //строка 1 ч/см2
 #if (TYPE_CHAR_FILL > 44)
-          printNumF(first_froze / pgm_read_byte(&diff_measuring[measur_pos]) / SEARCH_GEIGER_AREA, 1, 22, 32, 46, 4, TYPE_CHAR_FILL); //строка 1
+          printNumF(first_froze / pgm_read_byte(&diff_measuring[measur_pos]) / GEIGER_AREA, 1, 22, 32, 46, 4, TYPE_CHAR_FILL); //строка 1
 #else
-          printNumF(first_froze / pgm_read_byte(&diff_measuring[measur_pos]) / SEARCH_GEIGER_AREA, 1, 22, 32, 46, 4, 32); //строка 1
+          printNumF(first_froze / pgm_read_byte(&diff_measuring[measur_pos]) / GEIGER_AREA, 1, 22, 32, 46, 4, 32); //строка 1
 #endif
           print("j,h", LEFT, 40); //строка 2 обр
           print("x|cv2", 54, 40); //строка 2 ч/см2
 #if (TYPE_CHAR_FILL > 44)
-          printNumF(second_froze / pgm_read_byte(&diff_measuring[measur_pos]) / SEARCH_GEIGER_AREA, 1, 22, 40, 46, 4, TYPE_CHAR_FILL); //строка 2
+          printNumF(second_froze / pgm_read_byte(&diff_measuring[measur_pos]) / GEIGER_AREA, 1, 22, 40, 46, 4, TYPE_CHAR_FILL); //строка 2
 #else
-          printNumF(second_froze / pgm_read_byte(&diff_measuring[measur_pos]) / SEARCH_GEIGER_AREA, 1, 22, 40, 46, 4, 32);
+          printNumF(second_froze / pgm_read_byte(&diff_measuring[measur_pos]) / GEIGER_AREA, 1, 22, 40, 46, 4, 32);
 #endif
 
           break;
@@ -1307,12 +1318,12 @@ void measur_menu(void) //режим замера
             }
           }
           else drawBitmap(18, 24, measur_first_img, 47, 8); //первый замер
-          _init_couts_per_cm2(first_froze / (time_switch / 60.0) / SEARCH_GEIGER_AREA, 1); //рассчитываем результат замера в ч*см2/м); //первый замер ч/см2*м
+          _init_couts_per_cm2(first_froze / (time_switch / 60.0) / GEIGER_AREA, 1); //рассчитываем результат замера в ч*см2/м); //первый замер ч/см2*м
           _init_accur_percent(_init_accur(first_froze)); //отрисовка точности
           break;
 
         case 2: //2-й замер
-          _init_couts_per_cm2(second_froze / (time_switch / 60.0) / SEARCH_GEIGER_AREA, 1); //второй замер ч/см2*м
+          _init_couts_per_cm2(second_froze / (time_switch / 60.0) / GEIGER_AREA, 1); //второй замер ч/см2*м
           _init_accur_percent(_init_accur(second_froze)); //отрисовка точности
           drawBitmap(11, 24, measur_second_img, 62, 8); //второй замер
           break;
@@ -1449,6 +1460,8 @@ void alarm_messege(boolean set, uint8_t sound, char *mode) //тревога
   sleep_out(); //просыпаемся если спали
   buzz_switch = 0; //запретить звуковую индикацию импульсов
 
+  if (!set) alarm_back_wait = warn_back_wait = 1;
+
   clrScr(); //очистка экрана
   setFont(RusFont); //установка шрифта
   drawBitmap(26, 0, rad_img, 32, 32);
@@ -1479,7 +1492,7 @@ void alarm_messege(boolean set, uint8_t sound, char *mode) //тревога
     }
     //==================================================================
 #if ALARM_AUTO_DISABLE
-    if (check_keys() || (!set && rad_back < (alarm_level_back * ALARM_AUTO_GISTERESIS))) //если нажата любая кнопка или фон упал отключаем тревогу
+    if (check_keys() || !alarm_back_wait) //если нажата любая кнопка или фон упал отключаем тревогу
 #else
     if (check_keys()) //если нажата любая кнопка отключаем тревогу
 #endif
@@ -1487,10 +1500,8 @@ void alarm_messege(boolean set, uint8_t sound, char *mode) //тревога
       _vibro_off(); //выключаем вибрацию
       buzz_read(); //восстанавливаем настроку щелчков
 
-      switch (set) {
-        case 0: alarm_back_wait = 1; warn_back_wait = 1; break;
-        case 1: alarm_dose_wait = warn_dose_wait = rad_dose; break;
-      }
+      if (set) alarm_dose_wait = warn_dose_wait = rad_dose;
+
       alarm_switch = 0; //устанавливаем признак отсутствия тревоги
       cnt_pwr = 0; //обнуляем счетчик сна
       scr = 0; //разрешаем обновление экрана
@@ -1709,7 +1720,7 @@ void search_update(void) //обновление данных поиска
     temp_buf = temp_buf / search_time_now;
     rad_imp = temp_buf * (1000.00 / time_to_update); //персчет импульсов в сек.
     rad_imp_m = rad_imp * 60; //персчет импульсов в мин.
-    rad_imp_cm2 = rad_imp_m / SEARCH_GEIGER_AREA; //считаем частиц/см2*мин
+    rad_imp_cm2 = rad_imp_m / GEIGER_AREA; //считаем частиц/см2*мин
 
     now_pos = time_to_update / (wdt_period / 100.0);
 
@@ -1936,7 +1947,7 @@ void debug(void) //отладка
 #if TIME_OUT_DEBUG
       if (++time_out > TIME_OUT_DEBUG) {
         setings_save(1); //сохраняем настройки преобразователя
-        error = 0; //сбрасываем указатель ошибки
+        error_switch = 0; //сбрасываем указатель ошибки
         scr = 0; //разрешаем обновления экрана
         return;
       }
@@ -2009,7 +2020,7 @@ void debug(void) //отладка
 
       case 6: //hold select key ///выход в настройки
         setings_save(1); //сохраняем настройки преобразователя
-        error = 0; //сбрасываем указатель ошибки
+        error_switch = 0; //сбрасываем указатель ошибки
         scr = 0; //разрешаем обновление экрана
         return;
     }
@@ -2086,49 +2097,60 @@ void _setings_item_switch(boolean set, boolean inv, uint8_t num, uint8_t pos) //
       }
       break;
 
-    case 9: //Ед.измер
+    case 9: //Журнал
+      switch (set) {
+        case 0: print(":ehyfk&", LEFT, pos_row); break; //Журнал:
+#if LOGBOOK_RETURN
+        case 1: if (logbook_switch) print("DRK", RIGHT, pos_row); else print("DSRK", RIGHT, pos_row); break;
+#else
+        case 1: print("YT ECN", RIGHT, pos_row); break;
+#endif
+      }
+      break;
+
+    case 10: //Ед.измер
       switch (set) {
         case 0: print("Tl.bpvth&", LEFT, pos_row); break; //Ед.измер:
         case 1: if (!rad_mode) print("vrH", RIGHT, pos_row); else print("vrPd", RIGHT, pos_row); break;
       }
       break;
 
-    case 10: //Тревога Ф
+    case 11: //Тревога Ф
       switch (set) {
         case 0: print("Nhtdjuf A&", LEFT, pos_row); break; //Тревога Ф:
         case 1: if (!alarm_back) print("DSRK", RIGHT, pos_row); else if (alarm_back == 1) print("PDER", RIGHT, pos_row); else if (alarm_back == 2) print("DB<H", RIGHT, pos_row); else print("D+PD", RIGHT, pos_row); break;
       }
       break;
 
-    case 11: //Порог Ф1
+    case 12: //Порог Ф1
       switch (set) {
         case 0: print("Gjhju A1&", LEFT, pos_row); break; //Порог Ф1:
         case 1: printNumI(warn_level_back, RIGHT, pos_row); break;
       }
       break;
 
-    case 12: //Порог Ф2
+    case 13: //Порог Ф2
       switch (set) {
         case 0: print("Gjhju A2&", LEFT, pos_row); break; //Порог Ф2:
         case 1: printNumI(alarm_level_back, RIGHT, pos_row); break;
       }
       break;
 
-    case 13: //Тревога Д
+    case 14: //Тревога Д
       switch (set) {
         case 0: print("Nhtdjuf L&", LEFT, pos_row); break; //Тревога Д:
         case 1: if (!alarm_dose) print("DSRK", RIGHT, pos_row); else if (alarm_dose == 1) print("PDER", RIGHT, pos_row); else if (alarm_dose == 2) print("DB<H", RIGHT, pos_row); else print("D+PD", RIGHT, pos_row); break;
       }
       break;
 
-    case 14: //Порог Д1
+    case 15: //Порог Д1
       switch (set) {
         case 0: print("Gjhju L1&", LEFT, pos_row); break; //Порог Д1:
         case 1: printNumI(warn_level_dose, RIGHT, pos_row); break;
       }
       break;
 
-    case 15: //Порог Д2
+    case 16: //Порог Д2
       switch (set) {
         case 0: print("Gjhju L2&", LEFT, pos_row); break; //Порог Д2:
         case 1: printNumI(alarm_level_dose, RIGHT, pos_row); break;
@@ -2172,14 +2194,17 @@ void _setings_data_up(uint8_t pos) //прибавление данных
     case 6: if (measur_pos < 9) measur_pos++; break; //Разн.зам
     case 7: if (sigma_pos < 2) sigma_pos++; else sigma_pos = 0; break; //Сигма
     case 8: if (search_pos < 8) search_pos++; else search_pos = 0; break; //Поиск
-    case 9: rad_mode = 1; break; //Ед.измер
+#if LOGBOOK_RETURN
+    case 9: logbook_switch = 1; break; //Журнал
+#endif
+    case 10: rad_mode = 1; break; //Ед.измер
 
-    case 10: if (alarm_back < 3) alarm_back++; break; //Тревога Ф
-    case 11: if (warn_level_back < 300) warn_level_back += 5; else warn_level_back = 30; break; //Порог Ф1
-    case 12: if (alarm_level_back < 500) alarm_level_back += 10; else if (alarm_level_back < 1000) alarm_level_back += 50; else if (alarm_level_back < 65000) alarm_level_back += 100; else alarm_level_back = 300; break; //Порог Ф2
-    case 13: if (alarm_dose < 3) alarm_dose++; break; //Тревога Д
-    case 14: if (warn_level_dose < 300) warn_level_dose += 5; else warn_level_dose = 10; break; //Порог Д1
-    case 15: if (alarm_level_dose < 500) alarm_level_dose += 10; else if (alarm_level_dose < 1000) alarm_level_dose += 50; else if (alarm_level_dose < 65000) alarm_level_dose += 100; else alarm_level_dose = 300; break; //Порог Д2
+    case 11: if (alarm_back < 3) alarm_back++; break; //Тревога Ф
+    case 12: if (warn_level_back < 300) warn_level_back += 5; else warn_level_back = 30; break; //Порог Ф1
+    case 13: if (alarm_level_back < 500) alarm_level_back += 10; else if (alarm_level_back < 1000) alarm_level_back += 50; else if (alarm_level_back < 65000) alarm_level_back += 100; else alarm_level_back = 300; break; //Порог Ф2
+    case 14: if (alarm_dose < 3) alarm_dose++; break; //Тревога Д
+    case 15: if (warn_level_dose < 300) warn_level_dose += 5; else warn_level_dose = 10; break; //Порог Д1
+    case 16: if (alarm_level_dose < 500) alarm_level_dose += 10; else if (alarm_level_dose < 1000) alarm_level_dose += 50; else if (alarm_level_dose < 65000) alarm_level_dose += 100; else alarm_level_dose = 300; break; //Порог Д2
   }
 }
 //------------------------------------Убавление данных------------------------------------------------------
@@ -2210,14 +2235,17 @@ void _setings_data_down(uint8_t pos) //убавление данных
     case 6: if (measur_pos > 0) measur_pos--;  break; //Разн.зам
     case 7: if (sigma_pos > 0) sigma_pos--; else sigma_pos = 2; break; //Сигма
     case 8: if (search_pos > 0) search_pos--; else search_pos = 8; break; //Поиск
-    case 9: rad_mode = 0; break; //Ед.измер
+#if LOGBOOK_RETURN
+    case 9: logbook_switch = 0; break; //Журнал
+#endif
+    case 10: rad_mode = 0; break; //Ед.измер
 
-    case 10: if (alarm_back > 0) alarm_back--; break; //Тревога Ф
-    case 11: if (warn_level_back > 30) warn_level_back -= 5; else warn_level_back = 300; break; //Порог Ф1
-    case 12: if (alarm_level_back > 1000) alarm_level_back -= 100; else if (alarm_level_back > 500) alarm_level_back -= 50; else if (alarm_level_back > 300) alarm_level_back -= 10; else alarm_level_back = 65000; break; //Порог Ф2
-    case 13: if (alarm_dose > 0) alarm_dose--; break; //Тревога Д
-    case 14: if (warn_level_dose > 10) warn_level_dose -= 5; else warn_level_dose = 300; break; //Порог Д1
-    case 15: if (alarm_level_dose > 1000) alarm_level_dose -= 100; else if (alarm_level_dose > 500) alarm_level_dose -= 50; else if (alarm_level_dose > 300) alarm_level_dose -= 10; else alarm_level_dose = 65000; break; //Порог Д2
+    case 11: if (alarm_back > 0) alarm_back--; break; //Тревога Ф
+    case 12: if (warn_level_back > 30) warn_level_back -= 5; else warn_level_back = 300; break; //Порог Ф1
+    case 13: if (alarm_level_back > 1000) alarm_level_back -= 100; else if (alarm_level_back > 500) alarm_level_back -= 50; else if (alarm_level_back > 300) alarm_level_back -= 10; else alarm_level_back = 65000; break; //Порог Ф2
+    case 14: if (alarm_dose > 0) alarm_dose--; break; //Тревога Д
+    case 15: if (warn_level_dose > 10) warn_level_dose -= 5; else warn_level_dose = 300; break; //Порог Д1
+    case 16: if (alarm_level_dose > 1000) alarm_level_dose -= 100; else if (alarm_level_dose > 500) alarm_level_dose -= 50; else if (alarm_level_dose > 300) alarm_level_dose -= 10; else alarm_level_dose = 65000; break; //Порог Д2
   }
 }
 //------------------------------------Настройки------------------------------------------------------
@@ -2265,7 +2293,7 @@ void setings(void) //настройки
       case 2: //Down key //вниз
         switch (set) {
           case 0:
-            if (n < 15) { //изменяем позицию
+            if (n < 16) { //изменяем позицию
               n++;
               if (c < 4) c++; //изменяем положение курсора
             }
@@ -2288,7 +2316,7 @@ void setings(void) //настройки
               if (c > 0) c--; //изменяем положение курсора
             }
             else { //иначе конец списка
-              n = 15;
+              n = 16;
               c = 4;
             }
             break;
@@ -2413,9 +2441,7 @@ void menu(void) //меню
           case 2: measur_menu(); break;
           case 3: setings(); break;
           case 4: parameters(); break;
-#if LOGBOOK_RETURN
           case 5: logbook(); break;
-#endif
           case 6: power_down(); scr = 0; return;
         }
         time_out = 0; //сбрасываем авто-выход
@@ -2531,6 +2557,7 @@ uint32_t _data_read_dword(uint8_t num_byte, uint16_t data_byte) //чтение �
 //------------------------------------Журнал------------------------------------------------------
 void logbook(void) //журнал
 {
+#if LOGBOOK_RETURN
   uint8_t n = 0; //позиция
   uint8_t c = 0; //курсор
   uint8_t p = 0; //пункт
@@ -2540,6 +2567,8 @@ void logbook(void) //журнал
 
   sleep_disable = 1; //запрещаем сон
   scr = 0; //разрешаем обновления экрана
+
+  if (logbook_switch) logbook_switch = 1;
 
   while (1) {
     data_convert(); //преобразование данных
@@ -2623,6 +2652,12 @@ void logbook(void) //журнал
         else return;
     }
   }
+#else
+  clrScr(); //очистка экрана
+  print(":ehyfk", CENTER, 16); //Журнал
+  print("ytljcnegty!", CENTER, 24); //недоступен!
+  for (timer_millis = MASSEGE_TIME; timer_millis && !check_keys();) data_convert(); // ждем, преобразование данных
+#endif
 }
 //-----------------------------------Вкл/выкл фонарика---------------------------------
 void fast_flash(void) //вкл/выкл фонарика
@@ -2697,7 +2732,7 @@ void error_messege(void) //сообщение об ошибке
 {
   static uint32_t time_out; //тайм-аут ошибки
 
-  if (error && alarm_switch && time_out < time_sec) { //если время вышло, выводим ошибку
+  if (error_switch == 2 && !alarm_switch && time_out < time_sec) { //если время вышло, выводим ошибку
 
     sleep_out(); //просыпаемся если спали
     buzz_switch = 0; //запрещаем щелчки
@@ -2709,12 +2744,15 @@ void error_messege(void) //сообщение об ошибке
       //==================================================================
       _melody_chart(error_sound, SAMPLS_ERROR, 5); //играем волшебную мелодию
       //==================================================================
-      if (check_keys()) break;
+      if (check_keys()) {
+        error_switch = 0; //сбрасываем флаг ошибки
+        break;
+      }
     }
     buzz_read(); //считываем настроку щелчков
     time_out = time_sec + ERROR_LENGTHY_TIME; //добавляем n сек. до следущего сообщения
     cnt_pwr = 0; //обнуляем счетчик сна
-    error = 0; //сбрасываем указатель ошибки
+    error_switch = 1; //сбрасываем указатель ошибки
     scr = 0; //разрешаем обновления экрана
   }
 }
@@ -2764,8 +2802,8 @@ void wdt_calibrate(void) //калибровка wdt
 
     if (++timeout >= WDT_TIMEOUT) {
 #if ERRORS_RETURN
-      error = 1; //устанавливаем ошибку 1
-      _logbook_data_update(3, error, wdt_period); //обновление журнала
+      error_switch = 2; //поднимаем флаг ошибки
+      _logbook_data_update(3, 1, wdt_period); //обновление журнала устанавливаем ошибку 1 - таймер не откалиброван.
 #endif
       wdt_period = 1750;
       break;
@@ -2777,6 +2815,7 @@ void wdt_calibrate(void) //калибровка wdt
 //------------------------------------Чтение настроек----------------------------------------------
 void setings_read(void) //чтение настроек
 {
+  logbook_switch = eeprom_read_byte(40);
   contrast = eeprom_read_byte(41);
   alarm_back = eeprom_read_byte(43);
   buzz_read();
@@ -2799,6 +2838,7 @@ void setings_read(void) //чтение настроек
 //---------------------------------------Обновление настроек------------------------------------------------
 void setings_update(void) //обновление настроек
 {
+  eeprom_update_byte(41, logbook_switch);
   eeprom_update_byte(41, contrast);
   eeprom_update_byte(43, alarm_back);
   eeprom_update_byte(44, buzz_switch);
@@ -2977,23 +3017,26 @@ void setings_save(boolean sw) //сохранить настройки
   switch (sw) {
     case 0:
       if (
-        contrast == eeprom_read_byte(41) &&
-        alarm_back == eeprom_read_byte(43) &&
-        buzz_switch == eeprom_read_byte(44) &&
-        knock_disable == eeprom_read_byte(45) &&
-        measur_pos == eeprom_read_byte(46) &&
-        alarm_dose == eeprom_read_byte(47) &&
-        sleep_switch == eeprom_read_byte(48) &&
-        TIME_BRIGHT == eeprom_read_byte(49) &&
-        TIME_SLEEP == eeprom_read_byte(50) &&
-        rad_mode == eeprom_read_byte(57) &&
-        rad_flash == eeprom_read_byte(59) &&
-        sigma_pos == eeprom_read_byte(60) &&
-        search_pos == eeprom_read_byte(61) &&
-        warn_level_back == eeprom_read_word(62) &&
-        alarm_level_back == eeprom_read_word(64) &&
-        warn_level_dose == eeprom_read_word(66) &&
-        alarm_level_dose == eeprom_read_word(68)
+#if LOGBOOK_RETURN
+        logbook_switch = eeprom_read_byte(40) &&
+#endif
+                         contrast == eeprom_read_byte(41) &&
+                         alarm_back == eeprom_read_byte(43) &&
+                         buzz_switch == eeprom_read_byte(44) &&
+                         knock_disable == eeprom_read_byte(45) &&
+                         measur_pos == eeprom_read_byte(46) &&
+                         alarm_dose == eeprom_read_byte(47) &&
+                         sleep_switch == eeprom_read_byte(48) &&
+                         TIME_BRIGHT == eeprom_read_byte(49) &&
+                         TIME_SLEEP == eeprom_read_byte(50) &&
+                         rad_mode == eeprom_read_byte(57) &&
+                         rad_flash == eeprom_read_byte(59) &&
+                         sigma_pos == eeprom_read_byte(60) &&
+                         search_pos == eeprom_read_byte(61) &&
+                         warn_level_back == eeprom_read_word(62) &&
+                         alarm_level_back == eeprom_read_word(64) &&
+                         warn_level_dose == eeprom_read_word(66) &&
+                         alarm_level_dose == eeprom_read_word(68)
       ) return;
       break;
 
@@ -3181,8 +3224,19 @@ void _alarm_init(uint8_t waint, uint8_t alarm) //индикация тревог
 //----------------------------------Шапка экрана------------------------------------------------
 void task_bar(void) //шапка экрана
 {
+  static boolean n; //переключатель мигания
   drawBitmap(0, 0, font_alt_img, 84, 8); //устанавлваем фон
   drawBitmap(70, 0, bat_alt_img, bat * 2, 8); //отображаем состояние батареи
+
+#if LOGBOOK_RETURN
+  switch (logbook_switch) {
+    case 1: drawBitmap(38, 0, logbook_ico_img, 9, 8); break; //logbook
+    case 2: if (n) drawBitmap(38, 0, logbook_ico_img, 9, 8); n = (n) ? 0 : 1; break; //logbook
+  }
+  if (error_switch) {
+    drawBitmap((logbook_switch) ? 22 : 33, 0, error_ico_img, 14, 8); //ERR
+  }
+#endif
 
   if (buzz_switch && !knock_disable) drawBitmap(47, 0, buzz_alt_on_img, 7, 8); //если щелчки и зв.кнопок включен
   else if (buzz_switch) drawBitmap(47, 0, buzz_alt_img, 7, 8); //если щелчки включены и зв.кнопок выключен
