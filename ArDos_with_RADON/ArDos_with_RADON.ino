@@ -2359,9 +2359,9 @@ void _menu_item_switch(boolean inv, uint8_t num, uint8_t pos) //отрисовк
     case 0: print("Ajy | Ljpf", CENTER, pos_row); break; //Фон / Доза
     case 1: print("Ht;bv gjbcrf", CENTER, pos_row); break; //Режим поиска
     case 2: print("Pfvth ,tnf", CENTER, pos_row); break; //Замер бета
-    case 3: print("Yfcnhjqrb", CENTER, pos_row); break; //Настройки
-    case 4: print("Gfhfvtnhs", CENTER, pos_row); break; //Параметры
-    case 5: print(":ehyfk", CENTER, pos_row); break; //Журнал
+    case 3: print(":ehyfk", CENTER, pos_row); break; //Журнал
+    case 4: print("Yfcnhjqrb", CENTER, pos_row); break; //Настройки
+    case 5: print("Gfhfvtnhs", CENTER, pos_row); break; //Параметры
     case 6: print("Dsrk/xtybt", CENTER, pos_row); break; //Выключение
   }
   if (inv) invertText(false); //выключаем инверсию
@@ -2441,9 +2441,9 @@ void menu(void) //меню
             return;
           case 1: search_menu(); break;
           case 2: measur_menu(); break;
-          case 3: setings(); break;
-          case 4: parameters(); break;
-          case 5: logbook(); break;
+          case 3: logbook(); break;
+          case 4: setings(); break;
+          case 5: parameters(); break;
           case 6: power_down(); scr = 0; return;
         }
         time_out = 0; //сбрасываем авто-выход
