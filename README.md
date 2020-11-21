@@ -85,7 +85,7 @@
   - Нет счета
       - Отсутствуют импульсы от счетчика, проверьте цепи подключения счетчика, сам счетчик или преобразователь.
   
-  ## <p align="center">Желательна установка [лёгкого ядра](https://alexgyver.github.io/package_GyverCore_index.json) и загрузчика [OptiBoot v8](https://github.com/Optiboot/optiboot).</p>
+  ## <p align="center">Желательна установка загрузчика [OptiBoot v8](https://github.com/Optiboot/optiboot).</p>
 
   
  <p align="center">
