@@ -1239,7 +1239,7 @@ void measur_massege(void) //окончание замера
         alarm_measur = 1;
         scan_buff = rad_buff[0] = 0; //очищаем 0-й и 1-й элемент буфера
 #if LOGBOOK_RETURN
-         if (logbook_switch) _logbook_data_update(3, pgm_read_byte(&diff_measuring[measur_pos]), (first_froze < second_froze) ? second_froze - first_froze : 0 / ((60.0 / GEIGER_TIME) * pgm_read_byte(&diff_measuring[measur_pos]))); //обновление журнала
+        if (logbook_switch) _logbook_data_update(3, pgm_read_byte(&diff_measuring[measur_pos]), (first_froze < second_froze) ? second_froze - first_froze : 0 / ((60.0 / GEIGER_TIME) * pgm_read_byte(&diff_measuring[measur_pos]))); //обновление журнала
 #endif
         break;
     }
@@ -3018,25 +3018,25 @@ void setings_save(boolean sw) //сохранить настройки
     case 0:
       if (
 #if LOGBOOK_RETURN
-        logbook_switch = eeprom_read_byte(40) &&
+        logbook_switch == eeprom_read_byte(40) &&
 #endif
-                         contrast == eeprom_read_byte(41) &&
-                         alarm_back == eeprom_read_byte(43) &&
-                         buzz_switch == eeprom_read_byte(44) &&
-                         knock_disable == eeprom_read_byte(45) &&
-                         measur_pos == eeprom_read_byte(46) &&
-                         alarm_dose == eeprom_read_byte(47) &&
-                         sleep_switch == eeprom_read_byte(48) &&
-                         TIME_BRIGHT == eeprom_read_byte(49) &&
-                         TIME_SLEEP == eeprom_read_byte(50) &&
-                         rad_mode == eeprom_read_byte(57) &&
-                         rad_flash == eeprom_read_byte(59) &&
-                         sigma_pos == eeprom_read_byte(60) &&
-                         search_pos == eeprom_read_byte(61) &&
-                         warn_level_back == eeprom_read_word(62) &&
-                         alarm_level_back == eeprom_read_word(64) &&
-                         warn_level_dose == eeprom_read_word(66) &&
-                         alarm_level_dose == eeprom_read_word(68)
+        contrast == eeprom_read_byte(41) &&
+        alarm_back == eeprom_read_byte(43) &&
+        buzz_switch == eeprom_read_byte(44) &&
+        knock_disable == eeprom_read_byte(45) &&
+        measur_pos == eeprom_read_byte(46) &&
+        alarm_dose == eeprom_read_byte(47) &&
+        sleep_switch == eeprom_read_byte(48) &&
+        TIME_BRIGHT == eeprom_read_byte(49) &&
+        TIME_SLEEP == eeprom_read_byte(50) &&
+        rad_mode == eeprom_read_byte(57) &&
+        rad_flash == eeprom_read_byte(59) &&
+        sigma_pos == eeprom_read_byte(60) &&
+        search_pos == eeprom_read_byte(61) &&
+        warn_level_back == eeprom_read_word(62) &&
+        alarm_level_back == eeprom_read_word(64) &&
+        warn_level_dose == eeprom_read_word(66) &&
+        alarm_level_dose == eeprom_read_word(68)
       ) return;
       break;
 
@@ -3230,11 +3230,11 @@ void task_bar(void) //шапка экрана
 
 #if LOGBOOK_RETURN
   switch (logbook_switch) {
-    case 1: drawBitmap(38, 0, logbook_ico_img, 9, 8); break; //logbook
-    case 2: if (n) drawBitmap(38, 0, logbook_ico_img, 9, 8); n = (n) ? 0 : 1; break; //logbook
+    case 1: drawBitmap(32, 0, logbook_ico_img, 9, 8); break; //logbook
+    case 2: if (n) drawBitmap(32, 0, logbook_ico_img, 9, 8); n = (n) ? 0 : 1; break; //logbook
   }
   if (error_switch) {
-    drawBitmap((logbook_switch) ? 22 : 33, 0, error_ico_img, 14, 8); //ERR
+    drawBitmap(27, 0, error_ico_img, 14, 8); //ERR
   }
 #endif
 
