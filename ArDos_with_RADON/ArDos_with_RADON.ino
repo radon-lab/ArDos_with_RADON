@@ -1257,7 +1257,7 @@ void measur_massege(void) //окончание замера
 #if LOGBOOK_RETURN
         if (logbook_measur) {
           logbook_measur = 2; //устанавливаем признак новой записи
-          _logbook_data_update(3, pgm_read_byte(&diff_measuring[measur_pos]), (first_froze < second_froze) ? second_froze - first_froze : 0 / ((60.0 / GEIGER_TIME) * pgm_read_byte(&diff_measuring[measur_pos]))); //обновление журнала
+          _logbook_data_update(2, pgm_read_byte(&diff_measuring[measur_pos]), (first_froze < second_froze) ? second_froze - first_froze : 0 / ((60.0 / GEIGER_TIME) * pgm_read_byte(&diff_measuring[measur_pos]))); //обновление журнала
         }
 #endif
         break;
