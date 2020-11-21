@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.2.3 low_pwr 20.11.20 специально для проекта ArDos
+  Версия программы RADON v3.2.4 low_pwr 21.11.20 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка лёгкого ядра https://alexgyver.github.io/package_GyverCore_index.json и загрузчика OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -313,8 +313,10 @@ boolean graf = 0; //флаг обновления графика
 boolean serch = 0; //флаг работы поиска
 boolean knock_disable = 0; //флаг запрет треска кнопками
 uint8_t buzz_switch = 0; //указатель на тип треска пищалкой
-uint8_t error_switch = 0; //указатель на номер ошибки
-uint8_t logbook_switch = 1; //указатель на активность журнала
+uint8_t error_switch = 0; //указатель на активность ошибки
+uint8_t logbook_alarm = 1; //указатель на активность журнала тревоги
+uint8_t logbook_warn = 1; //указатель на активность журнала предупреждений
+boolean logbook_measur = 1; //указатель на активность журнала замеров
 
 uint8_t alarm_switch = 0; //указатель текущей тревоги
 uint8_t alarm_back = 0; //флаг запрета тревоги фона
@@ -442,7 +444,7 @@ int main(void)  //инициализация
 
   setFont(RusFont); //установка шрифта
   print("-=HFLJY=-", CENTER, 32); //-=РАДОН=-
-  print("3.2.3", CENTER, 40); //версия по
+  print("3.2.4", CENTER, 40); //версия по
 
   bat_check(); //опрос батареи
 
@@ -765,14 +767,14 @@ void data_convert(void) //преобразование данных
         case TIME_FACT_12: //обработка тревоги
           if (alarm_dose && (rad_dose - alarm_dose_wait) >= alarm_level_dose) {
 #if LOGBOOK_RETURN
-            if (!alarm_switch && logbook_switch) _logbook_data_update(0, 2, rad_dose); //обновление журнала
+            if (!alarm_switch && logbook_warn) _logbook_data_update(0, 2, rad_dose); //обновление журнала
 #endif
             alarm_switch = 2;  //превышение дозы 2
             break;
           }
           else if (alarm_dose && (rad_dose - warn_dose_wait) >= warn_level_dose) {
 #if LOGBOOK_RETURN
-            if (!alarm_switch && logbook_switch) _logbook_data_update(1, 2, rad_dose); //обновление журнала
+            if (!alarm_switch && logbook_alarm) _logbook_data_update(1, 2, rad_dose); //обновление журнала
 #endif
             alarm_switch = 4;  //превышение дозы 1
             break;
@@ -781,14 +783,14 @@ void data_convert(void) //преобразование данных
           if (accur_percent <= RAD_ACCUR_WARN) {
             if (alarm_back && !alarm_back_wait && rad_back >= alarm_level_back) {
 #if LOGBOOK_RETURN
-              if (!alarm_switch && logbook_switch) _logbook_data_update(0, 1, rad_back); //обновление журнала
+              if (!alarm_switch && logbook_warn) _logbook_data_update(0, 1, rad_back); //обновление журнала
 #endif
               alarm_switch = 1;  //превышение фона 2
               break;
             }
             else if (alarm_back && !warn_back_wait && rad_back >= warn_level_back) {
 #if LOGBOOK_RETURN
-              if (!alarm_switch && logbook_switch) _logbook_data_update(1, 1, rad_back); //обновление журнала
+              if (!alarm_switch && logbook_alarm) _logbook_data_update(1, 1, rad_back); //обновление журнала
 #endif
               alarm_switch = 3;  //превышение фона 1
               break;
@@ -798,13 +800,13 @@ void data_convert(void) //преобразование данных
           if (rad_back < (warn_level_back * ALARM_AUTO_GISTERESIS) && warn_back_wait) {
             warn_back_wait = 0; //сброс предупреждения
 #if LOGBOOK_RETURN
-            if (logbook_switch) logbook_switch = 2;
+            if (logbook_warn) logbook_warn = 2;
 #endif
           }
           if (rad_back < (alarm_level_back * ALARM_AUTO_GISTERESIS) && alarm_back_wait) {
             alarm_back_wait = 0; //сброс тревоги
 #if LOGBOOK_RETURN
-            if (logbook_switch) logbook_switch = 2;
+            if (logbook_alarm) logbook_alarm = 2;
 #endif
           }
 
@@ -1239,7 +1241,7 @@ void measur_massege(void) //окончание замера
         alarm_measur = 1;
         scan_buff = rad_buff[0] = 0; //очищаем 0-й и 1-й элемент буфера
 #if LOGBOOK_RETURN
-        if (logbook_switch) _logbook_data_update(3, pgm_read_byte(&diff_measuring[measur_pos]), (first_froze < second_froze) ? second_froze - first_froze : 0 / ((60.0 / GEIGER_TIME) * pgm_read_byte(&diff_measuring[measur_pos]))); //обновление журнала
+        if (logbook_measur) _logbook_data_update(3, pgm_read_byte(&diff_measuring[measur_pos]), (first_froze < second_froze) ? second_froze - first_froze : 0 / ((60.0 / GEIGER_TIME) * pgm_read_byte(&diff_measuring[measur_pos]))); //обновление журнала
 #endif
         break;
     }
@@ -2097,60 +2099,49 @@ void _setings_item_switch(boolean set, boolean inv, uint8_t num, uint8_t pos) //
       }
       break;
 
-    case 9: //Журнал
-      switch (set) {
-        case 0: print(":ehyfk&", LEFT, pos_row); break; //Журнал:
-#if LOGBOOK_RETURN
-        case 1: if (logbook_switch) print("DRK", RIGHT, pos_row); else print("DSRK", RIGHT, pos_row); break;
-#else
-        case 1: print("YT ECN", RIGHT, pos_row); break;
-#endif
-      }
-      break;
-
-    case 10: //Ед.измер
+    case 9: //Ед.измер
       switch (set) {
         case 0: print("Tl.bpvth&", LEFT, pos_row); break; //Ед.измер:
         case 1: if (!rad_mode) print("vrH", RIGHT, pos_row); else print("vrPd", RIGHT, pos_row); break;
       }
       break;
 
-    case 11: //Тревога Ф
+    case 10: //Тревога Ф
       switch (set) {
         case 0: print("Nhtdjuf A&", LEFT, pos_row); break; //Тревога Ф:
         case 1: if (!alarm_back) print("DSRK", RIGHT, pos_row); else if (alarm_back == 1) print("PDER", RIGHT, pos_row); else if (alarm_back == 2) print("DB<H", RIGHT, pos_row); else print("D+PD", RIGHT, pos_row); break;
       }
       break;
 
-    case 12: //Порог Ф1
+    case 11: //Порог Ф1
       switch (set) {
         case 0: print("Gjhju A1&", LEFT, pos_row); break; //Порог Ф1:
         case 1: printNumI(warn_level_back, RIGHT, pos_row); break;
       }
       break;
 
-    case 13: //Порог Ф2
+    case 12: //Порог Ф2
       switch (set) {
         case 0: print("Gjhju A2&", LEFT, pos_row); break; //Порог Ф2:
         case 1: printNumI(alarm_level_back, RIGHT, pos_row); break;
       }
       break;
 
-    case 14: //Тревога Д
+    case 13: //Тревога Д
       switch (set) {
         case 0: print("Nhtdjuf L&", LEFT, pos_row); break; //Тревога Д:
         case 1: if (!alarm_dose) print("DSRK", RIGHT, pos_row); else if (alarm_dose == 1) print("PDER", RIGHT, pos_row); else if (alarm_dose == 2) print("DB<H", RIGHT, pos_row); else print("D+PD", RIGHT, pos_row); break;
       }
       break;
 
-    case 15: //Порог Д1
+    case 14: //Порог Д1
       switch (set) {
         case 0: print("Gjhju L1&", LEFT, pos_row); break; //Порог Д1:
         case 1: printNumI(warn_level_dose, RIGHT, pos_row); break;
       }
       break;
 
-    case 16: //Порог Д2
+    case 15: //Порог Д2
       switch (set) {
         case 0: print("Gjhju L2&", LEFT, pos_row); break; //Порог Д2:
         case 1: printNumI(alarm_level_dose, RIGHT, pos_row); break;
@@ -2194,17 +2185,14 @@ void _setings_data_up(uint8_t pos) //прибавление данных
     case 6: if (measur_pos < 9) measur_pos++; break; //Разн.зам
     case 7: if (sigma_pos < 2) sigma_pos++; else sigma_pos = 0; break; //Сигма
     case 8: if (search_pos < 8) search_pos++; else search_pos = 0; break; //Поиск
-#if LOGBOOK_RETURN
-    case 9: logbook_switch = 1; break; //Журнал
-#endif
-    case 10: rad_mode = 1; break; //Ед.измер
+    case 9: rad_mode = 1; break; //Ед.измер
 
-    case 11: if (alarm_back < 3) alarm_back++; break; //Тревога Ф
-    case 12: if (warn_level_back < 300) warn_level_back += 5; else warn_level_back = 30; break; //Порог Ф1
-    case 13: if (alarm_level_back < 500) alarm_level_back += 10; else if (alarm_level_back < 1000) alarm_level_back += 50; else if (alarm_level_back < 65000) alarm_level_back += 100; else alarm_level_back = 300; break; //Порог Ф2
-    case 14: if (alarm_dose < 3) alarm_dose++; break; //Тревога Д
-    case 15: if (warn_level_dose < 300) warn_level_dose += 5; else warn_level_dose = 10; break; //Порог Д1
-    case 16: if (alarm_level_dose < 500) alarm_level_dose += 10; else if (alarm_level_dose < 1000) alarm_level_dose += 50; else if (alarm_level_dose < 65000) alarm_level_dose += 100; else alarm_level_dose = 300; break; //Порог Д2
+    case 10: if (alarm_back < 3) alarm_back++; break; //Тревога Ф
+    case 11: if (warn_level_back < 300) warn_level_back += 5; else warn_level_back = 30; break; //Порог Ф1
+    case 12: if (alarm_level_back < 500) alarm_level_back += 10; else if (alarm_level_back < 1000) alarm_level_back += 50; else if (alarm_level_back < 65000) alarm_level_back += 100; else alarm_level_back = 300; break; //Порог Ф2
+    case 13: if (alarm_dose < 3) alarm_dose++; break; //Тревога Д
+    case 14: if (warn_level_dose < 300) warn_level_dose += 5; else warn_level_dose = 10; break; //Порог Д1
+    case 15: if (alarm_level_dose < 500) alarm_level_dose += 10; else if (alarm_level_dose < 1000) alarm_level_dose += 50; else if (alarm_level_dose < 65000) alarm_level_dose += 100; else alarm_level_dose = 300; break; //Порог Д2
   }
 }
 //------------------------------------Убавление данных------------------------------------------------------
@@ -2235,17 +2223,14 @@ void _setings_data_down(uint8_t pos) //убавление данных
     case 6: if (measur_pos > 0) measur_pos--;  break; //Разн.зам
     case 7: if (sigma_pos > 0) sigma_pos--; else sigma_pos = 2; break; //Сигма
     case 8: if (search_pos > 0) search_pos--; else search_pos = 8; break; //Поиск
-#if LOGBOOK_RETURN
-    case 9: logbook_switch = 0; break; //Журнал
-#endif
-    case 10: rad_mode = 0; break; //Ед.измер
+    case 9: rad_mode = 0; break; //Ед.измер
 
-    case 11: if (alarm_back > 0) alarm_back--; break; //Тревога Ф
-    case 12: if (warn_level_back > 30) warn_level_back -= 5; else warn_level_back = 300; break; //Порог Ф1
-    case 13: if (alarm_level_back > 1000) alarm_level_back -= 100; else if (alarm_level_back > 500) alarm_level_back -= 50; else if (alarm_level_back > 300) alarm_level_back -= 10; else alarm_level_back = 65000; break; //Порог Ф2
-    case 14: if (alarm_dose > 0) alarm_dose--; break; //Тревога Д
-    case 15: if (warn_level_dose > 10) warn_level_dose -= 5; else warn_level_dose = 300; break; //Порог Д1
-    case 16: if (alarm_level_dose > 1000) alarm_level_dose -= 100; else if (alarm_level_dose > 500) alarm_level_dose -= 50; else if (alarm_level_dose > 300) alarm_level_dose -= 10; else alarm_level_dose = 65000; break; //Порог Д2
+    case 10: if (alarm_back > 0) alarm_back--; break; //Тревога Ф
+    case 11: if (warn_level_back > 30) warn_level_back -= 5; else warn_level_back = 300; break; //Порог Ф1
+    case 12: if (alarm_level_back > 1000) alarm_level_back -= 100; else if (alarm_level_back > 500) alarm_level_back -= 50; else if (alarm_level_back > 300) alarm_level_back -= 10; else alarm_level_back = 65000; break; //Порог Ф2
+    case 13: if (alarm_dose > 0) alarm_dose--; break; //Тревога Д
+    case 14: if (warn_level_dose > 10) warn_level_dose -= 5; else warn_level_dose = 300; break; //Порог Д1
+    case 15: if (alarm_level_dose > 1000) alarm_level_dose -= 100; else if (alarm_level_dose > 500) alarm_level_dose -= 50; else if (alarm_level_dose > 300) alarm_level_dose -= 10; else alarm_level_dose = 65000; break; //Порог Д2
   }
 }
 //------------------------------------Настройки------------------------------------------------------
@@ -2293,7 +2278,7 @@ void setings(void) //настройки
       case 2: //Down key //вниз
         switch (set) {
           case 0:
-            if (n < 16) { //изменяем позицию
+            if (n < 15) { //изменяем позицию
               n++;
               if (c < 4) c++; //изменяем положение курсора
             }
@@ -2316,7 +2301,7 @@ void setings(void) //настройки
               if (c > 0) c--; //изменяем положение курсора
             }
             else { //иначе конец списка
-              n = 16;
+              n = 15;
               c = 4;
             }
             break;
@@ -2455,6 +2440,24 @@ void menu(void) //меню
     }
   }
 }
+//------------------------------------Отрисовка пунктов настроек------------------------------------------------------
+void _logbook_settings(boolean inv, uint8_t num, uint8_t pos) //отрисовка пунктов настроек
+{
+  uint8_t pos_row = (pos << 3) + 8; //переводим позицию в номер строки
+
+  if (inv) {
+    _screen_line(0, 84, 0, 0, pos_row); //рисуем линию
+    invertText(true); //включаем инверсию
+  }
+
+  switch (num) {
+    case 0: print("Nhtdjuf&", LEFT, pos_row); if (logbook_alarm) print("DRK", RIGHT, pos_row); else  print("DERK", RIGHT, pos_row); break; //Тревога
+    case 1: print("Jgfcyjcnm&", LEFT, pos_row); if (logbook_warn) print("DRK", RIGHT, pos_row); else  print("DERK", RIGHT, pos_row); break; //Опасность
+    case 2: print("Pfvths&", LEFT, pos_row); if (logbook_measur) print("DRK", RIGHT, pos_row); else  print("DERK", RIGHT, pos_row); break; //Замеры бета
+    case 3: print("Jxbcnbnm", CENTER, pos_row); break; //Очистить
+  }
+  if (inv) invertText(false); //выключаем инверсию
+}
 //------------------------------------Отрисовка пунктов------------------------------------------------------
 void _logbook_item_switch(boolean inv, uint8_t num, uint8_t pos) //отрисовка пунктов
 {
@@ -2466,11 +2469,11 @@ void _logbook_item_switch(boolean inv, uint8_t num, uint8_t pos) //отрисо�
   }
 
   switch (num) {
-    case 0: print("Nhtdjuf", CENTER, pos_row); break; //Тревога
-    case 1: print("Ghtleght;ltybz", CENTER, pos_row); break; //Предупреждения
-    case 2: print("Pfvths ,tnf", CENTER, pos_row); break; //Замеры бета
-    case 3: print("Jib,rb", CENTER, pos_row); break; //Ошибки
-    case 4: print("Jxbcnbnm", CENTER, pos_row); break; //Очистить
+    case 0: print("Nhtdjuf", CENTER, pos_row); if (logbook_alarm == 2) print("*", RIGHT, pos_row); break; //Тревога
+    case 1: print("Jgfcyjcnm", CENTER, pos_row); if (logbook_warn == 2) print("*", RIGHT, pos_row); break; //Опасность
+    case 2: print("Pfvths ,tnf", CENTER, pos_row); if (logbook_measur == 2) print("*", RIGHT, pos_row); break; //Замеры бета
+    case 3: print("Jib,rb", CENTER, pos_row); if (error_switch) print("*", RIGHT, pos_row); break; //Ошибки
+    case 4: print("Yfcnhjqrb", CENTER, pos_row); break; //Настройки
   }
   if (inv) invertText(false); //выключаем инверсию
 }
@@ -2506,7 +2509,7 @@ void _logbook_data_switch(boolean inv, uint8_t num, uint8_t pos, uint8_t data_nu
         break;
     }
   }
-  else print("* gecnj *", CENTER, pos_row); //* пусто *
+  else print("- gecnj -", CENTER, pos_row); //- пусто -
 
   if (inv) invertText(false); //выключаем инверсию
 }
@@ -2568,8 +2571,6 @@ void logbook(void) //журнал
   sleep_disable = 1; //запрещаем сон
   scr = 0; //разрешаем обновления экрана
 
-  if (logbook_switch) logbook_switch = 1;
-
   while (1) {
     data_convert(); //преобразование данных
 
@@ -2588,11 +2589,16 @@ void logbook(void) //журнал
       drawBitmap(0, 0, logbook_img, 84, 8); //отрисовываем фон
       setFont(RusFont); //установка шрифта
 
-      for (uint8_t i = 0; i < 5; i++) {
-        if (!p) _logbook_item_switch((i == c) ? 1 : 0, n - c + i, i); //отрисовываем пункты настроек
-        else if (!err_sw) _logbook_data_switch((i == c) ? 1 : 0, n - c + i, i, p - 1); //отрисовывам информацию
-        else _init_error_messege(_data_read_byte(n, 230), _data_read_dword(n, 360));
+      if (!err_sw) {
+        for (uint8_t i = 0; i < 5; i++) {
+          switch (p) {
+            case 0: _logbook_item_switch((i == c) ? 1 : 0, n - c + i, i); break; //отрисовываем пункты настроек
+            case 5: _logbook_settings((i == c) ? 1 : 0, n - c + i, i); break; //отрисовываем пункты настроек
+            default: _logbook_data_switch((i == c) ? 1 : 0, n - c + i, i, p - 1); break; //отрисовывам информацию
+          }
+        }
       }
+      else _init_error_messege(_data_read_byte(n, 230), _data_read_dword(n, 360)); //отрисовка информации
     }
     //+++++++++++++++++++++  опрос кнопок  +++++++++++++++++++++++++++
     switch (check_keys()) {
@@ -2631,25 +2637,41 @@ void logbook(void) //журнал
         break;
 
       case 5: //select key //выбор
-        if (!p && n == 4) data_reset(2);
-        else if (!p && n != 4) {
-          p = n + 1;
-          n = c = 0;
-          max_item = 9;
+        switch (p) {
+          case 0:
+            p = n + 1;
+            n = c = 0;
+            max_item = (p != 5) ? 9 : 3;
+            switch (p) {
+              case 1: if (logbook_alarm) logbook_alarm = 1; break;
+              case 2: if (logbook_warn) logbook_warn = 1; break;
+              case 3: if (logbook_measur) logbook_measur = 1; break;
+              case 4: if (error_switch) error_switch = 0; break;
+                data_reset(2);
+            }
+            break;
+          case 4: err_sw = (err_sw) ? 0 : 1; break;
+          case 5:
+            switch (n) {
+              case 0: logbook_alarm = (logbook_alarm) ? 0 : 1; break;
+              case 1: logbook_warn = (logbook_warn) ? 0 : 1; break;
+              case 2: logbook_measur = (logbook_measur) ? 0 : 1; break;
+              case 3: data_reset(2); break;
+            }
+            break;
         }
-        else if (p == 4) err_sw = (err_sw) ? 0 : 1;
         time_out = 0; //сбрасываем авто-выход
         scr = 0; //разрешаем обновления экрана
         break;
 
       case 6: //hold select key //выход к главным экранам
         scr = 0; //разрешаем обновления экрана
-        if (p) {
-          n = c = p - 1;
-          p = 0;
-          max_item = 4;
+        switch (p) {
+          case 0: return;
+          case 5: setings_save(2); break; //сохраняем настройки
+          default: n = c = p - 1; p = err_sw = 0; max_item = 4; break;
         }
-        else return;
+        break;
     }
   }
 #else
@@ -2815,7 +2837,6 @@ void wdt_calibrate(void) //калибровка wdt
 //------------------------------------Чтение настроек----------------------------------------------
 void setings_read(void) //чтение настроек
 {
-  logbook_switch = eeprom_read_byte(40);
   contrast = eeprom_read_byte(41);
   alarm_back = eeprom_read_byte(43);
   buzz_read();
@@ -2833,12 +2854,14 @@ void setings_read(void) //чтение настроек
   alarm_level_back = eeprom_read_word(64);
   warn_level_dose = eeprom_read_word(66);
   alarm_level_dose = eeprom_read_word(68);
+#if LOGBOOK_RETURN
+  logbook_read();
+#endif
   wdt_period = eeprom_read_word(110);
 }
 //---------------------------------------Обновление настроек------------------------------------------------
 void setings_update(void) //обновление настроек
 {
-  eeprom_update_byte(41, logbook_switch);
   eeprom_update_byte(41, contrast);
   eeprom_update_byte(43, alarm_back);
   eeprom_update_byte(44, buzz_switch);
@@ -2856,6 +2879,23 @@ void setings_update(void) //обновление настроек
   eeprom_update_word(64, alarm_level_back);
   eeprom_update_word(66, warn_level_dose);
   eeprom_update_word(68, alarm_level_dose);
+#if LOGBOOK_RETURN
+  logbook_update();
+#endif
+}
+//---------------------------------------Чтение журнала--------------------------------------------------
+void logbook_read(void) //чтение журнала
+{
+  logbook_alarm = eeprom_read_byte(70);
+  logbook_warn = eeprom_read_byte(71);
+  logbook_measur = eeprom_read_byte(72);
+}
+//--------------------------------------Обновление журнала-----------------------------------------------
+void logbook_update(void) //обновление журнала
+{
+  eeprom_update_byte(70, logbook_alarm);
+  eeprom_update_byte(71, logbook_warn);
+  eeprom_update_byte(72, logbook_measur);
 }
 //---------------------------------------Чтение статистики--------------------------------------------------
 void statistic_read(void) //чтение статистики
@@ -2917,11 +2957,12 @@ void data_reset(uint8_t sw) //сброс текущей дозы
       print("C,hjcbnm", CENTER, 8); //Сбросить
       print("j,oe/ ljpe?", CENTER, 16); //общую дозу?
       break;
-
+#if LOGBOOK_RETURN
     case 2: //журнал
       print("Jxbcnbnm", CENTER, 8); //Очистить
       print("dtcm ;ehyfk?", CENTER, 16); //весь журнал?
       break;
+#endif
   }
 
   while (1) {
@@ -2989,7 +3030,7 @@ void data_reset(uint8_t sw) //сброс текущей дозы
                 print("Cnfnbcnbrf", CENTER, 16); //Статистика
                 print("c,hjityf!", CENTER, 24); //сброшена!
                 break;
-
+#if LOGBOOK_RETURN
               case 2: //журнал
                 _logbook_data_clear(); //очистка журнала
                 clrScr(); //очистка экрана
@@ -2997,6 +3038,7 @@ void data_reset(uint8_t sw) //сброс текущей дозы
                 print(":ehyfk", CENTER, 16); //Журнал
                 print("jxboty!", CENTER, 24); //очищен!
                 break;
+#endif
             }
             for (timer_millis = MASSEGE_TIME; timer_millis && !check_keys();) data_convert(); // ждем, преобразование данных
             sleep_disable = 0; //разрешаем сон
@@ -3017,9 +3059,6 @@ void setings_save(boolean sw) //сохранить настройки
   switch (sw) {
     case 0:
       if (
-#if LOGBOOK_RETURN
-        logbook_switch == eeprom_read_byte(40) &&
-#endif
         contrast == eeprom_read_byte(41) &&
         alarm_back == eeprom_read_byte(43) &&
         buzz_switch == eeprom_read_byte(44) &&
@@ -3049,6 +3088,15 @@ void setings_save(boolean sw) //сохранить настройки
         k_delitel == eeprom_read_word(104)
       ) return;
       break;
+#if LOGBOOK_RETURN
+    case 2:
+      if (
+        logbook_alarm == eeprom_read_byte(70) &&
+        logbook_warn == eeprom_read_byte(71) &&
+        logbook_measur == eeprom_read_byte(72)
+      ) return;
+      break;
+#endif
   }
 
   uint8_t time_out = 0; //таймер автовыхода
@@ -3099,6 +3147,9 @@ void setings_save(boolean sw) //сохранить настройки
             switch (sw) {
               case 0: setings_update(); break; //обновляем настройки
               case 1: pump_update(); break; //обновляем настройки
+#if LOGBOOK_RETURN
+              case 2: logbook_update(); break; //обновляем настройки
+#endif
             }
             for (timer_millis = MASSEGE_TIME; timer_millis && !check_keys();) data_convert(); // ждем, преобразование данных
             scr = 0; //разрешаем обновления экрана
@@ -3108,6 +3159,9 @@ void setings_save(boolean sw) //сохранить настройки
             switch (sw) {
               case 0: setings_read(); break; //считываем настройки из памяти
               case 1: pump_read(); break; //считываем настройки из памяти
+#if LOGBOOK_RETURN
+              case 2: logbook_read(); break; //считываем настройки из памяти
+#endif
             }
             scr = 0; //разрешаем обновления экрана
             return;
@@ -3229,12 +3283,16 @@ void task_bar(void) //шапка экрана
   drawBitmap(70, 0, bat_alt_img, bat * 2, 8); //отображаем состояние батареи
 
 #if LOGBOOK_RETURN
-  switch (logbook_switch) {
-    case 1: drawBitmap(32, 0, logbook_ico_img, 9, 8); break; //logbook
-    case 2: if (n) drawBitmap(32, 0, logbook_ico_img, 9, 8); n = (n) ? 0 : 1; break; //logbook
-  }
   if (error_switch) {
-    drawBitmap(27, 0, error_ico_img, 14, 8); //ERR
+    if (n) drawBitmap(27, 0, error_ico_img, 14, 8); //ERR
+    n = (n) ? 0 : 1;
+  }
+  else {
+    if (logbook_alarm == 2 || logbook_warn == 2 || logbook_measur == 2) {
+      if (n) drawBitmap(32, 0, logbook_ico_img, 9, 8); //logbook
+      n = (n) ? 0 : 1;
+    }
+    else if (logbook_alarm == 1 || logbook_warn == 1 || logbook_measur == 1) drawBitmap(32, 0, logbook_ico_img, 9, 8); //logbook
   }
 #endif
 
