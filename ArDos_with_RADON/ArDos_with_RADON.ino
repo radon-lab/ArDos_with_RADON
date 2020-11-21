@@ -2468,9 +2468,9 @@ void _logbook_settings(boolean inv, uint8_t num, uint8_t pos) //отрисовк
   }
 
   switch (num) {
-    case 0: print("Nhtdjuf&", LEFT, pos_row); if (logbook_alarm) print("DRK", RIGHT, pos_row); else  print("DERK", RIGHT, pos_row); break; //Тревога
-    case 1: print("Jgfcyjcnm&", LEFT, pos_row); if (logbook_warn) print("DRK", RIGHT, pos_row); else  print("DERK", RIGHT, pos_row); break; //Опасность
-    case 2: print("Pfvths&", LEFT, pos_row); if (logbook_measur) print("DRK", RIGHT, pos_row); else  print("DERK", RIGHT, pos_row); break; //Замеры бета
+    case 0: print("Nhtdjuf&", LEFT, pos_row); if (logbook_alarm) print("DRK", RIGHT, pos_row); else  print("DSRK", RIGHT, pos_row); break; //Тревога
+    case 1: print("Jgfcyjcnm&", LEFT, pos_row); if (logbook_warn) print("DRK", RIGHT, pos_row); else  print("DSRK", RIGHT, pos_row); break; //Опасность
+    case 2: print("Pfvths&", LEFT, pos_row); if (logbook_measur) print("DRK", RIGHT, pos_row); else  print("DSRK", RIGHT, pos_row); break; //Замеры бета
     case 3: print("Jxbcnbnm", CENTER, pos_row); break; //Очистить
   }
   if (inv) invertText(false); //выключаем инверсию
@@ -2685,7 +2685,7 @@ void logbook(void) //журнал
         scr = 0; //разрешаем обновления экрана
         switch (p) {
           case 0: return;
-          case 5: setings_save(2); break; //сохраняем настройки
+          case 5: setings_save(2); n = c = p - 1; p = 0; max_item = 4; break; //сохраняем настройки
           default: n = c = p - 1; p = err_sw = 0; max_item = 4; break;
         }
         break;
