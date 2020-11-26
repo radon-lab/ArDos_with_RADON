@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.2.4 low_pwr 21.11.20 специально для проекта ArDos
+  Версия программы RADON v3.2.4 low_pwr 26.11.20 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -210,7 +210,7 @@
 
   - Короткое замыкание преобразователя
   Короткое замыкание преобразователя ВВ либо не правильно настроен, проверьте цепи преобразователя и установленные параметры ADC_value / k_delitel / puls.
-  
+
   - Низкое напряжение преобразователя
   Низкое напряжение преобразователя ВВ либо не правильно настроен, проверьте цепи преобразователя и установленные параметры ADC_value / k_delitel / puls.
 
@@ -824,12 +824,14 @@ void data_convert(void) //преобразование данных
 #endif
           }
 
+#if ALARM_AUTO_DISABLE
           if (alarm_switch) { //иначе ждем понижения фона
             _vibro_off(); //выключаем вибрацию
             buzz_read(); //чтение состояния щелчков
             alarm_switch = 0; //устанавливаем признак отсутствия тревоги
           }
           break;
+#endif
 
         case TIME_FACT_13: //рассчитываем точность
           if (back_time_now != BUFF_LENGTHY) accur_percent = _init_accur(tmp_buff); //рассчет точности
@@ -842,7 +844,6 @@ void data_convert(void) //преобразование данных
     }
 
     switch (time_wdt) {
-#if ERRORS_RETURN
       case TIME_FACT_15: //обработка ошибок
         if (!rad_buff[0]) { //если нету импульсов в обменном буфере
           if (++nop_imp_tmr >= IMP_ERROR_TIME) { //считаем время до вывода предупреждения
@@ -868,7 +869,6 @@ void data_convert(void) //преобразование данных
         speed_hv = speed_pump; //текущая скорость накачки
         speed_pump = 0; //сбрасываем скорость накачки
         break;
-#endif
 
       case TIME_FACT_16: //разностный замер
         switch (measur) { //выбираем режим замера
@@ -1314,17 +1314,19 @@ void measur_menu(void) //режим замера
           setFont(RusFont); //установка шрифта
           print("ajy", LEFT, 32); //строка 1 фон
           print("x|cv2", 54, 32); //строка 1 ч/см2
+          buff = first_froze / pgm_read_byte(&diff_measuring[measur_pos]) / GEIGER_AREA;
 #if (TYPE_CHAR_FILL > 44)
-          printNumF(first_froze / pgm_read_byte(&diff_measuring[measur_pos]) / GEIGER_AREA, 1, 22, 32, 46, 4, TYPE_CHAR_FILL); //строка 1
+          printNumF(buff, (buff < 100) ? 1 : 0, 30, 32, 46, 4, TYPE_CHAR_FILL); //строка 1
 #else
-          printNumF(first_froze / pgm_read_byte(&diff_measuring[measur_pos]) / GEIGER_AREA, 1, 22, 32, 46, 4, 32); //строка 1
+          printNumF(buff, (buff < 100) ? 1 : 0, 30, 32, 46, 4, 32); //строка 1
 #endif
           print("j,h", LEFT, 40); //строка 2 обр
           print("x|cv2", 54, 40); //строка 2 ч/см2
+          buff = second_froze / pgm_read_byte(&diff_measuring[measur_pos]) / GEIGER_AREA;
 #if (TYPE_CHAR_FILL > 44)
-          printNumF(second_froze / pgm_read_byte(&diff_measuring[measur_pos]) / GEIGER_AREA, 1, 22, 40, 46, 4, TYPE_CHAR_FILL); //строка 2
+          printNumF(buff, (buff < 100) ? 1 : 0, 30, 40, 46, 4, TYPE_CHAR_FILL); //строка 2
 #else
-          printNumF(second_froze / pgm_read_byte(&diff_measuring[measur_pos]) / GEIGER_AREA, 1, 22, 40, 46, 4, 32);
+          printNumF(buff, (buff < 100) ? 1 : 0, 30, 40, 46, 4, 32);
 #endif
 
           break;
@@ -1473,7 +1475,6 @@ void warn_messege(boolean set, uint8_t sound) //предупреждение
 //-------------------------------Тревога-----------------------------------------------------
 void alarm_messege(boolean set, uint8_t sound, char *mode) //тревога
 {
-  uint8_t pos = 21 + (6 * set); //определяем позицию
   uint32_t rad_set; //текущие данные фона/дозы
 
   sleep_out(); //просыпаемся если спали
@@ -1500,7 +1501,7 @@ void alarm_messege(boolean set, uint8_t sound, char *mode) //тревога
         case 1: rad_set = rad_dose; break;
       }
       print(mode, LEFT, 40); //фон
-      _init_rads_unit(0, rad_set, 1, 5, pos, 40, set, RIGHT, 40); //результат
+      _init_rads_unit(0, rad_set, 1, 5, RIGHT, 40, set, RIGHT, 40); //результат
     }
 
     //==================================================================
@@ -1510,10 +1511,11 @@ void alarm_messege(boolean set, uint8_t sound, char *mode) //тревога
       case 3: _melody_chart(alarm_sound, SAMPLS_ALARM, 1); _vibro_on(); break; //играем волшебную мелодию и включаем вибрацию
     }
     //==================================================================
+
 #if ALARM_AUTO_DISABLE
     if (check_keys() || (!set && !alarm_back_wait)) //если нажата любая кнопка или фон упал отключаем тревогу
 #else
-    if (check_keys()) //если нажата любая кнопка отключаем тревогу
+    if (check_keys())
 #endif
     {
       _vibro_off(); //выключаем вибрацию
@@ -2513,12 +2515,12 @@ void _logbook_data_switch(boolean inv, uint8_t num, uint8_t pos, uint8_t data_nu
       case 1:
         if (temp_byte == 2) print("LJPF", LEFT, pos_row); //ДОЗА
         else print("AJY", LEFT, pos_row); //ФОН
-        _init_rads_unit(0, temp_dword, 1, 4, 29, pos_row, temp_byte - 1, 54, pos_row); //единицы фона/дозы
+        _init_rads_unit(0, temp_dword, 1, 4, RIGHT, pos_row, temp_byte - 1, RIGHT, pos_row); //единицы фона/дозы
         break;
       case 2:
         printNumI(temp_byte, LEFT, pos_row, 2); //вркмя замера
         print("v", 12, pos_row); //м
-        _init_rads_unit(0, temp_dword, 1, 4, 29, pos_row, 0, 54, pos_row); //единицы замера
+        _init_rads_unit(0, temp_dword, 1, 4, RIGHT, pos_row, 0, RIGHT, pos_row); //единицы замера
         break;
       case 3:
         print("Jib,rf #", LEFT, pos_row); //Ошибка #
@@ -2840,10 +2842,8 @@ void wdt_calibrate(void) //калибровка wdt
     WDTCSR = 0; //выключаем собаку
 
     if (++timeout >= WDT_TIMEOUT) {
-#if ERRORS_RETURN
       error_switch = 2; //поднимаем флаг ошибки
       _logbook_data_update(3, 1, wdt_period); //обновление журнала устанавливаем ошибку 1 - таймер не откалиброван.
-#endif
       wdt_period = 1750;
       break;
     }
@@ -3209,32 +3209,26 @@ void _screen_line(uint8_t up_bar, uint8_t down_bar, boolean rent_bar, uint8_t st
     drawBitmap(i + start_bar, pos_bar, (uint8_t*)pgm_read_word(&_scale[2]), 1, 8); //шкала готовности верхняя
   }
 }
-//----------------------------------Инициализация значений большим шрифтом------------------------------------------------------
-void _init_rads_unit(boolean smb, uint32_t num, uint8_t divisor, uint8_t char_all, uint8_t num_x, uint8_t num_y, boolean unit, uint8_t unit_x, uint8_t unit_y) //инициализация значений большим шрифтом
+//----------------------------------Инициализация значений------------------------------------------------------
+void _init_rads_unit(boolean type, uint32_t num, uint8_t divisor, uint8_t char_all, uint8_t num_x, uint8_t num_y, boolean unit, uint8_t unit_x, uint8_t unit_y) //инициализация значений
 {
-  uint8_t _ptr;
-
-  if (rad_mode) _ptr = PATTERNS_SVH;
-  else _ptr = PATTERNS_RH;
-
-  if (smb) setFont(MediumNumbers); //установка шрифта
-  else setFont(RusFont); //установка шрифта
+  uint8_t _ptr = (rad_mode) ? PATTERNS_SVH : PATTERNS_RH;
 
   for (uint8_t i = 0; i < _ptr; i++) { //перебираем патерны
     if (num <= pgm_read_dword(&pattern_all[rad_mode][i][0]) * divisor) { //если есть совпадение
-      if (smb) printNumF(float(num) / pgm_read_dword(&pattern_all[rad_mode][i][2]), pgm_read_dword(&pattern_all[rad_mode][i][1]), num_x, num_y, 46, char_all, TYPE_CHAR_FILL); //строка 1
+      uint8_t char_unit = _rads_unit(pgm_read_dword(&pattern_all[rad_mode][i][3]), unit, unit_x, unit_y); //устанавливаем единицы измерения
+      if (type) setFont(MediumNumbers); //установка шрифта
 #if (TYPE_CHAR_FILL > 44)
-      else printNumF(float(num) / pgm_read_dword(&pattern_all[rad_mode][i][2]), pgm_read_dword(&pattern_all[rad_mode][i][1]), num_x, num_y, 46, char_all, TYPE_CHAR_FILL); //строка 1
+      printNumF(float(num) / pgm_read_dword(&pattern_all[rad_mode][i][2]), pgm_read_dword(&pattern_all[rad_mode][i][1]), (num_x == RIGHT) ? 84 - char_all * cfont.x_size - char_unit : num_x, num_y, 46, char_all, TYPE_CHAR_FILL); //строка 1
 #else
-      else printNumF(float(num) / pgm_read_dword(&pattern_all[rad_mode][i][2]), pgm_read_dword(&pattern_all[rad_mode][i][1]), num_x, num_y, 46, char_all, 32); //строка 1
+      printNumF(float(num) / pgm_read_dword(&pattern_all[rad_mode][i][2]), pgm_read_dword(&pattern_all[rad_mode][i][1]), (num_x == RIGHT) ? 84 - char_all * cfont.x_size - char_unit : num_x, num_y, 46, char_all, (type) ? TYPE_CHAR_FILL : 32); //строка 1
 #endif
-      _rads_unit(pgm_read_dword(&pattern_all[rad_mode][i][3]), unit, unit_x, unit_y); //устанавливаем единицы измерения
       break;
     }
   }
 }
 //----------------------------------Единицы измерения------------------------------------------------------
-void _rads_unit(boolean set, boolean unit, uint8_t unit_x, uint8_t unit_y) //Единицы измерения
+uint8_t _rads_unit(boolean set, boolean unit, uint8_t unit_x, uint8_t unit_y) //Единицы измерения
 {
   setFont(RusFont); //установка шрифта
   switch (rad_mode)
@@ -3244,15 +3238,15 @@ void _rads_unit(boolean set, boolean unit, uint8_t unit_x, uint8_t unit_y) //Е�
       switch (set) {
         case 0:
           switch (unit) {
-            case 0: print("vrH|x", unit_x, unit_y); break; //строка 2 мкР/ч
-            case 1: print("vrH", unit_x, unit_y); break; //строка 2 мкР
+            case 0: print("vrH|x", unit_x, unit_y); return 30; //строка 2 мкР/ч
+            case 1: print("vrH", unit_x, unit_y); return 18; //строка 2 мкР
           }
           break;
 
         case 1:
           switch (unit) {
-            case 0: print("vH|x", unit_x, unit_y); break; //строка 2 мР/ч
-            case 1: print("vH", unit_x, unit_y); break; //строка 2 мР
+            case 0: print("vH|x", unit_x, unit_y); return 24; //строка 2 мР/ч
+            case 1: print("vH", unit_x, unit_y); return 12; //строка 2 мР
           }
           break;
       }
@@ -3263,15 +3257,15 @@ void _rads_unit(boolean set, boolean unit, uint8_t unit_x, uint8_t unit_y) //Е�
       switch (set) {
         case 0:
           switch (unit) {
-            case 0: print("vrP|x", unit_x, unit_y); break; //строка 2 мкЗ/ч
-            case 1: print("vrP", unit_x, unit_y); break; //строка 2 мкЗ
+            case 0: print("vrP|x", unit_x, unit_y); return 30; //строка 2 мкЗ/ч
+            case 1: print("vrP", unit_x, unit_y); return 18; //строка 2 мкЗ
           }
           break;
 
         case 1:
           switch (unit) {
-            case 0: print("vP|x", unit_x, unit_y); break; //строка 2 мЗ/ч
-            case 1: print("vP", unit_x, unit_y); break; //строка 2 мЗ
+            case 0: print("vP|x", unit_x, unit_y); return 24; //строка 2 мЗ/ч
+            case 1: print("vP", unit_x, unit_y); return 12; //строка 2 мЗ
           }
           break;
       }
@@ -3377,12 +3371,12 @@ void main_screen(void)
         switch (back_mode) {
           case 0: for (uint8_t i = 4; i < 80; i++) graf_lcd(map(rad_buff[(i >> 1) - 1], 0, maxLevel_back, 0, 15), i, 15, 2); break; //инициализируем график
           case 1: //максимальный и средний фон
-            setFont(RusFont); //установка шрифта
             drawBitmap(0, 32, dose_min_img, 23, 8);       //строка 2 средн:
             drawBitmap(0, 40, dose_max_img, 23, 8);       //строка 3 макс:
-            _init_rads_unit(0, rad_min, 1, 4, 29, 32, 0, 54, 32); //строка 2 минимальный
-            if (accur_percent > RAD_ACCUR_START) print("----", 29, 32); //если недостаточно точности
-            _init_rads_unit(0, rad_max, 1, 4, 29, 40, 0, 54, 40); //строка 3 максимальный
+            _init_rads_unit(0, rad_min, 1, 4, RIGHT, 32, 0, RIGHT, 32); //строка 2 минимальный
+            setFont(RusFont); //установка шрифта
+            if (accur_percent > RAD_ACCUR_START) print("----", 30, 32); //если недостаточно точности
+            _init_rads_unit(0, rad_max, 1, 4, RIGHT, 40, 0, RIGHT, 40); //строка 3 максимальный
             break;
         }
 
@@ -3417,11 +3411,11 @@ void main_screen(void)
 
             _init_rads_unit(1, rad_dose, 10, 5, 1, 8, 1, 66, 16); //строка 1 текущая доза
             drawBitmap(0, 40, dose_all_img, 24, 8);       //строка 2 всего
-            _init_rads_unit(0, rad_dose_save, 10, 5, 32, 40, 1, 66, 40); //строка 2 сохранённая доза
+            _init_rads_unit(0, rad_dose_save, 10, 5, RIGHT, 40, 1, RIGHT, 40); //строка 2 сохранённая доза
             break;
 
           case 1: //общая накопленная доза и время
-
+            setFont(RusFont); //установка шрифта
             printNumI(time_save / 60 / 60 / 24, 8, 40, 2, 48);
             print("l", 20, 40);
             printNumI((time_save / 60 / 60) % 24, 32, 40, 2, 48);
