@@ -2645,7 +2645,7 @@ void logbook(void) //журнал
         }
         else { //иначе конец списка
           n = max_item;
-          c = 4;
+          c = (max_item < 4) ? max_item : 4;
         }
         time_out = 0; //сбрасываем авто-выход
         scr = 0; //разрешаем обновления экрана
@@ -2725,12 +2725,12 @@ void _init_error_messege(uint8_t err, uint32_t data) //отрисовка соо
   setFont(RusFont); //установка шрифта
 
   invertText(true);
-  print(" JIB<RF! ", CENTER, 0); //ОШИБКА!
+  print(" - JIB<RF - ", CENTER, 0); //- ОШИБКА -
   invertText(false);
 
   switch (err) {
     case 0:
-      print("* gecnj *", CENTER, 16); //таймера
+      print("* gecnj *", CENTER, 16); //пусто
       break;
 
     case 1:
