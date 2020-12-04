@@ -811,13 +811,13 @@ void data_convert(void) //преобразование данных
             }
           }
 
-          if (rad_back < (warn_level_back * ALARM_AUTO_GISTERESIS) && warn_back_wait) {
+          if (warn_back_wait && rad_back < (warn_level_back * ALARM_AUTO_GISTERESIS)) {
             warn_back_wait = 0; //сброс предупреждения
 #if LOGBOOK_RETURN
             if (logbook_warn) logbook_warn = 2;
 #endif
           }
-          if (rad_back < (alarm_level_back * ALARM_AUTO_GISTERESIS) && alarm_back_wait) {
+          if (alarm_back_wait && rad_back < (alarm_level_back * ALARM_AUTO_GISTERESIS)) {
             alarm_back_wait = 0; //сброс тревоги
 #if LOGBOOK_RETURN
             if (logbook_alarm) logbook_alarm = 2;
@@ -825,13 +825,15 @@ void data_convert(void) //преобразование данных
           }
 
 #if ALARM_AUTO_DISABLE
-          if (alarm_switch) { //иначе ждем понижения фона
+          if (alarm_switch == 1 && rad_back < (alarm_level_back * ALARM_AUTO_GISTERESIS)) alarm_switch = 0; //иначе ждем понижения фона тревоги 2
+
+          if (alarm_switch == 3 && rad_back < (warn_level_back * ALARM_AUTO_GISTERESIS)) { //иначе ждем понижения фона тревоги 1
             _vibro_off(); //выключаем вибрацию
             buzz_read(); //чтение состояния щелчков
             alarm_switch = 0; //устанавливаем признак отсутствия тревоги
           }
-          break;
 #endif
+          break;
 
         case TIME_FACT_13: //рассчитываем точность
           if (back_time_now != BUFF_LENGTHY) accur_percent = _init_accur(tmp_buff); //рассчет точности
@@ -1475,12 +1477,8 @@ void warn_messege(boolean set, uint8_t sound) //предупреждение
 //-------------------------------Тревога-----------------------------------------------------
 void alarm_messege(boolean set, uint8_t sound, char *mode) //тревога
 {
-  uint32_t rad_set; //текущие данные фона/дозы
-
   sleep_out(); //просыпаемся если спали
   buzz_switch = 0; //запретить звуковую индикацию импульсов
-
-  if (!set) alarm_back_wait = warn_back_wait = 1;
 
   clrScr(); //очистка экрана
   setFont(RusFont); //установка шрифта
@@ -1496,12 +1494,8 @@ void alarm_messege(boolean set, uint8_t sound, char *mode) //тревога
       scr = 1;
       clrRow(5); //очистка строки 5
 
-      switch (set) {
-        case 0: rad_set = rad_back; break;
-        case 1: rad_set = rad_dose; break;
-      }
       print(mode, LEFT, 40); //фон
-      _init_rads_unit(0, rad_set, 1, 5, RIGHT, 40, set, RIGHT, 40); //результат
+      _init_rads_unit(0, (set) ? rad_dose : rad_back, 1, 5, RIGHT, 40, set, RIGHT, 40); //результат
     }
 
     //==================================================================
@@ -1513,7 +1507,7 @@ void alarm_messege(boolean set, uint8_t sound, char *mode) //тревога
     //==================================================================
 
 #if ALARM_AUTO_DISABLE
-    if (check_keys() || (!set && !alarm_back_wait)) //если нажата любая кнопка или фон упал отключаем тревогу
+    if (check_keys() || (!set && !alarm_switch)) //если нажата любая кнопка или фон упал отключаем тревогу
 #else
     if (check_keys())
 #endif
@@ -1521,7 +1515,10 @@ void alarm_messege(boolean set, uint8_t sound, char *mode) //тревога
       _vibro_off(); //выключаем вибрацию
       buzz_read(); //восстанавливаем настроку щелчков
 
-      if (set) alarm_dose_wait = warn_dose_wait = rad_dose;
+       switch (set) {
+        case 0: alarm_back_wait = warn_back_wait = 1; break;
+        case 1: alarm_dose_wait = warn_dose_wait = rad_dose; break;
+       }
 
       alarm_switch = 0; //устанавливаем признак отсутствия тревоги
       cnt_pwr = 0; //обнуляем счетчик сна
@@ -2734,11 +2731,11 @@ void _init_error_messege(uint8_t err, uint32_t data) //отрисовка соо
       break;
 
     case 1:
-      print("Rfkb,hjdrf", CENTER, 8); //Калибровка
-      print("nfqvthf", CENTER, 16); //таймера
-      print("yt elfkfcm!", CENTER, 24); //не удалась!
-      print("GTH&", 18, 32); //ПЕР:
-      printNumI(data, 43, 32);
+      print("Rfkb,hjdrf", CENTER, 16); //Калибровка
+      print("nfqvthf", CENTER, 24); //таймера
+      print("yt elfkfcm!", CENTER, 32); //не удалась!
+      print("GTH&", 18, 40); //ПЕР:
+      printNumI(data, 43, 40);
       break;
 
     case 2:
@@ -2756,11 +2753,11 @@ void _init_error_messege(uint8_t err, uint32_t data) //отрисовка соо
       break;
 
     case 4:
-      print("Ybprjt", CENTER, 8); //Низкое
-      print("yfghz;tybt", CENTER, 16); //напряжение
-      print("ghtj,hfpjdfn!", CENTER, 24); //преобразователя!
-      print("FWG&", 18, 32); //АЦП:
-      printNumI(_convert_vcc_hv(data), 43, 32);
+      print("Ybprjt", CENTER, 16); //Низкое
+      print("yfghz;tybt", CENTER, 24); //напряжение
+      print("ghtj,hfpjdfn!", CENTER, 32); //преобразователя!
+      print("FWG&", 18, 40); //АЦП:
+      printNumI(_convert_vcc_hv(data), 43, 40);
       break;
 
     case 5:

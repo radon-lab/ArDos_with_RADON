@@ -183,43 +183,6 @@ void print(char *st, uint8_t x, uint8_t y, uint8_t length, char filler) //выв
 //-------------------------Вывод чисел----------------------------------------------------
 void printNumI(uint32_t num, uint8_t x, uint8_t y, uint8_t length, char filler) //вывод чисел
 {
-  //  char buf[14];
-  //  char st[14];
-  //  uint8_t c = 0, f = 0;
-  //
-  //  if (!num) {
-  //    if (length) {
-  //      for (c = 0; c < (length - 1); c++)
-  //        st[c] = filler;
-  //      st[c] = 48;
-  //      st[c + 1] = 0;
-  //    }
-  //    else {
-  //      st[0] = 48;
-  //      st[1] = 0;
-  //    }
-  //  }
-  //  else {
-  //
-  //    while (num > 0) {
-  //      buf[c] = 48 + (num % 10);
-  //      c++;
-  //      num = (num - (num % 10)) / 10;
-  //    }
-  //    buf[c] = 0;
-  //
-  //    if (length > c) {
-  //      for (uint8_t i = 0; i < (length - c); i++)
-  //      {
-  //        st[i] = filler;
-  //        f++;
-  //      }
-  //    }
-  //
-  //    for (uint8_t i = 0; i < c; i++) st[i + f] = buf[c - i - 1];
-  //    st[c + f] = 0;
-  //  }
-  //  print(st, x, y);
   printNumF(num, 0, x, y, '.', length, filler);
 }
 //-------------------------Вывод чисел с плавающей точкой----------------------------------------------------
