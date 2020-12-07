@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.2.4 low_pwr 26.11.20 специально для проекта ArDos
+  Версия программы RADON v3.2.4 low_pwr 07.12.20 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -754,7 +754,11 @@ void data_convert(void) //преобразование данных
           for (uint8_t k = BUFF_LENGTHY - 1; k > 0; k--) rad_buff[k] = rad_buff[k - 1]; //перезапись массива
           break;
 
-        case TIME_FACT_9: //минимальный и максимальный фон
+        case TIME_FACT_9: //рассчитываем точность
+          if (back_time_now != BUFF_LENGTHY) accur_percent = _init_accur(tmp_buff); //рассчет точности
+          break;
+
+        case TIME_FACT_10: //минимальный и максимальный фон
           if (accur_percent <= RAD_ACCUR_START) { //если достаточно данных в массиве
             if (rad_back < rad_min) rad_min = rad_back; //фиксируем минимум фона
             if (rad_back > rad_max) rad_max = rad_back; //фиксируем максимум фона
@@ -762,7 +766,7 @@ void data_convert(void) //преобразование данных
           else rad_min = rad_back; //фиксируем минимум фона
           break;
 
-        case TIME_FACT_10: //расчет текущей дозы
+        case TIME_FACT_11: //расчет текущей дозы
           if ((rad_sum += rad_buff[0]) > 99999999) rad_sum = 99999999; //переполнение суммы импульсов
 #if GEIGER_OWN_BACK
           rad_dose = ((rad_sum - time_sec * OWN_BACK) * GEIGER_TIME / 3600); //расчитаем дозу с учетом собственного фона счетчика
@@ -771,14 +775,14 @@ void data_convert(void) //преобразование данных
 #endif
           break;
 
-        case TIME_FACT_11: //расчет данных для графика
+        case TIME_FACT_12: //расчет данных для графика
           for (uint8_t i = 0; i > 38; i--) if (rad_buff[i] > graf_max) graf_max = rad_buff[i]; //ищем максимум
 
           if (graf_max > 15) maxLevel_back = graf_max * GRAF_COEF_MAX; //если текущий замер больше максимума
           else maxLevel_back = 15; //иначе устанавливаем минимум
           break;
 
-        case TIME_FACT_12: //обработка тревоги
+        case TIME_FACT_13: //обработка тревоги
           if (alarm_dose && (rad_dose - alarm_dose_wait) >= alarm_level_dose) {
 #if LOGBOOK_RETURN
             if (!alarm_switch && logbook_warn) _logbook_data_update(0, 2, rad_dose); //обновление журнала
@@ -825,18 +829,18 @@ void data_convert(void) //преобразование данных
           }
 
 #if ALARM_AUTO_DISABLE
-          if (alarm_switch == 1 && rad_back < (alarm_level_back * ALARM_AUTO_GISTERESIS)) alarm_switch = 0; //иначе ждем понижения фона тревоги 2
+          switch (alarm_switch) {
+            case 1: if (rad_back < (alarm_level_back * ALARM_AUTO_GISTERESIS)) alarm_switch = 0;  //иначе ждем понижения фона тревоги 2
 
-          if (alarm_switch == 3 && rad_back < (warn_level_back * ALARM_AUTO_GISTERESIS)) { //иначе ждем понижения фона тревоги 1
-            _vibro_off(); //выключаем вибрацию
-            buzz_read(); //чтение состояния щелчков
-            alarm_switch = 0; //устанавливаем признак отсутствия тревоги
+            case 3:
+              if (rad_back < (warn_level_back * ALARM_AUTO_GISTERESIS)) { //иначе ждем понижения фона тревоги 1
+                _vibro_off(); //выключаем вибрацию
+                buzz_read(); //чтение состояния щелчков
+                alarm_switch = 0; //устанавливаем признак отсутствия тревоги
+              }
+              break;
           }
 #endif
-          break;
-
-        case TIME_FACT_13: //рассчитываем точность
-          if (back_time_now != BUFF_LENGTHY) accur_percent = _init_accur(tmp_buff); //рассчет точности
           break;
 
         case TIME_FACT_14: //считаем пройденное время
@@ -1515,10 +1519,10 @@ void alarm_messege(boolean set, uint8_t sound, char *mode) //тревога
       _vibro_off(); //выключаем вибрацию
       buzz_read(); //восстанавливаем настроку щелчков
 
-       switch (set) {
+      switch (set) {
         case 0: alarm_back_wait = warn_back_wait = 1; break;
         case 1: alarm_dose_wait = warn_dose_wait = rad_dose; break;
-       }
+      }
 
       alarm_switch = 0; //устанавливаем признак отсутствия тревоги
       cnt_pwr = 0; //обнуляем счетчик сна
