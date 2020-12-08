@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.2.4 low_pwr 07.12.20 специально для проекта ArDos
+  Версия программы RADON v3.2.4 low_pwr 08.12.20 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -242,7 +242,7 @@
 #define GEIGER_MASS (pgm_read_byte(&time_mass[MASS_TIME_FACT][0]) + pgm_read_byte(&time_mass[MASS_TIME_FACT][1])) //максимум секунд для окончания смещения коэффициентов
 
 //пищалка старт/стоп
-#define SOUND_START  PRR &= ~(1 << 3); TIMSK1 = 0b00000010
+#define SOUND_START  PRR &= ~(1 << 3); TCNT1 = SOUND_PRELOAD; TIMSK1 = 0b00000010
 #define SOUND_STOP   TIMSK1 = 0b00000000; PRR |= (1 << 3)
 
 //вспышки старт/стоп
@@ -3134,6 +3134,9 @@ void setings_save(uint8_t sw) //сохранить настройки
         switch (sw) {
           case 0: setings_read(); break; //считываем настройки из памяти
           case 1: pump_read(); break; //считываем настройки из памяти
+#if LOGBOOK_RETURN
+          case 2: logbook_read(); break; //считываем настройки из памяти
+#endif
         }
         scr = 0; //разрешаем обновления экрана
         return;
