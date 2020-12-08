@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.2.4 low_pwr 08.12.20 специально для проекта ArDos
+  Версия программы RADON v3.2.5 low_pwr 08.12.20 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -458,7 +458,7 @@ int main(void)  //инициализация
 
   setFont(RusFont); //установка шрифта
   print("-=HFLJY=-", CENTER, 32); //-=РАДОН=-
-  print("3.2.4", CENTER, 40); //версия по
+  print("3.2.5", CENTER, 40); //версия по
 
   bat_check(); //опрос батареи
 
@@ -853,24 +853,40 @@ void data_convert(void) //преобразование данных
       case TIME_FACT_15: //обработка ошибок
         if (!rad_buff[0]) { //если нету импульсов в обменном буфере
           if (++nop_imp_tmr >= IMP_ERROR_TIME) { //считаем время до вывода предупреждения
+#if LOGBOOK_RETURN
             error_switch = 2; //поднимаем флаг ошибки
             _logbook_data_update(3, 5, 5); //обновление журнала устанавливаем ошибку 5 - нет импульсов
+#else
+            error_switch = 5; //поднимаем флаг ошибки
+#endif
             nop_imp_tmr = 0; //сбрасываем таймер
           }
         }
         else nop_imp_tmr = 0; //иначе импульсы возобновились
 
         if (hv_adc < HV_ADC_ERROR) {
+#if LOGBOOK_RETURN
           error_switch = 2; //поднимаем флаг ошибки
           _logbook_data_update(3, 3, hv_adc); //обновление журнала устанавливаем ошибку 3 - кз преобразователя
+#else
+          error_switch = 3; //поднимаем флаг ошибки
+#endif
         }
         if (hv_adc < ADC_value - HV_ADC_MIN) {
+#if LOGBOOK_RETURN
           error_switch = 2; //поднимаем флаг ошибки
           _logbook_data_update(3, 4, hv_adc); //обновление журнала устанавливаем ошибку 4 - низкое напряжение
+#else
+          error_switch = 4; //поднимаем флаг ошибки
+#endif
         }
         if (speed_pump >= HV_SPEED_ERROR) {
+#if LOGBOOK_RETURN
           error_switch = 2; //поднимаем флаг ошибки
           _logbook_data_update(3, 2, speed_pump); //обновление журнала устанавливаем ошибку 2 - перегрузка преобразователя
+#else
+          error_switch = 2; //поднимаем флаг ошибки
+#endif
         }
         speed_hv = speed_pump; //текущая скорость накачки
         speed_pump = 0; //сбрасываем скорость накачки
@@ -1265,6 +1281,8 @@ void measur_massege(void) //окончание замера
           logbook_measur = 2; //устанавливаем признак новой записи
           _logbook_data_update(2, pgm_read_byte(&diff_measuring[measur_pos]), (first_froze < second_froze) ? second_froze - first_froze : 0 / ((60.0 / GEIGER_TIME) * pgm_read_byte(&diff_measuring[measur_pos]))); //обновление журнала
         }
+#else
+        _logbook_data_update(2, pgm_read_byte(&diff_measuring[measur_pos]), (first_froze < second_froze) ? second_froze - first_froze : 0 / ((60.0 / GEIGER_TIME) * pgm_read_byte(&diff_measuring[measur_pos]))); //обновление журнала
 #endif
         break;
     }
@@ -2511,6 +2529,7 @@ void _logbook_data_switch(boolean inv, uint8_t num, uint8_t pos, uint8_t data_nu
   }
 
   if (temp_byte) {
+#if LOGBOOK_RETURN
     switch (data_num) {
       case 0:
       case 1:
@@ -2528,6 +2547,11 @@ void _logbook_data_switch(boolean inv, uint8_t num, uint8_t pos, uint8_t data_nu
         printNumI(temp_byte, RIGHT, pos_row); //номер ошибки
         break;
     }
+#else
+    printNumI(temp_byte, LEFT, pos_row, 2); //вркмя замера
+    print("v", 12, pos_row); //м
+    _init_rads_unit(0, temp_dword, 1, 4, RIGHT, pos_row, 0, RIGHT, pos_row); //единицы замера
+#endif
   }
   else print("- gecnj -", CENTER, pos_row); //- пусто -
 
@@ -2588,7 +2612,6 @@ void logbook(void) //журнал
   uint8_t max_item = 4; //максимум пунктов
   uint8_t time_out = 0; //таймер автовыхода
 
-  sleep_disable = 1; //запрещаем сон
   scr = 0; //разрешаем обновления экрана
 
   while (1) {
@@ -2695,10 +2718,79 @@ void logbook(void) //журнал
     }
   }
 #else
-  clrScr(); //очистка экрана
-  print(":ehyfk", CENTER, 16); //Журнал
-  print("ytljcnegty!", CENTER, 24); //недоступен!
-  for (timer_millis = MASSEGE_TIME; timer_millis && !check_keys();) data_convert(); // ждем, преобразование данных
+  uint8_t n = 0; //позиция
+  uint8_t c = 0; //курсор
+  uint8_t time_out = 0; //таймер автовыхода
+
+  scr = 0; //разрешаем обновления экрана
+
+  while (1) {
+    data_convert(); //преобразование данных
+
+    //+++++++++++++++++++   вывод информации на экран  +++++++++++++++++++++++++
+    if (!scr) {
+      scr = 1; //запрещаем обновления экрана
+
+#if TIME_OUT_LOGBOOK
+      if (++time_out > TIME_OUT_LOGBOOK) {
+        scr = 0; //разрешаем обновления экрана
+        return;
+      }
+#endif
+
+      clrScr(); // Очистка экрана
+      drawBitmap(0, 0, logbook_img, 84, 8); //отрисовываем фон
+      setFont(RusFont); //установка шрифта
+
+      for (uint8_t i = 0; i < 5; i++) _logbook_data_switch((i == c) ? 1 : 0, n - c + i, i, 2); //отрисовывам информацию
+    }
+    //+++++++++++++++++++++  опрос кнопок  +++++++++++++++++++++++++++
+    switch (check_keys()) {
+      case 1: //Down key hold //вкл/выкл посветки
+        fast_light(); //быстрое включение посветки
+        break;
+
+      case 2: //Down key //вниз
+        if (n < 9) { //изменяем позицию
+          n++;
+          if (c < 4) c++; //изменяем положение курсора
+        }
+        else { //иначе начало списка
+          n = 0;
+          c = 0;
+        }
+        time_out = 0; //сбрасываем авто-выход
+        scr = 0; //разрешаем обновления экрана
+        break;
+
+      case 3: //Up key  //вверх
+        if (n > 0) { //изменяем позицию
+          n--;
+          if (c > 0) c--; //изменяем положение курсора
+        }
+        else { //иначе конец списка
+          n = 9;
+          c = 4;
+        }
+        time_out = 0; //сбрасываем авто-выход
+        scr = 0; //разрешаем обновления экрана
+        break;
+
+      case 4: //Up key hold //вкл/выкл фонарика
+        fast_flash(); //быстрое включение фонарика
+        break;
+
+      case 5: //select key //выбор
+        data_reset(2); //очистка журнала
+        time_out = 0; //сбрасываем авто-выход
+        scr = 0; //разрешаем обновления экрана
+        break;
+
+      case 6: //hold select key //выход к главным экранам
+        scr = 0; //разрешаем обновления экрана
+        return;
+    }
+  }
 #endif
 }
 //-----------------------------------Вкл/выкл фонарика---------------------------------
@@ -2752,7 +2844,7 @@ void _init_error_messege(uint8_t err, uint32_t data) //отрисовка соо
     case 3:
       print("Rjhjnrjt pfv.", CENTER, 16); //Короткое зам.
       print("ghtj,hfpjdfn!", CENTER, 24); //преобразователя!
-      print("FWG&", 18, 32); //АЦП:
+      print("YFG&", 18, 32); //НАП:
       printNumI(_convert_vcc_hv(data), 43, 32);
       break;
 
@@ -2760,7 +2852,7 @@ void _init_error_messege(uint8_t err, uint32_t data) //отрисовка соо
       print("Ybprjt", CENTER, 16); //Низкое
       print("yfghz;tybt", CENTER, 24); //напряжение
       print("ghtj,hfpjdfn!", CENTER, 32); //преобразователя!
-      print("FWG&", 18, 40); //АЦП:
+      print("YFG&", 18, 40); //НАП:
       printNumI(_convert_vcc_hv(data), 43, 40);
       break;
 
@@ -2774,12 +2866,65 @@ void error_messege(void) //сообщение об ошибке
 {
   static uint32_t time_out; //тайм-аут ошибки
 
+#if LOGBOOK_RETURN
   if (error_switch == 2 && !alarm_switch && time_out < time_sec) { //если время вышло, выводим ошибку
+#else
+  if (error_switch && !alarm_switch && time_out < time_sec) { //если время вышло, выводим ошибку
+#endif
 
     sleep_out(); //просыпаемся если спали
     buzz_switch = 0; //запрещаем щелчки
 
+#if LOGBOOK_RETURN
     _init_error_messege(_data_read_byte(0, 230), _data_read_dword(0, 360));
+#else
+    clrScr(); //очистка экрана
+    setFont(RusFont); //установка шрифта
+
+    invertText(true);
+    print(" - JIB<RF - ", CENTER, 0); //- ОШИБКА -
+    invertText(false);
+
+    switch (error_switch) {
+      case 0:
+        print("* gecnj *", CENTER, 16); //пусто
+        break;
+
+      case 1:
+        print("Rfkb,hjdrf", CENTER, 16); //Калибровка
+        print("nfqvthf", CENTER, 24); //таймера
+        print("yt elfkfcm!", CENTER, 32); //не удалась!
+        print("GTH&", 18, 40); //ПЕР:
+        printNumI(wdt_period, 43, 40);
+        break;
+
+      case 2:
+        print("Gthtuheprf", CENTER, 16); //Перегрузка
+        print("ghtj,hfpjdfn!", CENTER, 24); //преобразоват!
+        print("CRH&", 18, 32); //СКР:
+        printNumI(speed_hv, 43, 32);
+        break;
+
+      case 3:
+        print("Rjhjnrjt pfv.", CENTER, 16); //Короткое зам.
+        print("ghtj,hfpjdfn!", CENTER, 24); //преобразователя!
+        print("YFG&", 18, 32); //НАП:
+        printNumI(_convert_vcc_hv(hv_adc), 43, 32);
+        break;
+
+      case 4:
+        print("Ybprjt", CENTER, 16); //Низкое
+        print("yfghz;tybt", CENTER, 24); //напряжение
+        print("ghtj,hfpjdfn!", CENTER, 32); //преобразователя!
+        print("YFG&", 18, 40); //НАП:
+        printNumI(_convert_vcc_hv(hv_adc), 43, 40);
+        break;
+
+      case 5:
+        print("Ytn cxtnf!", CENTER, 24); //Нет счета!
+        break;
+    }
+#endif
 
     for (timer_millis = ERROR_MASSEGE_TIME; timer_millis;) { //ждем
       data_convert(); //преобразование данных
@@ -2794,7 +2939,11 @@ void error_messege(void) //сообщение об ошибке
     buzz_read(); //считываем настроку щелчков
     time_out = time_sec + ERROR_LENGTHY_TIME; //добавляем n сек. до следущего сообщения
     cnt_pwr = 0; //обнуляем счетчик сна
+#if LOGBOOK_RETURN
     error_switch = 1; //сбрасываем указатель ошибки
+#else
+    error_switch = 0; //сбрасываем указатель ошибки
+#endif
     scr = 0; //разрешаем обновления экрана
   }
 }
@@ -2843,8 +2992,12 @@ void wdt_calibrate(void) //калибровка wdt
     WDTCSR = 0; //выключаем собаку
 
     if (++timeout >= WDT_TIMEOUT) {
+#if LOGBOOK_RETURN
       error_switch = 2; //поднимаем флаг ошибки
       _logbook_data_update(3, 1, wdt_period); //обновление журнала устанавливаем ошибку 1 - таймер не откалиброван.
+#else
+      error_switch = 1; //поднимаем флаг ошибки
+#endif
       wdt_period = 1750;
       break;
     }
@@ -2975,12 +3128,11 @@ void data_reset(uint8_t sw) //сброс текущей дозы
       print("C,hjcbnm", CENTER, 8); //Сбросить
       print("j,oe/ ljpe?", CENTER, 16); //общую дозу?
       break;
-#if LOGBOOK_RETURN
+
     case 2: //журнал
       print("Jxbcnbnm", CENTER, 8); //Очистить
       print("dtcm ;ehyfk?", CENTER, 16); //весь журнал?
       break;
-#endif
   }
 
   while (1) {
@@ -3048,7 +3200,7 @@ void data_reset(uint8_t sw) //сброс текущей дозы
                 print("Cnfnbcnbrf", CENTER, 16); //Статистика
                 print("c,hjityf!", CENTER, 24); //сброшена!
                 break;
-#if LOGBOOK_RETURN
+
               case 2: //журнал
                 _logbook_data_clear(); //очистка журнала
                 clrScr(); //очистка экрана
@@ -3056,7 +3208,6 @@ void data_reset(uint8_t sw) //сброс текущей дозы
                 print(":ehyfk", CENTER, 16); //Журнал
                 print("jxboty!", CENTER, 24); //очищен!
                 break;
-#endif
             }
             for (timer_millis = MASSEGE_TIME; timer_millis && !check_keys();) data_convert(); // ждем, преобразование данных
             sleep_disable = 0; //разрешаем сон
