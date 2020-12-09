@@ -1236,8 +1236,8 @@ void measur_stop(void) //остановка замера
           case 1:
             measur = 0; //выключаем замер
             time_switch = 0; //сбрасываем таймер
-            next_measur = 0; //сбрасываем флаг продолжения замера
-            alarm_measur = 0; //разрешаем оповещение окончания замера
+            next_measur = 1; //сбрасываем флаг продолжения замера
+            alarm_measur = 1; //разрешаем оповещение окончания замера
             first_froze = 0; //сбрасываем счетчик 1-го замера
             second_froze = 0; //сбрасываем счетчик 2-го замера
             scan_buff = rad_buff[0] = 0; //очищаем 0-й и 1-й элемент буфера
@@ -1282,7 +1282,7 @@ void measur_massege(void) //окончание замера
           _logbook_data_update(2, pgm_read_byte(&diff_measuring[measur_pos]), (first_froze < second_froze) ? second_froze - first_froze : 0 / ((60.0 / GEIGER_TIME) * pgm_read_byte(&diff_measuring[measur_pos]))); //обновление журнала
         }
 #else
-        _logbook_data_update(2, pgm_read_byte(&diff_measuring[measur_pos]), (first_froze < second_froze) ? second_froze - first_froze : 0 / ((60.0 / GEIGER_TIME) * pgm_read_byte(&diff_measuring[measur_pos]))); //обновление журнала
+        _logbook_data_update(2, pgm_read_byte(&diff_measuring[measur_pos]), (first_froze < second_froze) ? (second_froze - first_froze) * ((float)GEIGER_TIME / (pgm_read_byte(&diff_measuring[measur_pos]) * 60)) : 0); //обновление журнала
 #endif
         break;
     }
@@ -1320,13 +1320,13 @@ void measur_menu(void) //режим замера
             switch (n) {
               case 0:
                 drawBitmap(19, 24, measur_result_img, 45, 8); //результат
-                _init_couts_per_cm2(buff / pgm_read_byte(&diff_measuring[measur_pos]) / GEIGER_AREA, 1); //результат ч/см2*м
+                _init_couts_per_cm2((float)buff / pgm_read_byte(&diff_measuring[measur_pos]) / GEIGER_AREA); //результат ч/см2*м
                 n = 1;
                 break;
               case 1:
                 drawBitmap(11, 24, measur_ok_img, 15, 8); //ок -
                 drawBitmap(27, 24, measur_first_img, 47, 8); //первый замер
-                _init_rads_unit(1, buff / ((60.0 / GEIGER_TIME) * pgm_read_byte(&diff_measuring[measur_pos])), 1, 4, 1, 8, 0, 54, 16); //результат мкр/ч
+                _init_rads_unit(1, buff * ((float)GEIGER_TIME / (pgm_read_byte(&diff_measuring[measur_pos]) * 60)), 1, 4, 1, 8, 0, 54, 16); //результат мкр/ч
                 n = 0;
                 break;
             }
@@ -1337,21 +1337,10 @@ void measur_menu(void) //режим замера
 
           setFont(RusFont); //установка шрифта
           print("ajy", LEFT, 32); //строка 1 фон
-          print("x|cv2", 54, 32); //строка 1 ч/см2
-          buff = first_froze / pgm_read_byte(&diff_measuring[measur_pos]) / GEIGER_AREA;
-#if (TYPE_CHAR_FILL > 44)
-          printNumF(buff, (buff < 100) ? 1 : 0, 30, 32, 46, 4, TYPE_CHAR_FILL); //строка 1
-#else
-          printNumF(buff, (buff < 100) ? 1 : 0, 30, 32, 46, 4, 32); //строка 1
-#endif
+          _init_small_couts_per_cm2((float)first_froze / pgm_read_byte(&diff_measuring[measur_pos]) / GEIGER_AREA, 32);
+
           print("j,h", LEFT, 40); //строка 2 обр
-          print("x|cv2", 54, 40); //строка 2 ч/см2
-          buff = second_froze / pgm_read_byte(&diff_measuring[measur_pos]) / GEIGER_AREA;
-#if (TYPE_CHAR_FILL > 44)
-          printNumF(buff, (buff < 100) ? 1 : 0, 30, 40, 46, 4, TYPE_CHAR_FILL); //строка 2
-#else
-          printNumF(buff, (buff < 100) ? 1 : 0, 30, 40, 46, 4, 32);
-#endif
+          _init_small_couts_per_cm2((float)second_froze / pgm_read_byte(&diff_measuring[measur_pos]) / GEIGER_AREA, 40);
 
           break;
 
@@ -1363,12 +1352,12 @@ void measur_menu(void) //режим замера
             }
           }
           else drawBitmap(18, 24, measur_first_img, 47, 8); //первый замер
-          _init_couts_per_cm2(first_froze / (time_switch / 60.0) / GEIGER_AREA, 1); //рассчитываем результат замера в ч*см2/м); //первый замер ч/см2*м
+          _init_couts_per_cm2(first_froze / (time_switch / 60.0) / GEIGER_AREA); //рассчитываем результат замера в ч*см2/м); //первый замер ч/см2*м
           _init_accur_percent(_init_accur(first_froze)); //отрисовка точности
           break;
 
         case 2: //2-й замер
-          _init_couts_per_cm2(second_froze / (time_switch / 60.0) / GEIGER_AREA, 1); //второй замер ч/см2*м
+          _init_couts_per_cm2(second_froze / (time_switch / 60.0) / GEIGER_AREA); //второй замер ч/см2*м
           _init_accur_percent(_init_accur(second_froze)); //отрисовка точности
           drawBitmap(11, 24, measur_second_img, 62, 8); //второй замер
           break;
@@ -1450,12 +1439,22 @@ void measur_menu(void) //режим замера
   }
 }
 //-------------------------------Частиц/см2*мин----------------------------------------------------------
-void _init_couts_per_cm2(float num, boolean counts) //частиц/см2*мин
+void _init_couts_per_cm2(float num) //частиц/см2*мин
 {
   setFont(MediumNumbers); //установка шрифта
-  printNumF(num, (num < 100) ? counts : 0, 1, 8, 46, 4, TYPE_CHAR_FILL); //строка 1
+  printNumF(num, (num < 100) ? 1 : 0, 1, 8, 46, 4, TYPE_CHAR_FILL); //строка 1
   setFont(RusFont); //установка шрифта
   print("x|cv2", 54, 16); //строка 1 ч/см2
+}
+//-------------------------------Частиц/см2*мин----------------------------------------------------------
+void _init_small_couts_per_cm2(float num, uint8_t pos_y) //частиц/см2*мин
+{
+  print("x|cv2", 54, pos_y); //строка 2 ч/см2
+#if (TYPE_CHAR_FILL > 44)
+  printNumF(num, (num < 100) ? 1 : 0, 30, pos_y, 46, 4, TYPE_CHAR_FILL); //строка 2
+#else
+  printNumF(num, (num < 100) ? 1 : 0, 30, pos_y, 46, 4, 32);
+#endif
 }
 //-------------------------------Выбор тревоги----------------------------------------------------------
 void alarm_warning(void) //выбор тревоги
