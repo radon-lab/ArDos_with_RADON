@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.2.5 low_pwr 08.12.20 специально для проекта ArDos
+  Версия программы RADON v3.2.5 low_pwr 09.12.20 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -851,11 +851,39 @@ void data_convert(void) //преобразование данных
 
     switch (time_wdt) {
       case TIME_FACT_15: //обработка ошибок
+        if (speed_pump >= HV_SPEED_ERROR) {
+#if LOGBOOK_RETURN
+          if (error_switch < 2) _logbook_data_update(3, 2, speed_pump); //обновление журнала устанавливаем ошибку 2 - перегрузка преобразователя
+          error_switch = 2; //поднимаем флаг ошибки
+#else
+          error_switch = 2; //поднимаем флаг ошибки
+#endif
+        }
+        speed_hv = speed_pump; //текущая скорость накачки
+        speed_pump = 0; //сбрасываем скорость накачки
+
+        if (hv_adc < ADC_value - HV_ADC_MIN) {
+#if LOGBOOK_RETURN
+          if (error_switch < 2) _logbook_data_update(3, 4, hv_adc); //обновление журнала устанавливаем ошибку 4 - низкое напряжение
+          error_switch = 2; //поднимаем флаг ошибки
+#else
+          error_switch = 4; //поднимаем флаг ошибки
+#endif
+        }
+        if (hv_adc < HV_ADC_ERROR) {
+#if LOGBOOK_RETURN
+          if (error_switch < 2) _logbook_data_update(3, 3, hv_adc); //обновление журнала устанавливаем ошибку 3 - кз преобразователя
+          error_switch = 2; //поднимаем флаг ошибки
+#else
+          error_switch = 3; //поднимаем флаг ошибки
+#endif
+        }
+
         if (!rad_buff[0]) { //если нету импульсов в обменном буфере
           if (++nop_imp_tmr >= IMP_ERROR_TIME) { //считаем время до вывода предупреждения
 #if LOGBOOK_RETURN
+            if (error_switch < 2) _logbook_data_update(3, 5, 5); //обновление журнала устанавливаем ошибку 5 - нет импульсов
             error_switch = 2; //поднимаем флаг ошибки
-            _logbook_data_update(3, 5, 5); //обновление журнала устанавливаем ошибку 5 - нет импульсов
 #else
             error_switch = 5; //поднимаем флаг ошибки
 #endif
@@ -863,33 +891,6 @@ void data_convert(void) //преобразование данных
           }
         }
         else nop_imp_tmr = 0; //иначе импульсы возобновились
-
-        if (hv_adc < HV_ADC_ERROR) {
-#if LOGBOOK_RETURN
-          error_switch = 2; //поднимаем флаг ошибки
-          _logbook_data_update(3, 3, hv_adc); //обновление журнала устанавливаем ошибку 3 - кз преобразователя
-#else
-          error_switch = 3; //поднимаем флаг ошибки
-#endif
-        }
-        if (hv_adc < ADC_value - HV_ADC_MIN) {
-#if LOGBOOK_RETURN
-          error_switch = 2; //поднимаем флаг ошибки
-          _logbook_data_update(3, 4, hv_adc); //обновление журнала устанавливаем ошибку 4 - низкое напряжение
-#else
-          error_switch = 4; //поднимаем флаг ошибки
-#endif
-        }
-        if (speed_pump >= HV_SPEED_ERROR) {
-#if LOGBOOK_RETURN
-          error_switch = 2; //поднимаем флаг ошибки
-          _logbook_data_update(3, 2, speed_pump); //обновление журнала устанавливаем ошибку 2 - перегрузка преобразователя
-#else
-          error_switch = 2; //поднимаем флаг ошибки
-#endif
-        }
-        speed_hv = speed_pump; //текущая скорость накачки
-        speed_pump = 0; //сбрасываем скорость накачки
         break;
 
       case TIME_FACT_16: //разностный замер
