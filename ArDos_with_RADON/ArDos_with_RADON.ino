@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.2.5 low_pwr 09.12.20 специально для проекта ArDos
+  Версия программы RADON v3.2.5 low_pwr 10.12.20 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -1280,10 +1280,18 @@ void measur_massege(void) //окончание замера
 #if LOGBOOK_RETURN
         if (logbook_measur) {
           logbook_measur = 2; //устанавливаем признак новой записи
-          _logbook_data_update(2, pgm_read_byte(&diff_measuring[measur_pos]), (first_froze < second_froze) ? second_froze - first_froze : 0 / ((60.0 / GEIGER_TIME) * pgm_read_byte(&diff_measuring[measur_pos]))); //обновление журнала
+#if  TYPE_MEASUR_LOGBOOK
+          _logbook_data_update(2, pgm_read_byte(&diff_measuring[measur_pos]), (first_froze < second_froze) ? (second_froze - first_froze) : 0); //обновление журнала ч/см2
+#else
+          _logbook_data_update(2, pgm_read_byte(&diff_measuring[measur_pos]), (first_froze < second_froze) ? (second_froze - first_froze) * ((float)GEIGER_TIME / (pgm_read_byte(&diff_measuring[measur_pos]) * 60)) : 0); //обновление журнала мкР/ч
+#endif
         }
 #else
-        _logbook_data_update(2, pgm_read_byte(&diff_measuring[measur_pos]), (first_froze < second_froze) ? (second_froze - first_froze) * ((float)GEIGER_TIME / (pgm_read_byte(&diff_measuring[measur_pos]) * 60)) : 0); //обновление журнала
+#if  TYPE_MEASUR_LOGBOOK
+        _logbook_data_update(2, pgm_read_byte(&diff_measuring[measur_pos]), (first_froze < second_froze) ? (second_froze - first_froze) : 0); //обновление журнала ч/см2
+#else
+        _logbook_data_update(2, pgm_read_byte(&diff_measuring[measur_pos]), (first_froze < second_froze) ? (second_froze - first_froze) * ((float)GEIGER_TIME / (pgm_read_byte(&diff_measuring[measur_pos]) * 60)) : 0); //обновление журнала мкР/ч
+#endif
 #endif
         break;
     }
@@ -1721,35 +1729,33 @@ void search_update(void) //обновление данных поиска
     uint16_t graf_max = 0; //максимум графика
     uint32_t temp_buf = 0; //временный буфер расчета имп
 
-    if (search_time_now < SEARCH_BUF_SCORE) search_time_now++;
-
 #if TYPE_GRAF_MOVE //слева-направо
     if (!serch_disable) {
+      if (search_time_now < SEARCH_BUF_SCORE) search_time_now++;
+
       for (uint8_t i = 75; i > 0; i--) {
         search_buff[i] = search_buff[i - 1]; //сдвигаем массив
         if (search_buff[i] > graf_max) graf_max = search_buff[i];
       }
-
       search_buff[0] = scan_buff; //новое значение в последнюю ячейку
-      rad_buff[0] = scan_buff; //смещаем 0-й элемент в 1-й для дальнейшей работы с ним
-      scan_buff = 0; //сбрасываем счетчик импульсов
 
       if (search_buff[0] > graf_max) graf_max = search_buff[0];
     }
 #else //справа-налево
     if (!serch_disable) {
+      if (search_time_now < SEARCH_BUF_SCORE) search_time_now++;
+
       for (uint8_t i = 0; i < 75; i++) {
         search_buff[i] = search_buff[i + 1]; //сдвигаем массив
         if (search_buff[i] > graf_max) graf_max = search_buff[i];
       }
-
       search_buff[75] = scan_buff; //новое значение в последнюю ячейку
-      rad_buff[0] = scan_buff; //смещаем 0-й элемент в 1-й для дальнейшей работы с ним
-      scan_buff = 0; //сбрасываем счетчик импульсов
 
       if (search_buff[75] > graf_max) graf_max = search_buff[75];
     }
 #endif
+    rad_buff[0] = scan_buff; //смещаем 0-й элемент в 1-й для дальнейшей работы с ним
+    scan_buff = 0; //сбрасываем счетчик импульсов
 
     if (graf_max > 22) maxLevel = graf_max * GRAF_COEF_MAX; //если текущий замер больше максимума
     else maxLevel = 22;
@@ -1857,7 +1863,7 @@ void search_menu(void) //инициализация режима поиск
         rad_buff[0] = 0; //сбрасываем буфер
         serch_disable = 0; //разрешаем обновление графика
         for (uint8_t i = 0; i < 76; i++) search_buff[i] = 0; //очищаем буфер графика
-        scr = 0; //разрешаем обновления экрана
+        graf = 0; //разрешаем обновления экрана
         break;
 
       case 4: //Up key hold //вкл/выкл фонарика
@@ -1865,19 +1871,19 @@ void search_menu(void) //инициализация режима поиск
         break;
 
       case 3: //Up key //доп.действие
-        if (serch_disable) serch_disable = 0; else serch_disable = 1; //запрещаем обновление графика
-        scr = 0; //разрешаем обновления экрана
+        serch_disable = (serch_disable) ? 0 : 1; //запрещаем обновление графика
+        graf = 0; //разрешаем обновления экрана
         break;
 
       case 5: //Select key //выбор режима
         if (c < 2) c++; else c = 0;
-        scr = 0; //разрешаем обновления экрана
+        graf = 0; //разрешаем обновления экрана
         break;
 
       case 6: //hold select key //настройки
         scan_buff = 0; //сбрасываем счетчик импульсов
         rad_buff[0] = 0; //сбрасываем счетчик импульсов
-        serch = 0; //устанавливаем флаг поиска
+        serch = 0; //сбрасываем флаг поиска
         scr = 0; //разрешаем обновления экрана
         return;
     }
@@ -2538,9 +2544,13 @@ void _logbook_data_switch(boolean inv, uint8_t num, uint8_t pos, uint8_t data_nu
         _init_rads_unit(0, temp_dword, 1, 4, RIGHT, pos_row, temp_byte - 1, RIGHT, pos_row); //единицы фона/дозы
         break;
       case 2:
-        printNumI(temp_byte, LEFT, pos_row, 2); //вркмя замера
+        printNumI(temp_byte, LEFT, pos_row, 2); //время замера
         print("v", 12, pos_row); //м
+#if TYPE_MEASUR_LOGBOOK
+        _init_small_couts_per_cm2((float)temp_dword / temp_byte / GEIGER_AREA, pos_row);
+#else
         _init_rads_unit(0, temp_dword, 1, 4, RIGHT, pos_row, 0, RIGHT, pos_row); //единицы замера
+#endif
         break;
       case 3:
         print("Jib,rf #", LEFT, pos_row); //Ошибка #
@@ -2550,7 +2560,11 @@ void _logbook_data_switch(boolean inv, uint8_t num, uint8_t pos, uint8_t data_nu
 #else
     printNumI(temp_byte, LEFT, pos_row, 2); //вркмя замера
     print("v", 12, pos_row); //м
+#if TYPE_MEASUR_LOGBOOK
+    _init_small_couts_per_cm2((float)temp_dword / temp_byte / GEIGER_AREA, pos_row);
+#else
     _init_rads_unit(0, temp_dword, 1, 4, RIGHT, pos_row, 0, RIGHT, pos_row); //единицы замера
+#endif
 #endif
   }
   else print("- gecnj -", CENTER, pos_row); //- пусто -
