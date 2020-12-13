@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.2.5 low_pwr 10.12.20 специально для проекта ArDos
+  Версия программы RADON v3.2.5 low_pwr stable 13.12.20 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -1329,7 +1329,7 @@ void measur_menu(void) //режим замера
             switch (n) {
               case 0:
                 drawBitmap(19, 24, measur_result_img, 45, 8); //результат
-                _init_couts_per_cm2((float)buff / pgm_read_byte(&diff_measuring[measur_pos]) / GEIGER_AREA); //результат ч/см2*м
+                _init_couts_per_cm2((float)buff / pgm_read_byte(&diff_measuring[measur_pos])); //результат ч/см2*м
                 n = 1;
                 break;
               case 1:
@@ -1346,10 +1346,10 @@ void measur_menu(void) //режим замера
 
           setFont(RusFont); //установка шрифта
           print("ajy", LEFT, 32); //строка 1 фон
-          _init_small_couts_per_cm2((float)first_froze / pgm_read_byte(&diff_measuring[measur_pos]) / GEIGER_AREA, 32);
+          _init_small_couts_per_cm2((float)first_froze / pgm_read_byte(&diff_measuring[measur_pos]), 32);
 
           print("j,h", LEFT, 40); //строка 2 обр
-          _init_small_couts_per_cm2((float)second_froze / pgm_read_byte(&diff_measuring[measur_pos]) / GEIGER_AREA, 40);
+          _init_small_couts_per_cm2((float)second_froze / pgm_read_byte(&diff_measuring[measur_pos]), 40);
 
           break;
 
@@ -1361,12 +1361,12 @@ void measur_menu(void) //режим замера
             }
           }
           else drawBitmap(18, 24, measur_first_img, 47, 8); //первый замер
-          _init_couts_per_cm2(first_froze / (time_switch / 60.0) / GEIGER_AREA); //рассчитываем результат замера в ч*см2/м); //первый замер ч/см2*м
+          _init_couts_per_cm2(first_froze / ((time_switch) ? time_switch : 1 / 60.0)); //рассчитываем результат замера в ч*см2/м); //первый замер ч/см2*м
           _init_accur_percent(_init_accur(first_froze)); //отрисовка точности
           break;
 
         case 2: //2-й замер
-          _init_couts_per_cm2(second_froze / (time_switch / 60.0) / GEIGER_AREA); //второй замер ч/см2*м
+          _init_couts_per_cm2(second_froze / ((time_switch) ? time_switch : 1 / 60.0)); //второй замер ч/см2*м
           _init_accur_percent(_init_accur(second_froze)); //отрисовка точности
           drawBitmap(11, 24, measur_second_img, 62, 8); //второй замер
           break;
@@ -1451,7 +1451,7 @@ void measur_menu(void) //режим замера
 void _init_couts_per_cm2(float num) //частиц/см2*мин
 {
   setFont(MediumNumbers); //установка шрифта
-  printNumF(num, (num < 100) ? 1 : 0, 1, 8, 46, 4, TYPE_CHAR_FILL); //строка 1
+  printNumF(num / GEIGER_AREA, (num < 100) ? 1 : 0, 1, 8, 46, 4, TYPE_CHAR_FILL); //строка 1
   setFont(RusFont); //установка шрифта
   print("x|cv2", 54, 16); //строка 1 ч/см2
 }
@@ -1460,9 +1460,9 @@ void _init_small_couts_per_cm2(float num, uint8_t pos_y) //частиц/см2*м
 {
   print("x|cv2", 54, pos_y); //строка 2 ч/см2
 #if (TYPE_CHAR_FILL > 44)
-  printNumF(num, (num < 100) ? 1 : 0, 30, pos_y, 46, 4, TYPE_CHAR_FILL); //строка 2
+  printNumF(num / GEIGER_AREA, (num < 100) ? 1 : 0, 30, pos_y, 46, 4, TYPE_CHAR_FILL); //строка 2
 #else
-  printNumF(num, (num < 100) ? 1 : 0, 30, pos_y, 46, 4, 32);
+  printNumF(num / GEIGER_AREA, (num < 100) ? 1 : 0, 30, pos_y, 46, 4, 32);
 #endif
 }
 //-------------------------------Выбор тревоги----------------------------------------------------------
@@ -1729,10 +1729,10 @@ void search_update(void) //обновление данных поиска
     uint16_t graf_max = 0; //максимум графика
     uint32_t temp_buf = 0; //временный буфер расчета имп
 
-#if TYPE_GRAF_MOVE //слева-направо
     if (!serch_disable) {
       if (search_time_now < SEARCH_BUF_SCORE) search_time_now++;
 
+#if TYPE_GRAF_MOVE //слева-направо
       for (uint8_t i = 75; i > 0; i--) {
         search_buff[i] = search_buff[i - 1]; //сдвигаем массив
         if (search_buff[i] > graf_max) graf_max = search_buff[i];
@@ -1740,11 +1740,7 @@ void search_update(void) //обновление данных поиска
       search_buff[0] = scan_buff; //новое значение в последнюю ячейку
 
       if (search_buff[0] > graf_max) graf_max = search_buff[0];
-    }
 #else //справа-налево
-    if (!serch_disable) {
-      if (search_time_now < SEARCH_BUF_SCORE) search_time_now++;
-
       for (uint8_t i = 0; i < 75; i++) {
         search_buff[i] = search_buff[i + 1]; //сдвигаем массив
         if (search_buff[i] > graf_max) graf_max = search_buff[i];
@@ -1752,13 +1748,14 @@ void search_update(void) //обновление данных поиска
       search_buff[75] = scan_buff; //новое значение в последнюю ячейку
 
       if (search_buff[75] > graf_max) graf_max = search_buff[75];
-    }
 #endif
+
+      if (graf_max > 22) maxLevel = graf_max * GRAF_COEF_MAX; //если текущий замер больше максимума
+      else maxLevel = 22;
+    }
+
     rad_buff[0] = scan_buff; //смещаем 0-й элемент в 1-й для дальнейшей работы с ним
     scan_buff = 0; //сбрасываем счетчик импульсов
-
-    if (graf_max > 22) maxLevel = graf_max * GRAF_COEF_MAX; //если текущий замер больше максимума
-    else maxLevel = 22;
 
     time_to_update = (search_pos != 8) ? pgm_read_word(&search_time[search_pos]) : pgm_read_word(&search_time[map(constrain(rad_imp, 0, SEARCH_IND_MAX), 0, SEARCH_IND_MAX, 7, 0)]);
 
@@ -2547,7 +2544,7 @@ void _logbook_data_switch(boolean inv, uint8_t num, uint8_t pos, uint8_t data_nu
         printNumI(temp_byte, LEFT, pos_row, 2); //время замера
         print("v", 12, pos_row); //м
 #if TYPE_MEASUR_LOGBOOK
-        _init_small_couts_per_cm2((float)temp_dword / temp_byte / GEIGER_AREA, pos_row);
+        _init_small_couts_per_cm2((float)temp_dword / temp_byte, pos_row);
 #else
         _init_rads_unit(0, temp_dword, 1, 4, RIGHT, pos_row, 0, RIGHT, pos_row); //единицы замера
 #endif
@@ -2561,7 +2558,7 @@ void _logbook_data_switch(boolean inv, uint8_t num, uint8_t pos, uint8_t data_nu
     printNumI(temp_byte, LEFT, pos_row, 2); //вркмя замера
     print("v", 12, pos_row); //м
 #if TYPE_MEASUR_LOGBOOK
-    _init_small_couts_per_cm2((float)temp_dword / temp_byte / GEIGER_AREA, pos_row);
+    _init_small_couts_per_cm2((float)temp_dword / temp_byte, pos_row);
 #else
     _init_rads_unit(0, temp_dword, 1, 4, RIGHT, pos_row, 0, RIGHT, pos_row); //единицы замера
 #endif
