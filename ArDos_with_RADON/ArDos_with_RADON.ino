@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.2.5 low_pwr stable 13.12.20 специально для проекта ArDos
+  Версия программы RADON v3.2.5 low_pwr stable 14.12.20 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -242,7 +242,7 @@
 #define GEIGER_MASS (pgm_read_byte(&time_mass[MASS_TIME_FACT][0]) + pgm_read_byte(&time_mass[MASS_TIME_FACT][1])) //максимум секунд для окончания смещения коэффициентов
 
 //пищалка старт/стоп
-#define SOUND_START  PRR &= ~(1 << 3); TCNT1 = SOUND_PRELOAD; TIMSK1 = 0b00000010
+#define SOUND_START  PRR &= ~(1 << 3); OCR1A = SOUND_PRELOAD; TIMSK1 = 0b00000010
 #define SOUND_STOP   TIMSK1 = 0b00000000; PRR |= (1 << 3)
 
 //вспышки старт/стоп
@@ -440,7 +440,7 @@ int main(void)  //инициализация
 
   TIME_FACT_1 = 100000 / wdt_period; //расчитываем период для секунд
   buzz_time = (TIME_BUZZ / float(1.00 / FREQ_BUZZ * 1000)); //пересчитываем частоту и время щелчков в циклы таймера
-  buzz_freq = (65536 - (F_CPU / SOUND_PRESCALER) / FREQ_BUZZ); //устанавливаем частоту таймера щелчков
+  buzz_freq = (F_CPU / SOUND_PRESCALER) / FREQ_BUZZ; //устанавливаем частоту таймера щелчков
 
 #if DEBUG_RETURN
   if (eeprom_read_byte(101) != 101) {
@@ -1093,7 +1093,7 @@ ISR(TIMER2_COMPA_vect) {
 //---------------------------------Прерывание сигнала для пищалки---------------------------------------
 ISR(TIMER1_COMPA_vect) //прерывание сигнала для пищалки
 {
-  TCNT1 = SOUND_PRELOAD; //устанавливаем частоту
+  TCNT1 = 0; //устанавливаем частоту
 
   BUZZ_INV; //инвертируем бузер
 
@@ -1105,7 +1105,7 @@ ISR(TIMER1_COMPA_vect) //прерывание сигнала для пищалк
 void buzz_pulse(uint16_t freq, uint8_t time) //генерация частоты бузера (частота 10..10000, длительность мс.)
 {
   cnt_puls = time / float(1.00 / freq * 1000); //пересчитываем частоту и время в циклы таймера
-  SOUND_PRELOAD = (65536 - (F_CPU / SOUND_PRESCALER) / freq); //устанавливаем частоту таймера
+  SOUND_PRELOAD = (F_CPU / SOUND_PRESCALER) / freq; //устанавливаем частоту таймера
   SOUND_START; //запускаем таймер
 }
 //--------------------------------Щелчок пищалкой-------------------------------------------------
