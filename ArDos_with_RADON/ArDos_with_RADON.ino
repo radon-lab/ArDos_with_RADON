@@ -1450,19 +1450,23 @@ void measur_menu(void) //режим замера
 //-------------------------------Частиц/см2*мин----------------------------------------------------------
 void _init_couts_per_cm2(float num) //частиц/см2*мин
 {
+  num /= GEIGER_AREA;
+
   setFont(MediumNumbers); //установка шрифта
-  printNumF(num / GEIGER_AREA, (num < 100) ? 1 : 0, 1, 8, 46, 4, TYPE_CHAR_FILL); //строка 1
+  printNumF(num, (num < 100) ? 1 : 0, 1, 8, 46, 4, TYPE_CHAR_FILL); //строка 1
   setFont(RusFont); //установка шрифта
   print("x|cv2", 54, 16); //строка 1 ч/см2
 }
 //-------------------------------Частиц/см2*мин----------------------------------------------------------
 void _init_small_couts_per_cm2(float num, uint8_t pos_y) //частиц/см2*мин
 {
+  num /= GEIGER_AREA;
+
   print("x|cv2", 54, pos_y); //строка 2 ч/см2
 #if (TYPE_CHAR_FILL > 44)
-  printNumF(num / GEIGER_AREA, (num < 100) ? 1 : 0, 30, pos_y, 46, 4, TYPE_CHAR_FILL); //строка 2
+  printNumF(num, (num < 100) ? 1 : 0, 30, pos_y, 46, 4, TYPE_CHAR_FILL); //строка 2
 #else
-  printNumF(num / GEIGER_AREA, (num < 100) ? 1 : 0, 30, pos_y, 46, 4, 32);
+  printNumF(num, (num < 100) ? 1 : 0, 30, pos_y, 46, 4, 32);
 #endif
 }
 //-------------------------------Выбор тревоги----------------------------------------------------------
