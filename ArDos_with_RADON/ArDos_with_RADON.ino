@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.2.5 low_pwr stable 14.12.20 специально для проекта ArDos
+  Версия программы RADON v3.2.5 low_pwr final 15.12.20 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -1361,12 +1361,12 @@ void measur_menu(void) //режим замера
             }
           }
           else drawBitmap(18, 24, measur_first_img, 47, 8); //первый замер
-          _init_couts_per_cm2(first_froze / ((time_switch) ? time_switch : 1 / 60.0)); //рассчитываем результат замера в ч*см2/м); //первый замер ч/см2*м
+          _init_couts_per_cm2(first_froze / (((time_switch) ? time_switch : 1) / 60.0)); //рассчитываем результат замера в ч*см2/м); //первый замер ч/см2*м
           _init_accur_percent(_init_accur(first_froze)); //отрисовка точности
           break;
 
         case 2: //2-й замер
-          _init_couts_per_cm2(second_froze / ((time_switch) ? time_switch : 1 / 60.0)); //второй замер ч/см2*м
+          _init_couts_per_cm2(second_froze / (((time_switch) ? time_switch : 1) / 60.0)); //второй замер ч/см2*м
           _init_accur_percent(_init_accur(second_froze)); //отрисовка точности
           drawBitmap(11, 24, measur_second_img, 62, 8); //второй замер
           break;
