@@ -413,6 +413,11 @@ int main(void)  //инициализация
 
   _delay_ms(START_TIME); //ждем
 
+  initTimers(); //инициализация таймеров;
+
+  PRR = 0b11101110; //отключаем все лишнее (I2C | TIMER2 | TIMER0 | TIMER1 | SPI | UART)
+  ACSR |= 1 << ACD; //отключаем компаратор
+
   InitLCD(contrast); //инициализируем дисплей
   _LIGHT_ON(); // включаем подсветку, если была включена настройками
   _init_logo(); //вывод логотипа
@@ -423,8 +428,8 @@ int main(void)  //инициализация
   }
 
   if (eeprom_read_byte(100) != 100) { //если настройки были сброшены, восстанавливаем из переменных
-    print("Gj;fkeqcnf", CENTER, 16); //Пожалуйста
-    print("gjlj;lbnt...", CENTER, 24); //подождите...
+    print("Gj;fkeqcnf", CENTER, 32); //Пожалуйста
+    print("gjlj;lbnt...", CENTER, 40); //подождите...
 
     _delay_ms(START_TIME); //ждем
     setings_update(); //обновляем настройки
@@ -437,11 +442,6 @@ int main(void)  //инициализация
     setings_read(); //считывем настройки
     statistic_read(); //считываем статистику
   }
-
-  initTimers(); //инициализация таймеров;
-
-  PRR = 0b11101110; //отключаем все лишнее (I2C | TIMER2 | TIMER0 | TIMER1 | SPI | UART)
-  ACSR |= 1 << ACD; //отключаем компаратор
 
   TIME_FACT_1 = 100000 / wdt_period; //расчитываем период для секунд
   buzz_time = (TIME_BUZZ / float(1.00 / FREQ_BUZZ * 1000)); //пересчитываем частоту и время щелчков в циклы таймера
