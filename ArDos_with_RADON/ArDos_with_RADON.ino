@@ -232,13 +232,14 @@
 #include "DefaultFonts.c"
 
 //-------------Для разработчиков-------------
-#define ALARM_AUTO_GISTERESIS  (1.00 - (ALARM_AUTO_GIST / 100.00)) //инвертируем проценты
-#define IMP_PWR_GISTERESIS  (1.00 - (IMP_PWR_GIST / 100.00)) //инвертируем проценты
+const float ALARM_AUTO_GISTERESIS = (1.00 - (ALARM_AUTO_GIST / 100.00)); //инвертируем проценты
+const float IMP_PWR_GISTERESIS = (1.00 - (IMP_PWR_GIST / 100.00)); //инвертируем проценты
 
-#define MASS_TIME_FACT (MASS_TIME - 1) //фактический номер элемента массивов секунд
-#define MASS_BACK_FACT (MASS_BACK - 1) //фактический номер элемента массивов фона
-#define GEIGER_CYCLE (pgm_read_byte(&time_mass[0][0]) + pgm_read_byte(&time_mass[0][1])) //минимум секунд для начала расчетов
-#define GEIGER_MASS (pgm_read_byte(&time_mass[MASS_TIME_FACT][0]) + pgm_read_byte(&time_mass[MASS_TIME_FACT][1])) //максимум секунд для окончания смещения коэффициентов
+const uint8_t MASS_TIME_FACT = (MASS_TIME - 1); //фактический номер элемента массивов секунд
+const uint8_t MASS_BACK_FACT = (MASS_BACK - 1); //фактический номер элемента массивов фона
+
+uint8_t GEIGER_CYCLE; //минимум секунд для начала расчетов
+uint8_t GEIGER_MASS; //максимум секунд для окончания смещения коэффициентов
 
 //пищалка старт/стоп
 #define SOUND_START  PRR &= ~(1 << 3); OCR1A = SOUND_PRELOAD; TIMSK1 = 0b00000010
@@ -443,10 +444,6 @@ int main(void)  //инициализация
     statistic_read(); //считываем статистику
   }
 
-  TIME_FACT_1 = 100000 / wdt_period; //расчитываем период для секунд
-  buzz_time = (TIME_BUZZ / float(1.00 / FREQ_BUZZ * 1000)); //пересчитываем частоту и время щелчков в циклы таймера
-  buzz_freq = (F_CPU / SOUND_PRESCALER) / FREQ_BUZZ; //устанавливаем частоту таймера щелчков
-
 #if DEBUG_RETURN
   if (eeprom_read_byte(101) != 101) {
     pump_update(); //считываение параметров преобразователя из памяти
@@ -456,6 +453,8 @@ int main(void)  //инициализация
 #elif PUMP_READ_MEM
   pump_read(); //считываение параметров преобразователя из памяти
 #endif
+
+  initParam(); //инициализация параметров
 
   start_pump(); //первая накачка преобразователя
   WDT_enable(); //запускаем WatchDog с пределителем 2
@@ -480,9 +479,9 @@ int main(void)  //инициализация
   for (;;) //главная
   {
     data_convert(); //преобразование данных
-    bat_massege(); //обновление состояния батареи
-    error_messege(); //обработка ошибок
-    alarm_warning(); //если фон превышен и тревога не запрещена, выводим сообщение
+    bat_massege(); //обработка сообщения разряженой батареи
+    error_messege(); //обработка сообщений ошибок
+    alarm_warning(); //обработка сообщений тревоги
     main_screen(); //основные режимы
   }
   return 0; //конец
@@ -503,6 +502,17 @@ void initTimers(void) //инициализация таймеров
   TIMSK2 = 0b00000000; //отключаем прерывания Таймера2
 
   sei(); //разрешаем прерывания глобально
+}
+//------------------------Инициализация параметров--------------------------------------------------
+void initParam(void) //инициализация параметров
+{
+  TIME_FACT_1 = 100000 / wdt_period; //расчитываем период для секунд
+
+  GEIGER_CYCLE = (pgm_read_byte(&time_mass[0][0]) + pgm_read_byte(&time_mass[0][1])); //минимум секунд для начала расчетов
+  GEIGER_MASS = (pgm_read_byte(&time_mass[MASS_TIME_FACT][0]) + pgm_read_byte(&time_mass[MASS_TIME_FACT][1])); //максимум секунд для окончания смещения коэффициентов
+
+  buzz_time = (TIME_BUZZ / float(1.00 / FREQ_BUZZ * 1000)); //пересчитываем частоту и время щелчков в циклы таймера
+  buzz_freq = (F_CPU / SOUND_PRESCALER) / FREQ_BUZZ; //устанавливаем частоту таймера щелчков
 }
 //------------------------Подсветка старт/стоп--------------------------------------------------
 void _LIGHT_ON(void) { //подсветка старт
