@@ -2060,7 +2060,7 @@ void debug(void) //отладка
           case 1: if (++k_delitel > 999) k_delitel = 999; break; //прибавляем коэффициент делителя
           case 2: if (++puls > 30) puls = 30; break; //прибавляем длинну импульса
           case 3: if (++ADC_value > 254) ADC_value = 254; break; //прибавляем значение АЦП для преобразователя
-          case 4: if (wdt_period < MAX_WDT_PERIOD) wdt_period += 10; break; //период
+          case 4: if (wdt_period < MAX_WDT_PERIOD) wdt_period++; break; //период
           case 5: if (GEIGER_TIME < MAX_GEIGER_TIME) GEIGER_TIME++; break; //счет
         }
         time_out = 0; //сбрасывает авто-выход
@@ -2073,7 +2073,7 @@ void debug(void) //отладка
           case 1: if (--k_delitel < 10) k_delitel = 10; break; //убавляем коэффициент делителя
           case 2: if (--puls < 1) puls = 1; break; //убавляем длинну импульса
           case 3: if (--ADC_value < 10) ADC_value = 10; break; //убавляем значение АЦП для преобразователя
-          case 4: if (wdt_period > MIN_WDT_PERIOD) wdt_period -= 10; break; //период
+          case 4: if (wdt_period > MIN_WDT_PERIOD) wdt_period--; break; //период
           case 5: if (GEIGER_TIME > MIN_GEIGER_TIME) GEIGER_TIME--; break; //счет
         }
         time_out = 0; //сбрасывает авто-выход
