@@ -113,7 +113,7 @@
   3.1.6 22.10.20 - файл "SETUP" удалён, все настройки перенесены в "config", в настройки добавлен пункт "график", позволяет настроить время обновления графика в режиме "поиск", настроить пресеты можно в "config" массив "search_time",
                    настроить площадь датчика можно в "config" пункт "GEIGER_AREA", настроить количество ячеек для обработки единиц в режиме "поиск" можно в "config" параметр "SEARCH_BUF_SCORE".
   3.2.1 03.11.20 - переработан режим замера "бета", добавлен экспериментальный аппроксимированный счет фона, добавлена возможность выбора алгоритма счета фона, ускорение работы программы.
-  3.3.0 16.12.20 - удалена авто-калибровка таймера, теперь более точно настроить время можно в "отладке" устройства, также значение можно устанавливать в ручную при прошивке, "config" - "DEF_WDT_PERIOD", 
+  3.3.0 16.12.20 - удалена авто-калибровка таймера, теперь более точно настроить время можно в "отладке" устройства, также значение можно устанавливать в ручную при прошивке, "config" - "DEF_WDT_PERIOD",
                    добавлен выбор откуда считывать настройки преобразователя при отключенной отладке, "config" - "PUMP_READ_MEM".
 
   Внимание!!! При выключении пункта "СОН" в меню настроек влечет увеличением энергопотребления, но тем самым увеличивается производительность устройства.
@@ -2022,21 +2022,21 @@ void debug(void) //отладка
       print("CRH", 46, 16); //СКР
       printNumI(speed_hv, RIGHT, 16); //скорость накачки
 
-      for (uint8_t i = 0; i < 10; i++) {
+      for (uint8_t i = 0; i < 12; i++) {
         if (n == i) invertText(true); //включаем инверсию
         switch (i) {
           case 0: print("JGH", LEFT, 24); break; //ОПР
-          case 1: print("BVG", LEFT, 32); break; //ИМП
-          case 2: print("RLK", 46, 24); break; //КДЛ
+          case 1: print("RLK", 46, 24); break; //КДЛ
+          case 2: print("BVG", LEFT, 32); break; //ИМП
           case 3: print("FWG", 46, 32); break; //АЦП
-          case 4: print("CXN", 46, 40); break; //СЧТ
-          case 5: print("GTH", LEFT, 40); break; //ПЕР
+          case 4: print("GTH", LEFT, 40); break; //ПЕР
+          case 5: print("CXN", 46, 40); break; //СЧТ
           case 6: printNumF(opornoe, 2, 20, 24, 46, 4, 48); break; //опорное напряжение
-          case 7: printNumI(puls, 20, 32); break; //длинна импульса
-          case 8: printNumI(k_delitel, RIGHT, 24); break; //коэффициент делителя
+          case 7: printNumI(k_delitel, RIGHT, 24); break; //коэффициент делителя
+          case 8: printNumI(puls, 20, 32); break; //длинна импульса
           case 9: printNumI(ADC_value, RIGHT, 32); break; //значение АЦП для преобразователя
-          case 10: printNumI(GEIGER_TIME, RIGHT, 40); break; //счёт
-          case 11: printNumI(wdt_period, 20, 40); break; //период
+          case 10: printNumI(wdt_period, 20, 40); break; //период
+          case 11: printNumI(GEIGER_TIME, RIGHT, 40); break; //счёт
         }
         if (n == i) invertText(false); //выключаем инверсию
       }
@@ -2047,11 +2047,11 @@ void debug(void) //отладка
       case 3: //Up key //нажатие
         switch (n) {
           case 0: if ((opornoe += 0.01) > 1.50) opornoe = 1.50; break; //прибавляем опорное напряжение
-          case 1: if (++puls > 30) puls = 30; break; //прибавляем длинну импульса
-          case 2: if (++k_delitel > 999) k_delitel = 999; break; //прибавляем коэффициент делителя
+          case 1: if (++k_delitel > 999) k_delitel = 999; break; //прибавляем коэффициент делителя
+          case 2: if (++puls > 30) puls = 30; break; //прибавляем длинну импульса
           case 3: if (++ADC_value > 254) ADC_value = 254; break; //прибавляем значение АЦП для преобразователя
-          case 4: if (GEIGER_TIME < MAX_GEIGER_TIME) GEIGER_TIME++; break; //счет
-          case 5: if (wdt_period < MAX_WDT_PERIOD) wdt_period += 10; break; //период
+          case 4: if (wdt_period < MAX_WDT_PERIOD) wdt_period += 10; break; //период
+          case 5: if (GEIGER_TIME < MAX_GEIGER_TIME) GEIGER_TIME++; break; //счет
         }
         time_out = 0; //сбрасывает авто-выход
         scr = 0; //разрешаем обновление экрана
@@ -2060,11 +2060,11 @@ void debug(void) //отладка
       case 2: //Down key //нажатие
         switch (n) {
           case 0: if ((opornoe -= 0.01) < 0.50) opornoe = 0.50; break; //убавляем опорное напряжение
-          case 1: if (--puls < 1) puls = 1; break; //убавляем длинну импульса
-          case 2: if (--k_delitel < 10) k_delitel = 10; break; //убавляем коэффициент делителя
+          case 1: if (--k_delitel < 10) k_delitel = 10; break; //убавляем коэффициент делителя
+          case 2: if (--puls < 1) puls = 1; break; //убавляем длинну импульса
           case 3: if (--ADC_value < 10) ADC_value = 10; break; //убавляем значение АЦП для преобразователя
-          case 4: if (GEIGER_TIME > MIN_GEIGER_TIME) GEIGER_TIME--; break; //счет
-          case 5: if (wdt_period > MIN_WDT_PERIOD) wdt_period -= 10; break; //период
+          case 4: if (wdt_period > MIN_WDT_PERIOD) wdt_period -= 10; break; //период
+          case 5: if (GEIGER_TIME > MIN_GEIGER_TIME) GEIGER_TIME--; break; //счет
         }
         time_out = 0; //сбрасывает авто-выход
         scr = 0; //разрешаем обновление экрана
