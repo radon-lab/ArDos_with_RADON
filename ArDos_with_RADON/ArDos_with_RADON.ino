@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.2.5 low_pwr final 15.12.20 специально для проекта ArDos
+  Версия программы RADON v3.2.6 low_pwr final 16.12.20 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -302,7 +302,7 @@ uint32_t time_save_old; //предыдущее значение сохранен
 uint32_t rad_dose_old; //предыдущее значение дозы
 
 //счетчики времени
-uint64_t time_micros = 0; //счетчик реального времени
+uint32_t time_total = 0; //счетчик реального времени
 uint32_t time_sec = 0; //секунды
 uint8_t mid_time_now = 0; //текущий номер набранного массива усреднения
 uint8_t back_time_now = 0; //текущий номер набранной секунды счета фона
@@ -458,7 +458,7 @@ int main(void)  //инициализация
 
   setFont(RusFont); //установка шрифта
   print("-=HFLJY=-", CENTER, 32); //-=РАДОН=-
-  print("3.2.5", CENTER, 40); //версия по
+  print("3.2.6", CENTER, 40); //версия по
 
   bat_check(); //опрос батареи
 
@@ -639,7 +639,7 @@ void data_convert(void) //преобразование данных
     else if (timer_melody) timer_melody = 0; //иначе сбрасываем таймер
 
     if (!measur && !serch) {
-      time_micros += wdt_period; //микросекунды * 10
+      time_total++; //микросекунды * 10
 
       switch (time_wdt) {
         case TIME_FACT_2: //обновление статистики
@@ -844,7 +844,7 @@ void data_convert(void) //преобразование данных
           break;
 
         case TIME_FACT_14: //считаем пройденное время
-          time_sec = time_micros / 100000; //пересчитываем в секунды
+          time_sec = time_total * wdt_period / 100000; //пересчитываем в секунды
           break;
       }
     }
@@ -2413,6 +2413,7 @@ void menu(void) //меню
 
 #if TIME_OUT_MENU
       if (++time_out > TIME_OUT_MENU) {
+        if (cnt_pwr > TIME_BRIGHT) cnt_pwr = TIME_BRIGHT + 1;
         sleep_disable = 0; //разрешаем сон
         scr = 0; //разрешаем обновления экрана
         return;
@@ -2993,7 +2994,7 @@ void wdt_calibrate(void) //калибровка wdt
 #endif
     while (!(WDTCSR & (1 << WDIF))) { //ждем таймаута
       if (TIFR0 & (1 << TOV0)) { //ждем флага 10 мкс
-        time_micros ++; //прибавляем 10 мкс / 10
+        time_micros++; //прибавляем 10 мкс / 10
 #if F_CPU == 16000000UL
         TCNT0 = 96; //устанавливаем счетчик таймера в начальное положение
 #elif F_CPU == 8000000UL
@@ -3157,6 +3158,7 @@ void data_reset(uint8_t sw) //сброс текущей дозы
     if (!scr) {
       scr = 1; //запрещаем обновление экрана
       if (++time_out > TIME_OUT_DOSE) {
+        if (cnt_pwr > TIME_BRIGHT) cnt_pwr = TIME_BRIGHT + 1;
         sleep_disable = 0; //разрешаем сон
         scr = 0; //разрешаем обновления экрана
         return;
@@ -3191,7 +3193,7 @@ void data_reset(uint8_t sw) //сброс текущей дозы
 
                 time_save += time_sec - time_save_old;
                 time_save_old = 0;
-                time_micros = 0;
+                time_total = 0;
                 time_sec = 0;
 
                 stat_upd_tmr = 0;
