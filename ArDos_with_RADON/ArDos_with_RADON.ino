@@ -1782,10 +1782,14 @@ void search_update(void) //обновление данных поиска
 
     time_to_update = (search_pos != 8) ? pgm_read_word(&search_time[search_pos]) : pgm_read_word(&search_time[map(constrain(rad_imp, 0, SEARCH_IND_MAX), 0, SEARCH_IND_MAX, 7, 0)]);
 
+#if TYPE_GRAF_MOVE //слева-направо
     for (uint8_t i = 0; i < search_time_now; i++) temp_buf += search_buff[i]; //сдвигаем массив
+#else //справа-налево
+    for (uint8_t i = 76 - search_time_now; i < 76; i++) temp_buf += search_buff[i]; //сдвигаем массив
+#endif
 
-    rad_imp = (temp_buf / search_time_now) * (1000.00 / time_to_update); //персчет имп/сек.
-    rad_imp_m = rad_imp * 60; //персчет импульсов в имп/мин.
+    rad_imp = ((float)temp_buf / search_time_now) * (1000.00 / time_to_update); //персчет имп/сек.
+    rad_imp_m = rad_imp * 60.0; //персчет импульсов в имп/мин.
     rad_search = rad_imp * GEIGER_TIME; //считаем мкР/ч | мкЗ/ч
 
     now_pos = time_to_update / (wdt_period / 100.0);
