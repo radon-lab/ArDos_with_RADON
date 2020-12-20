@@ -1804,7 +1804,7 @@ void search_update(void) //обновление данных поиска
   static uint16_t f;
 
   n = (imp_s > SEARCH_IND_MAX) ? SEARCH_IND_MAX : imp_s; //устанавливаем точки максимумов
-  n = map(n, 0, SEARCH_IND_MAX, 2, 54); //корректируем под коэффициент
+  n = map(n, 0, SEARCH_IND_MAX, 2, 51); //корректируем под коэффициент
   if (n < f) f--; //добавляем плавности при уменьшении
   else f = n; //если увеличелось, отображаем сразу
 
@@ -1831,7 +1831,7 @@ void search_menu(void) //инициализация режима поиск
       clrRow(2); //очистка строки 2
 
       drawBitmap(0, 0, serch_img, 84, 8); //отрисовываем фон
-      drawBitmap(0, 8, scan_ind_scale_img, 55, 8); //рисуем шкалу
+      drawBitmap(0, 8, scan_ind_scale_img, 51, 8); //рисуем шкалу
 
       setFont(RusFont); //установка шрифта
       switch (c) {
