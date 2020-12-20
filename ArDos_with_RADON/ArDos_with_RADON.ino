@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.3.0 low_pwr final 16.12.20 специально для проекта ArDos
+  Версия программы RADON v3.3.0 low_pwr final 20.12.20 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -1781,8 +1781,8 @@ void search_update(void) //обновление данных поиска
     time_to_update = (search_pos != 8) ? pgm_read_word(&search_time[search_pos]) : pgm_read_word(&search_time[map(constrain(rad_imp, 0, SEARCH_IND_MAX), 0, SEARCH_IND_MAX, 7, 0)]);
 
     for (uint8_t i = 0; i < search_time_now; i++) temp_buf += search_buff[i]; //сдвигаем массив
-    temp_buf = temp_buf / search_time_now;
-    rad_imp = temp_buf * (1000.00 / time_to_update); //персчет импульсов в сек.
+
+    rad_imp = (temp_buf / search_time_now) * (1000.00 / time_to_update); //персчет импульсов в сек.
     rad_imp_m = rad_imp * 60; //персчет импульсов в мин.
     rad_imp_cm2 = rad_imp_m / GEIGER_AREA; //считаем частиц/см2*мин
 
