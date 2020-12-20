@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.3.0 low_pwr final 20.12.20 специально для проекта ArDos
+  Версия программы RADON v3.3.1 low_pwr final 20.12.20 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -289,7 +289,7 @@ uint8_t sigma_pos = 1; //указатель сигмы
 
 float rad_imp; //импульсы в секунду
 float rad_imp_m; //импульсы в минуту
-float rad_imp_cm2; //общее кол-во частиц
+uint32_t rad_search; //фон в режиме поиск
 
 uint16_t maxLevel = 22; //максимальный уровень маштабирования графика
 uint16_t maxLevel_back = 15; //максимальный уровень маштабирования графика
@@ -424,7 +424,9 @@ int main(void)  //инициализация
   _init_logo(); //вывод логотипа
 
   if (!OK_OUT) { //если зажата кнопка ок при запуске
+#if DEBUG_RETURN
     if (!UP_OUT) eeprom_update_byte(101, 0); //если зажата кнопка вверх при запуске, сбрасываем настройки преобразователя
+#endif
     eeprom_update_byte(100, 0); //сбрасываем настройки
   }
 
@@ -464,7 +466,7 @@ int main(void)  //инициализация
 
   setFont(RusFont); //установка шрифта
   print("-=HFLJY=-", CENTER, 32); //-=РАДОН=-
-  print("3.3.0", CENTER, 40); //версия по
+  print("3.3.1", CENTER, 40); //версия по
 
   bat_check(); //опрос батареи
 
@@ -1545,7 +1547,7 @@ void alarm_messege(boolean set, uint8_t sound, char *mode) //тревога
       clrRow(5); //очистка строки 5
 
       print(mode, LEFT, 40); //фон
-      _init_rads_unit(0, (set) ? rad_dose : rad_back, 1, 5, RIGHT, 40, set, RIGHT, 40); //результат
+      _init_rads_unit(0, (set) ? rad_dose : rad_back, 10, 5, RIGHT, 40, set, RIGHT, 40); //результат
     }
 
     //==================================================================
@@ -1782,9 +1784,9 @@ void search_update(void) //обновление данных поиска
 
     for (uint8_t i = 0; i < search_time_now; i++) temp_buf += search_buff[i]; //сдвигаем массив
 
-    rad_imp = (temp_buf / search_time_now) * (1000.00 / time_to_update); //персчет импульсов в сек.
-    rad_imp_m = rad_imp * 60; //персчет импульсов в мин.
-    rad_imp_cm2 = rad_imp_m / GEIGER_AREA; //считаем частиц/см2*мин
+    rad_imp = (temp_buf / search_time_now) * (1000.00 / time_to_update); //персчет имп/сек.
+    rad_imp_m = rad_imp * 60; //персчет импульсов в имп/мин.
+    rad_search = rad_imp * GEIGER_TIME; //считаем мкР/ч | мкЗ/ч
 
     now_pos = time_to_update / (wdt_period / 100.0);
 
@@ -1847,12 +1849,7 @@ void search_menu(void) //инициализация режима поиск
           break;
 
         case 2:
-          drawBitmap(58, 8, imp_all_img, 24, 8); //ч/см2
-#if (TYPE_CHAR_FILL > 44)
-          printNumF(rad_imp_cm2, (rad_imp_cm2 < 100) ? 2 : 0, 54, 16, 46, 5, TYPE_CHAR_FILL); //строка 1
-#else
-          printNumF(rad_imp_cm2, (rad_imp_cm2 < 100) ? 2 : 0, 54, 16, 46, 5, 32); //строка 1
-#endif
+          _init_rads_unit(0, rad_search, 10, 5, 54, 16, 0, RIGHT, 8); //результат
           break;
       }
 
@@ -1875,7 +1872,7 @@ void search_menu(void) //инициализация режима поиск
       case 2: //Down key //сброс
         rad_imp = 0; //сбрасываем имп/с
         rad_imp_m = 0; //сбрасываем имп/м
-        rad_imp_cm2 = 0; //сбрасываем счет импульсов
+        rad_search = 0; //сбрасываем счет импульсов
         search_time_now = 0; //сбрасываем время счета графика
         scan_buff = 0; //сбрасываем буфер
         rad_buff[0] = 0; //сбрасываем буфер
@@ -2032,7 +2029,14 @@ void debug(void) //отладка
       print("CRH", 46, 16); //СКР
       printNumI(speed_hv, RIGHT, 16); //скорость накачки
 
-      for (uint8_t i = 0; i < 12; i++) {
+      printNumF(opornoe, 2, 20, 24, 46, 4, 48); //опорное напряжение
+      printNumI(k_delitel, RIGHT, 24); //коэффициент делителя
+      printNumI(puls, 20, 32); //длинна импульса
+      printNumI(ADC_value, RIGHT, 32); //значение АЦП для преобразователя
+      printNumI(wdt_period, 20, 40); //период
+      printNumI(GEIGER_TIME, RIGHT, 40); //счёт
+
+      for (uint8_t i = 0; i < 6; i++) {
         if (n == i) invertText(true); //включаем инверсию
         switch (i) {
           case 0: print("JGH", LEFT, 24); break; //ОПР
@@ -2041,12 +2045,6 @@ void debug(void) //отладка
           case 3: print("FWG", 46, 32); break; //АЦП
           case 4: print("GTH", LEFT, 40); break; //ПЕР
           case 5: print("CXN", 46, 40); break; //СЧТ
-          case 6: printNumF(opornoe, 2, 20, 24, 46, 4, 48); break; //опорное напряжение
-          case 7: printNumI(k_delitel, RIGHT, 24); break; //коэффициент делителя
-          case 8: printNumI(puls, 20, 32); break; //длинна импульса
-          case 9: printNumI(ADC_value, RIGHT, 32); break; //значение АЦП для преобразователя
-          case 10: printNumI(wdt_period, 20, 40); break; //период
-          case 11: printNumI(GEIGER_TIME, RIGHT, 40); break; //счёт
         }
         if (n == i) invertText(false); //выключаем инверсию
       }
@@ -3220,7 +3218,7 @@ void setings_save(uint8_t sw) //сохранить настройки
         alarm_level_dose == eeprom_read_word(68)
       ) return;
       break;
-
+#if DEBUG_RETURN
     case 1:
       if (
         GEIGER_TIME == eeprom_read_byte(51) &&
@@ -3231,6 +3229,7 @@ void setings_save(uint8_t sw) //сохранить настройки
         wdt_period == eeprom_read_word(110)
       ) return;
       break;
+#endif
 #if LOGBOOK_RETURN
     case 2:
       if (
@@ -3258,7 +3257,9 @@ void setings_save(uint8_t sw) //сохранить настройки
       if (++time_out > TIME_OUT_SETTINGS) {
         switch (sw) {
           case 0: setings_read(); break; //считываем настройки из памяти
+#if DEBUG_RETURN || PUMP_READ_MEM
           case 1: pump_read(); break; //считываем настройки из памяти
+#endif
 #if LOGBOOK_RETURN
           case 2: logbook_read(); break; //считываем настройки из памяти
 #endif
@@ -3292,7 +3293,9 @@ void setings_save(uint8_t sw) //сохранить настройки
             print("Cj[hfytys!", CENTER, 24); //Сохранены!
             switch (sw) {
               case 0: setings_update(); break; //обновляем настройки
+#if DEBUG_RETURN
               case 1: pump_update(); break; //обновляем настройки
+#endif
 #if LOGBOOK_RETURN
               case 2: logbook_update(); break; //обновляем настройки
 #endif
@@ -3304,7 +3307,9 @@ void setings_save(uint8_t sw) //сохранить настройки
           case 0:
             switch (sw) {
               case 0: setings_read(); break; //считываем настройки из памяти
+#if DEBUG_RETURN || PUMP_READ_MEM
               case 1: pump_read(); break; //считываем настройки из памяти
+#endif
 #if LOGBOOK_RETURN
               case 2: logbook_read(); break; //считываем настройки из памяти
 #endif
