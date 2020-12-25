@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.3.1 low_pwr final 20.12.20 специально для проекта ArDos
+  Версия программы RADON v3.3.2 low_pwr final 25.12.20 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -466,7 +466,7 @@ int main(void)  //инициализация
 
   setFont(RusFont); //установка шрифта
   print("-=HFLJY=-", CENTER, 32); //-=РАДОН=-
-  print("3.3.1", CENTER, 40); //версия по
+  print("3.3.2", CENTER, 40); //версия по
 
   bat_check(); //опрос батареи
 
@@ -633,11 +633,11 @@ void data_convert(void) //преобразование данных
   static float coef; //коэффициент сравнения
   static float coef_back; //коэффициент поправки на фон
 
-  float imp_per_sec; //текущее количество имп/с
-  uint16_t graf_max = 0; //максимальное значение графика
-
   low_pwr(); //отключение дисплея и подсветки, уход в сон для экономии энергии
   pump(); //накачка по обратной связи с АЦП
+
+  float imp_per_sec; //текущее количество имп/с
+  uint16_t graf_max = 0; //максимальное значение графика
 
   for (; tick_wdt > 0; tick_wdt--) { //если был тик, обрабатываем данные
 
@@ -680,7 +680,10 @@ void data_convert(void) //преобразование данных
 
           if (geiger_time_now < BUFF_LENGTHY) geiger_time_now++; //прибавляем указатель заполненности буффера
           if (back_time_now < BUFF_LENGTHY) back_time_now++; //прибавляем указатель заполненности буффера для рассчета фона
-          else back_time_now = 1; //иначе сбрасываем в начало
+          else {
+            back_time_now = 1; //иначе сбрасываем в начало
+            if (mid_time_now < MID_BUFF_LENGTHY) mid_time_now++; //прибавляем указатель заполненности буффера
+          }
 
 #if GEIGER_DEAD_TIME
           if (rad_buff[0] >= COUNT_RATE) rad_buff[0] = rad_buff[0] / (1 - rad_buff[0] * DEAD_TIME); //если скорость счета больше 100имп/с, учитываем мертвое время счетчика
@@ -693,7 +696,6 @@ void data_convert(void) //преобразование данных
           if (back_time_now >= BUFF_LENGTHY) { //если основной буфер перезаписался
             for (uint8_t k = MID_BUFF_LENGTHY - 1; k > 0; k--) rad_mid_buff[k] = rad_mid_buff[k - 1]; //перезапись массива
             rad_mid_buff[0] = tmp_buff; //записываем основной массив в массив усреднения
-            if (mid_time_now < MID_BUFF_LENGTHY) mid_time_now++; //прибавляем указатель заполненности буффера
           }
           for (uint8_t i = 0; i < mid_time_now; i++) tmp_buff += rad_mid_buff[i]; //суммирование всех импульсов для расчета фона
           break;
@@ -757,9 +759,9 @@ void data_convert(void) //преобразование данных
 #if GEIGER_OWN_BACK
           if (imp_per_sec > OWN_BACK) imp_per_sec -= OWN_BACK; //убираем собственный фон счетчика
 #endif
-          for (uint8_t i = 0; i < PATTERNS_FRONT; i++) { //выбор паттерна
-            if (imp_per_sec <= pgm_read_word(&back_front[i][0])) { //если имп/с совпадают с паттерном
-              rad_back = imp_per_sec * (GEIGER_TIME + pgm_read_word(&back_front[i][1])) - pgm_read_word(&back_front[i][2]) * 10; //рассчитываем фон в мкр/ч
+          for (uint8_t i = 0; i < PATTERNS_APROX; i++) { //выбор паттерна
+            if (imp_per_sec <= pgm_read_word(&back_aprox[i][0])) { //если имп/с совпадают с паттерном
+              rad_back = imp_per_sec * (GEIGER_TIME + pgm_read_word(&back_aprox[i][1])) - pgm_read_word(&back_aprox[i][2]) * 10; //рассчитываем фон в мкр/ч
               break;
             }
           }
@@ -773,7 +775,7 @@ void data_convert(void) //преобразование данных
           break;
 
         case TIME_FACT_9: //рассчитываем точность
-          if (back_time_now != BUFF_LENGTHY) accur_percent = _init_accur(tmp_buff); //рассчет точности
+          accur_percent = _init_accur(tmp_buff); //рассчет точности
           break;
 
         case TIME_FACT_10: //минимальный и максимальный фон
@@ -3113,10 +3115,10 @@ void data_reset(uint8_t sw) //сброс текущей дозы
   while (1) {
     data_convert(); //преобразование данных
 
-#if TIME_OUT_DOSE
+#if TIME_OUT_DATA
     if (!scr) {
       scr = 1; //запрещаем обновление экрана
-      if (++time_out > TIME_OUT_DOSE) {
+      if (++time_out > TIME_OUT_DATA) {
         if (cnt_pwr > TIME_BRIGHT) cnt_pwr = TIME_BRIGHT + 1;
         sleep_disable = 0; //разрешаем сон
         scr = 0; //разрешаем обновления экрана
@@ -3562,7 +3564,8 @@ void main_screen(void)
             printNumI((time_save / 60) % 60, 56, 40, 2, 48);
             print("v", 68, 40);
 
-            print("Dctuj pf&", CENTER, 32);          //строка всего за:
+            print("yfrjgktyj", CENTER, 24);          //накоплено
+            print("dctuj pf&", CENTER, 32);          //всего за:
 
             _init_rads_unit(1, rad_dose_save, 10, 5, 1, 8, 1, 66, 16); //строка 1 сохранённая доза
             break;
