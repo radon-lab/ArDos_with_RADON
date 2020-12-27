@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.3.2 low_pwr final 25.12.20 специально для проекта ArDos
+  Версия программы RADON v3.4.0 low_pwr final 27.12.20 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -466,7 +466,7 @@ int main(void)  //инициализация
 
   setFont(RusFont); //установка шрифта
   print("-=HFLJY=-", CENTER, 32); //-=РАДОН=-
-  print("3.3.2", CENTER, 40); //версия по
+  print("3.4.0", CENTER, 40); //версия по
 
   bat_check(); //опрос батареи
 
@@ -3480,6 +3480,19 @@ void _init_accur_percent(uint8_t num) //отрисовка точности
   printNumI(sigma_pos + 1, 75, 8); //сигма
   drawBitmap(79, 8, sigma_img, 5, 8); //σ
 }
+//----------------------------------Отрисовка предела фона------------------------------------------------
+void _init_back_bar(uint32_t num) //отрисовка предела фона
+{
+  drawBitmap(0, 24, back_scale_img, 84, 8);
+  for (uint8_t i = 0; i < PATTERNS_SCALE; i++) { //перебираем патерны
+    uint32_t max_back = (uint32_t)pgm_read_word(&back_scale[i][0]) * 100; //устанавливаем максимум
+    if (num <= max_back) { //если есть совпадение
+      _screen_line(0, map(num, 0, max_back, (i) ? pgm_read_word(&back_scale[i - 1][1]) : 1, pgm_read_word(&back_scale[i][1])), 3, 2, 24); //рисуем шкалу
+      return; //возврат
+    }
+  }
+  _screen_line(0, 80, 3, 2, 24); //иначе рисуем полную шкалу
+}
 //----------------------------------Главные экраны------------------------------------------------------
 void main_screen(void)
 {
@@ -3498,7 +3511,11 @@ void main_screen(void)
       case 0: //режим измерения текущего фона
         switch (alarm_switch) {
           case 0:
+#if BACK_SCALE_RETURN
+            _init_back_bar(rad_back);
+#else
             _screen_line(map(geiger_time_now, 0, BUFF_LENGTHY, 5, 82), map(mid_time_now, 0, MID_BUFF_LENGTHY, 5, 82), 1, 1, 24); //шкалы точности и усреднения
+#endif
             break;
 
           case 3:
