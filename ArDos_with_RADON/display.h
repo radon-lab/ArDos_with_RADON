@@ -173,14 +173,21 @@ void clrRow(uint8_t row, uint8_t start_x, uint8_t end_x) //очистка стр
 {
 #if ROTATE_DISP
   row = 5 - row;
-  start_x = 83 - start_x - end_x;
-  end_x = 83 - start_x;
-#endif
+  start_x = 83 - start_x;
+  end_x = 83 - end_x;
+
+  _LCD_Write(PCD8544_SETYADDR | row, LCD_COMMAND);
+  _LCD_Write(PCD8544_SETXADDR | end_x, LCD_COMMAND);
+  for (uint8_t c = end_x; c <= start_x; c++) _LCD_Write(0x00, LCD_DATA);
+  _LCD_Write(PCD8544_SETYADDR, LCD_COMMAND);
+  _LCD_Write(PCD8544_SETXADDR, LCD_COMMAND);
+#else
   _LCD_Write(PCD8544_SETYADDR | row, LCD_COMMAND);
   _LCD_Write(PCD8544_SETXADDR | start_x, LCD_COMMAND);
   for (uint8_t c = start_x; c <= end_x; c++) _LCD_Write(0x00, LCD_DATA);
   _LCD_Write(PCD8544_SETYADDR, LCD_COMMAND);
   _LCD_Write(PCD8544_SETXADDR, LCD_COMMAND);
+#endif
 }
 //-------------------------Инверсия экрана----------------------------------------------------
 void invert(bool mode) //инверсия экрана
