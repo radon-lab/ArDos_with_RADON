@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.4.0 low_pwr final 27.12.20 специально для проекта ArDos
+  Версия программы RADON v3.4.1 low_pwr final 02.01.21 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -225,8 +225,8 @@
 #include <avr/eeprom.h>
 
 //---------------Конфигурации---------------
-#include "LCD.h"
 #include "config.h"
+#include "display.h"
 #include "resources.c"
 #include "connection.h"
 #include "DefaultFonts.c"
@@ -466,7 +466,7 @@ int main(void)  //инициализация
 
   setFont(RusFont); //установка шрифта
   print("-=HFLJY=-", CENTER, 32); //-=РАДОН=-
-  print("3.4.0", CENTER, 40); //версия по
+  print("3.4.1", CENTER, 40); //версия по
 
   bat_check(); //опрос батареи
 
@@ -2031,14 +2031,14 @@ void debug(void) //отладка
       printNumF(_convert_vcc_bat(bat_adc), 2, 20, 8, 46, 4, 48); //напряжение акб
       print("FWG", 46, 8); //АЦП
       printNumI(bat_adc, RIGHT, 8); //значение ацп акб
-      print("DD", 0, 16); //ВВ
-      printNumI(_convert_vcc_hv(hv_adc), 18, 16); //напряжение высокого
-      print("CRH", 46, 16); //СКР
-      printNumI(speed_hv, RIGHT, 16); //скорость накачки
+      print("CRH", 0, 16); //СКР
+      printNumI(speed_hv, 20, 16); //скорость накачки
+      print("DD", 46, 16); //ВВ
+      printNumI(_convert_vcc_hv(hv_adc), RIGHT, 16); //напряжение высокого
 
       printNumF(opornoe, 2, 20, 24, 46, 4, 48); //опорное напряжение
-      printNumI(k_delitel, RIGHT, 24); //коэффициент делителя
-      printNumI(puls, 20, 32); //длинна импульса
+      printNumI(puls, RIGHT, 24); //длинна импульса
+      printNumI(k_delitel, 20, 32); //коэффициент делителя
       printNumI(ADC_value, RIGHT, 32); //значение АЦП для преобразователя
       printNumI(wdt_period, 20, 40); //период
       printNumI(GEIGER_TIME, RIGHT, 40); //счёт
@@ -2047,8 +2047,8 @@ void debug(void) //отладка
         if (n == i) invertText(true); //включаем инверсию
         switch (i) {
           case 0: print("JGH", LEFT, 24); break; //ОПР
-          case 1: print("RLK", 46, 24); break; //КДЛ
-          case 2: print("BVG", LEFT, 32); break; //ИМП
+          case 1: print("BVG", 46, 24 ); break; //ИМП
+          case 2: print("RLK", LEFT, 32); break; //КДЛ
           case 3: print("FWG", 46, 32); break; //АЦП
           case 4: print("GTH", LEFT, 40); break; //ПЕР
           case 5: print("CXN", 46, 40); break; //СЧТ
@@ -2062,8 +2062,8 @@ void debug(void) //отладка
       case 3: //Up key //нажатие
         switch (n) {
           case 0: if ((opornoe += 0.01) > 1.50) opornoe = 1.50; break; //прибавляем опорное напряжение
-          case 1: if (++k_delitel > 999) k_delitel = 999; break; //прибавляем коэффициент делителя
-          case 2: if (++puls > 30) puls = 30; break; //прибавляем длинну импульса
+          case 1: if (++puls > 30) puls = 30; break; //прибавляем длинну импульса
+          case 2: if (++k_delitel > 1500) k_delitel = 1500; break; //прибавляем коэффициент делителя
           case 3: if (++ADC_value > 254) ADC_value = 254; break; //прибавляем значение АЦП для преобразователя
           case 4: if (wdt_period < MAX_WDT_PERIOD) wdt_period++; break; //период
           case 5: if (GEIGER_TIME < MAX_GEIGER_TIME) GEIGER_TIME++; break; //счет
@@ -2075,8 +2075,8 @@ void debug(void) //отладка
       case 2: //Down key //нажатие
         switch (n) {
           case 0: if ((opornoe -= 0.01) < 0.50) opornoe = 0.50; break; //убавляем опорное напряжение
-          case 1: if (--k_delitel < 10) k_delitel = 10; break; //убавляем коэффициент делителя
-          case 2: if (--puls < 1) puls = 1; break; //убавляем длинну импульса
+          case 1: if (--puls < 1) puls = 1; break; //убавляем длинну импульса
+          case 2: if (--k_delitel < 10) k_delitel = 10; break; //убавляем коэффициент делителя
           case 3: if (--ADC_value < 10) ADC_value = 10; break; //убавляем значение АЦП для преобразователя
           case 4: if (wdt_period > MIN_WDT_PERIOD) wdt_period--; break; //период
           case 5: if (GEIGER_TIME > MIN_GEIGER_TIME) GEIGER_TIME--; break; //счет

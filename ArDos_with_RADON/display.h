@@ -74,6 +74,34 @@ _current_font cfont;
 
 void _LCD_Write(unsigned char data, unsigned char mode)
 {
+#if ROTATE_DISP
+  switch (mode) {
+    case LCD_COMMAND:
+      bitClear(DC_PORT, DC_BIT);
+      for (uint8_t c = 0; c < 8; c++)
+      {
+        if (data & 0x80)
+          bitSet(MOSI_PORT, MOSI_BIT);
+        else
+          bitClear(MOSI_PORT, MOSI_BIT);
+        data = data << 1;
+        pulseClock;
+      }
+      break;
+    case LCD_DATA:
+      bitSet(DC_PORT, DC_BIT);
+      for (uint8_t c = 0; c < 8; c++)
+      {
+        if (data & 0x01)
+          bitSet(MOSI_PORT, MOSI_BIT);
+        else
+          bitClear(MOSI_PORT, MOSI_BIT);
+        data = data >> 1;
+        pulseClock;
+      }
+      break;
+  }
+#else
   switch (mode) {
     case LCD_COMMAND: bitClear(DC_PORT, DC_BIT); break;
     case LCD_DATA: bitSet(DC_PORT, DC_BIT); break;
@@ -88,6 +116,7 @@ void _LCD_Write(unsigned char data, unsigned char mode)
     data = data << 1;
     pulseClock;
   }
+#endif
 }
 //-------------------------Инициализация дисплея----------------------------------------------------
 void InitLCD(uint8_t contrast) //инициализация дисплея
@@ -142,6 +171,11 @@ void clrScr(void) //очистка экрана
 //-------------------------Очистка строки----------------------------------------------------
 void clrRow(uint8_t row, uint8_t start_x, uint8_t end_x) //очистка строки
 {
+#if ROTATE_DISP
+  row = 5 - row;
+  start_x = 83 - start_x - end_x;
+  end_x = 83 - start_x;
+#endif
   _LCD_Write(PCD8544_SETYADDR | row, LCD_COMMAND);
   _LCD_Write(PCD8544_SETXADDR | start_x, LCD_COMMAND);
   for (uint8_t c = start_x; c <= end_x; c++) _LCD_Write(0x00, LCD_DATA);
@@ -205,6 +239,31 @@ void printNumF(float num, uint8_t dec, uint8_t x, uint8_t y, char divider, uint8
 //-------------------------Отрисовка символа----------------------------------------------------
 void _print_char(unsigned char c, uint8_t x, uint8_t row) //отрисовка символа
 {
+#if ROTATE_DISP
+  x = 84 - x - cfont.x_size;
+  row = 5 - row;
+
+  if (((x + cfont.x_size) <= 84) and (row + (cfont.y_size / 8) <= 6))
+  {
+    for (uint8_t rowcnt = 0; rowcnt < (cfont.y_size / 8); rowcnt++)
+    {
+      _LCD_Write(PCD8544_SETYADDR | (row - rowcnt), LCD_COMMAND);
+      _LCD_Write(PCD8544_SETXADDR | x, LCD_COMMAND);
+
+      uint16_t font_idx = ((c - cfont.offset) * (cfont.x_size * (cfont.y_size / 8))) + 4;
+
+      for (uint16_t cnt = cfont.x_size; cnt > 0; cnt--)
+      {
+        switch (cfont.inverted) {
+          case 0: _LCD_Write(fontbyte(font_idx + cnt - 1 + (rowcnt * cfont.x_size)), LCD_DATA); break;
+          case 1: _LCD_Write(~(fontbyte(font_idx + cnt - 1 + (rowcnt * cfont.x_size))), LCD_DATA); break;
+        }
+      }
+    }
+    _LCD_Write(PCD8544_SETYADDR, LCD_COMMAND);
+    _LCD_Write(PCD8544_SETXADDR, LCD_COMMAND);
+  }
+#else
   if (((x + cfont.x_size) <= 84) and (row + (cfont.y_size / 8) <= 6)) {
     for (uint8_t rowcnt = 0; rowcnt < (cfont.y_size / 8); rowcnt++) {
       _LCD_Write(PCD8544_SETYADDR | (row + rowcnt), LCD_COMMAND);
@@ -222,6 +281,7 @@ void _print_char(unsigned char c, uint8_t x, uint8_t row) //отрисовка �
     _LCD_Write(PCD8544_SETYADDR, LCD_COMMAND);
     _LCD_Write(PCD8544_SETXADDR, LCD_COMMAND);
   }
+#endif
 }
 //-------------------------Установка шрифта----------------------------------------------------
 void setFont(uint8_t* font) //установка шрифта
@@ -235,9 +295,29 @@ void setFont(uint8_t* font) //установка шрифта
 //-------------------------Отрисовка изображений----------------------------------------------------
 void drawBitmap(uint8_t x, uint8_t y, bitmapdatatype bitmap, uint8_t sx, uint8_t sy, boolean inv) //отрисовка изображений
 {
-  uint8_t steps = sx;
   uint8_t starty, rows;
 
+#if ROTATE_DISP
+  starty = y / 8;
+
+  x = 84 - x - sx;
+  starty = 5 - starty;
+
+  if (sy % 8 == 0)
+    rows = sy / 8;
+  else
+    rows = (sy / 8) + 1;
+
+  for (uint8_t cy = 0; cy < rows; cy++)
+  {
+    _LCD_Write(PCD8544_SETYADDR | (starty - cy), LCD_COMMAND);
+    _LCD_Write(PCD8544_SETXADDR | x, LCD_COMMAND);
+    switch (inv) {
+      case 0: for (uint8_t cx = sx; cx > 0; cx--) _LCD_Write(bitmapbyte(cx - 1 + (cy * sx)), LCD_DATA); break;
+      case 1: for (uint8_t cx = sx; cx > 0; cx--) _LCD_Write(~(bitmapbyte(cx - 1 + (cy * sx))), LCD_DATA); break;
+    }
+  }
+#else
   starty = y / 8;
 
   if (sy % 8 == 0)
@@ -249,10 +329,11 @@ void drawBitmap(uint8_t x, uint8_t y, bitmapdatatype bitmap, uint8_t sx, uint8_t
     _LCD_Write(PCD8544_SETYADDR | (starty + cy), LCD_COMMAND);
     _LCD_Write(PCD8544_SETXADDR | x, LCD_COMMAND);
     switch (inv) {
-      case 0: for (uint8_t cx = 0; cx < steps; cx++) _LCD_Write(bitmapbyte(cx + (cy * sx)), LCD_DATA); break;
-      case 1: for (uint8_t cx = 0; cx < steps; cx++) _LCD_Write(~(bitmapbyte(cx + (cy * sx))), LCD_DATA); break;
+      case 0: for (uint8_t cx = 0; cx < sx; cx++) _LCD_Write(bitmapbyte(cx + (cy * sx)), LCD_DATA); break;
+      case 1: for (uint8_t cx = 0; cx < sx; cx++) _LCD_Write(~(bitmapbyte(cx + (cy * sx))), LCD_DATA); break;
     }
   }
+#endif
   _LCD_Write(PCD8544_SETYADDR, LCD_COMMAND);
   _LCD_Write(PCD8544_SETXADDR, LCD_COMMAND);
 }
