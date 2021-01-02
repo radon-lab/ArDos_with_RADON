@@ -730,8 +730,8 @@ void data_convert(void) //преобразование данных
 
             temp_run = 0; //сбрасываем буффер первого плеча
             temp = 0; //сбрасываем буффер второго плеча
-            for (uint8_t i = 0; i < time_1; i++) temp_run += rad_buff[i + 1]; //запоняем буффер первого плеча
-            for (uint8_t i = time_1; i < (time_1 + time_2); i++) temp += rad_buff[i + 1]; //запоняем буффер вторго плеча
+            for (uint8_t i = 0; i < time_1; i++) temp_run += rad_buff[i]; //запоняем буффер первого плеча
+            for (uint8_t i = time_1; i < (time_1 + time_2); i++) temp += rad_buff[i]; //запоняем буффер вторго плеча
           }
           break;
 
@@ -767,9 +767,10 @@ void data_convert(void) //преобразование данных
           }
 #else
 #if GEIGER_OWN_BACK
-          if (tmp_buff > geiger_time_now * OWN_BACK) tmp_buff -= geiger_time_now * OWN_BACK; //убираем собственный фон счетчика
-#endif
+          if (geiger_time_now > 1) rad_back = (float)(tmp_buff - geiger_time_now * OWN_BACK) * (float)(GEIGER_TIME / (mid_time_now * BUFF_LENGTHY + back_time_now)); //убираем собственный фон счетчика и рассчитываем фон мкР/ч
+#else
           if (geiger_time_now > 1) rad_back = tmp_buff * ((float)GEIGER_TIME / (mid_time_now * BUFF_LENGTHY + back_time_now)); //расчет фона мкР/ч
+#endif
 #endif
           for (uint8_t k = BUFF_LENGTHY - 1; k > 0; k--) rad_buff[k] = rad_buff[k - 1]; //перезапись массива
           break;
