@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.4.1 low_pwr final 02.01.21 специально для проекта ArDos
+  Версия программы RADON v3.4.1 low_pwr final 05.01.21 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -303,7 +303,7 @@ uint32_t rad_dose_old; //предыдущее значение дозы
 
 //счетчики времени
 uint32_t time_total = 0; //счетчик реального времени
-uint32_t time_sec = 0; //секунды
+uint32_t time_sec = 0; //секунды реального времени
 uint8_t mid_time_now = 0; //текущий номер набранного массива усреднения
 uint8_t back_time_now = 0; //текущий номер набранной секунды счета фона
 uint8_t geiger_time_now = 0; //текущий номер набранной секунды счета
@@ -325,6 +325,7 @@ boolean low_bat_massege = 0; //флаг разрешения вывода соо
 boolean scr = 0; //флаг обновления экрана
 boolean graf = 0; //флаг обновления графика
 boolean serch = 0; //флаг работы поиска
+
 boolean knock_disable = 0; //флаг запрет треска кнопками
 uint8_t buzz_switch = 0; //указатель на тип треска пищалкой
 uint8_t error_switch = 0; //указатель на активность ошибки
@@ -358,7 +359,7 @@ boolean sleep_disable = 0; //флаг запрета сна
 boolean sleep = 0; //флаг активного сна
 boolean light = 0; //флаг выключенной подсветки
 
-boolean light_switch = 1; //переключатель вкл/выкл дисплея
+boolean light_switch = 1; //переключатель вкл/выкл подсветки дисплея
 uint8_t contrast = 70; //контрастность дисплея
 
 volatile uint8_t tick_wdt; //счетчик тиков для обработки данных
@@ -381,8 +382,8 @@ uint16_t time_switch = 0; //счетчик времени замера
 uint32_t first_froze = 0; //счетчик 1-го замера
 uint32_t second_froze = 0; //счетчик 2-го замера
 
-volatile uint16_t cnt_puls; //количество циклов таймера 1 для пищалки
-volatile uint16_t SOUND_PRELOAD; //частота таймера 1 для пищалки
+volatile uint16_t cnt_puls; //количество циклов для работы пищалки
+volatile uint16_t SOUND_PRELOAD; //частота для генерации звука пищалкой
 
 float now = 0.00; //текущее соотношение ячеек сравнения
 #if COEF_DEBUG //отладка коэффициента
@@ -441,14 +442,11 @@ int main(void)  //инициализация
     clrRow(4); //очистка строки 4
     clrRow(5); //очистка строки 5
   }
-  else { //иначе загружаем настройки из памяти
-    setings_read(); //считывем настройки
-    statistic_read(); //считываем статистику
-  }
+  else setings_read(); //иначе загружаем настройки из памяти
 
 #if DEBUG_RETURN
-  if (eeprom_read_byte(101) != 101) {
-    pump_update(); //считываение параметров преобразователя из памяти
+  if (eeprom_read_byte(101) != 101) { //если настройки преобразователя были сброшены, восстанавливаем из переменных
+    pump_update(); //обновляем настройки преобразователя
     eeprom_update_byte(101, 101); //делаем метку
   }
   else pump_read(); //считываение параметров преобразователя из памяти
@@ -456,6 +454,7 @@ int main(void)  //инициализация
   pump_read(); //считываение параметров преобразователя из памяти
 #endif
 
+  statistic_read(); //считываем статистику
   initParam(); //инициализация параметров
 
   start_pump(); //первая накачка преобразователя
@@ -1114,7 +1113,7 @@ ISR(TIMER2_COMPA_vect) {
 //---------------------------------Прерывание сигнала для пищалки---------------------------------------
 ISR(TIMER1_COMPA_vect) //прерывание сигнала для пищалки
 {
-  TCNT1 = 0; //устанавливаем частоту
+  TCNT1 = 0; //сбрасываем счетчик таймера
 
   BUZZ_INV; //инвертируем бузер
 
@@ -3465,8 +3464,8 @@ void task_bar(void) //шапка экрана
     case 0: setFont(TinyNumbersUp); //установка шрифта
       invertText(true);
       printNumF(now, 2, 19, 0, 46, 5, 43); //строка 1
+      printNumF(debug_coef, 2, 40, 0, 46, 5, 43); //строка 2
       invertText(false);
-      printNumF(debug_coef, 2, 57, 8, 46, 5, 43); //строка 2
       break;
   }
 #endif
