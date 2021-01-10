@@ -115,6 +115,8 @@
   3.2.1 03.11.20 - переработан режим замера "бета", добавлен экспериментальный аппроксимированный счет фона, добавлена возможность выбора алгоритма счета фона, ускорение работы программы.
   3.3.0 16.12.20 - удалена авто-калибровка таймера, теперь более точно настроить время можно в "отладке" устройства, также значение можно устанавливать в ручную при прошивке, "config" - "DEF_WDT_PERIOD",
                    добавлен выбор откуда считывать настройки преобразователя при отключенной отладке, "config" - "PUMP_READ_MEM".
+  3.4.1 05.01.21 - в режиме "поиск" единицы "ч/см2" заменены на "мкР/ч | мкЗв/ч", добавлена надпись "накоплено" в режиме накопленной дозы, добавлена возможность заменить шкалы заполненности буфера на шкалу предела счета фона, 
+                   включить её можно в "config" параметр "BACK_SCALE_RETURN", также в массиве "back_scale" можно настроить пределы градации шкалы, добавлена возможность разворота экрана на 180 градусов, параметр в "config" - "ROTATE_DISP".
 
   Внимание!!! При выключении пункта "СОН" в меню настроек влечет увеличением энергопотребления, но тем самым увеличивается производительность устройства.
 
@@ -189,7 +191,7 @@
   - На экранах ЖУРНАЛ
   Вверх - позиция выше, удерж. - вкл/выкл фонарик
   Вниз - позиция ниже, удерж. - вкл/выкл подсветку
-  Ок - выбор позиции, удерж. - выход из журнала
+  Ок - выбор позиции(очистка журнала), удерж. - выход из журнала
 
   - На экране ОТЛАДКА
   Вверх - прибавить показания, удерж. - нет действия
@@ -803,14 +805,14 @@ void data_convert(void) //преобразование данных
           break;
 
         case TIME_FACT_13: //обработка тревоги
-          if (alarm_dose && (rad_dose - alarm_dose_wait) >= alarm_level_dose) {
+          if (alarm_dose && (rad_dose - alarm_dose_wait) >= alarm_level_dose) { //если тревога не запрещена и текущая(предыдущая) доза больше порога
 #if LOGBOOK_RETURN
             if (!alarm_switch && logbook_warn) _logbook_data_update(0, 2, rad_dose); //обновление журнала
 #endif
             alarm_switch = 2;  //превышение дозы 2
             break;
           }
-          else if (alarm_dose && (rad_dose - warn_dose_wait) >= warn_level_dose) {
+          else if (alarm_dose && (rad_dose - warn_dose_wait) >= warn_level_dose) { //если предупреждения не запрещены и текущая(предыдущая) доза больше порога
 #if LOGBOOK_RETURN
             if (!alarm_switch && logbook_alarm) _logbook_data_update(1, 2, rad_dose); //обновление журнала
 #endif
@@ -819,14 +821,14 @@ void data_convert(void) //преобразование данных
           }
 
           if (accur_percent <= RAD_ACCUR_WARN) {
-            if (alarm_back && !alarm_back_wait && rad_back >= alarm_level_back) {
+            if (alarm_back && !alarm_back_wait && rad_back >= alarm_level_back) { //если тревога не запрещена и текущий фон больше порога
 #if LOGBOOK_RETURN
               if (!alarm_switch && logbook_warn) _logbook_data_update(0, 1, rad_back); //обновление журнала
 #endif
               alarm_switch = 1;  //превышение фона 2
               break;
             }
-            else if (alarm_back && !warn_back_wait && rad_back >= warn_level_back) {
+            else if (alarm_back && !warn_back_wait && rad_back >= warn_level_back) { //если предупреждения не запрещены и текущий фон больше порога
 #if LOGBOOK_RETURN
               if (!alarm_switch && logbook_alarm) _logbook_data_update(1, 1, rad_back); //обновление журнала
 #endif
@@ -835,16 +837,16 @@ void data_convert(void) //преобразование данных
             }
           }
 
-          if (warn_back_wait && rad_back < (warn_level_back * ALARM_AUTO_GISTERESIS)) {
+          if (warn_back_wait && rad_back < (warn_level_back * ALARM_AUTO_GISTERESIS)) { //если текущий фон упал ниже порога + гистерезис
             warn_back_wait = 0; //сброс предупреждения
 #if LOGBOOK_RETURN
-            if (logbook_warn) logbook_warn = 2;
+            if (logbook_warn) logbook_warn = 2; //устанавливаем флаг пропущенного предупреждения
 #endif
           }
-          if (alarm_back_wait && rad_back < (alarm_level_back * ALARM_AUTO_GISTERESIS)) {
+          if (alarm_back_wait && rad_back < (alarm_level_back * ALARM_AUTO_GISTERESIS)) { //если текущий фон упал ниже порога + гистерезис
             alarm_back_wait = 0; //сброс тревоги
 #if LOGBOOK_RETURN
-            if (logbook_alarm) logbook_alarm = 2;
+            if (logbook_alarm) logbook_alarm = 2; //устанавливаем флаг пропущенной тревоги
 #endif
           }
 
@@ -871,7 +873,7 @@ void data_convert(void) //преобразование данных
 
     switch (time_wdt) {
       case TIME_FACT_15: //обработка ошибок
-        if (speed_pump >= HV_SPEED_ERROR) {
+        if (speed_pump >= HV_SPEED_ERROR) { //если текущая скорость накачки выше порога
 #if LOGBOOK_RETURN
           if (error_switch < 2) _logbook_data_update(3, 2, speed_pump); //обновление журнала устанавливаем ошибку 2 - перегрузка преобразователя
           error_switch = 2; //поднимаем флаг ошибки
@@ -882,7 +884,7 @@ void data_convert(void) //преобразование данных
         speed_hv = speed_pump; //текущая скорость накачки
         speed_pump = 0; //сбрасываем скорость накачки
 
-        if (hv_adc < ADC_value - HV_ADC_MIN) {
+        if (hv_adc < ADC_value - HV_ADC_MIN) { //если значение АЦП преобразователя ниже на установленное значение
 #if LOGBOOK_RETURN
           if (error_switch < 2) _logbook_data_update(3, 4, hv_adc); //обновление журнала устанавливаем ошибку 4 - низкое напряжение
           error_switch = 2; //поднимаем флаг ошибки
@@ -890,7 +892,7 @@ void data_convert(void) //преобразование данных
           error_switch = 4; //поднимаем флаг ошибки
 #endif
         }
-        if (hv_adc < HV_ADC_ERROR) {
+        if (hv_adc < HV_ADC_ERROR) { //если значение АЦП преобразователя ниже порога
 #if LOGBOOK_RETURN
           if (error_switch < 2) _logbook_data_update(3, 3, hv_adc); //обновление журнала устанавливаем ошибку 3 - кз преобразователя
           error_switch = 2; //поднимаем флаг ошибки
@@ -972,7 +974,7 @@ void data_convert(void) //преобразование данных
 //-------------------------Расчет точности замера----------------------------------------------------
 uint8_t _init_accur(uint32_t num) //расчет точности замера
 {
-  return (num) ? constrain(((sigma_pos + 1) / sqrtf((float)num)) * 100, 1, 99) : 99;
+  return (num) ? constrain(((sigma_pos + 1) / sqrtf((float)num)) * 100, 1, 99) : 99; //находим статистическую точность
 }
 //-------------------------Режим пониженного энергопотребления----------------------------------------------------
 void low_pwr(void) //режим пониженного энергопотребления
@@ -2512,8 +2514,8 @@ void menu(void) //меню
     }
   }
 }
-//------------------------------------Отрисовка пунктов настроек------------------------------------------------------
-void _logbook_settings(boolean inv, uint8_t num, uint8_t pos) //отрисовка пунктов настроек
+//------------------------------------Отрисовка пунктов настроек журнала------------------------------------------------------
+void _logbook_settings(boolean inv, uint8_t num, uint8_t pos) //отрисовка пунктов настроек журнала
 {
   uint8_t pos_row = (pos << 3) + 8; //переводим позицию в номер строки
 
@@ -2530,8 +2532,8 @@ void _logbook_settings(boolean inv, uint8_t num, uint8_t pos) //отрисовк
   }
   if (inv) invertText(false); //выключаем инверсию
 }
-//------------------------------------Отрисовка пунктов------------------------------------------------------
-void _logbook_item_switch(boolean inv, uint8_t num, uint8_t pos) //отрисовка пунктов
+//------------------------------------Отрисовка пунктов журнала------------------------------------------------------
+void _logbook_item_switch(boolean inv, uint8_t num, uint8_t pos) //отрисовка пунктов журнала
 {
   uint8_t pos_row = (pos << 3) + 8; //переводим позицию в номер строки
 
@@ -2549,8 +2551,8 @@ void _logbook_item_switch(boolean inv, uint8_t num, uint8_t pos) //отрисо�
   }
   if (inv) invertText(false); //выключаем инверсию
 }
-//------------------------------------Отрисовка информации------------------------------------------------------
-void _logbook_data_switch(boolean inv, uint8_t num, uint8_t pos, uint8_t data_num) //отрисовка информации
+//------------------------------------Отрисовка информации журнала------------------------------------------------------
+void _logbook_data_switch(boolean inv, uint8_t num, uint8_t pos, uint8_t data_num) //отрисовка информации журнала
 {
   uint8_t pos_row = (pos << 3) + 8; //переводим позицию в номер строки
 
@@ -2575,9 +2577,9 @@ void _logbook_data_switch(boolean inv, uint8_t num, uint8_t pos, uint8_t data_nu
         printNumI(temp_byte, LEFT, pos_row, 2); //время замера
         print("v", 12, pos_row); //м
 #if TYPE_MEASUR_LOGBOOK
-        _init_small_couts_per_cm2((float)temp_dword / temp_byte, pos_row);
+        _init_small_couts_per_cm2((float)temp_dword / temp_byte, pos_row); //отрисовываем ч/см2
 #else
-        _init_rads_unit(0, temp_dword, 1, 4, RIGHT, pos_row, 0, RIGHT, pos_row); //единицы замера
+        _init_rads_unit(0, temp_dword, 1, 4, RIGHT, pos_row, 0, RIGHT, pos_row); //отрисовываем мкР/ч
 #endif
         break;
       case 3:
@@ -2589,9 +2591,9 @@ void _logbook_data_switch(boolean inv, uint8_t num, uint8_t pos, uint8_t data_nu
     printNumI(temp_byte, LEFT, pos_row, 2); //вркмя замера
     print("v", 12, pos_row); //м
 #if TYPE_MEASUR_LOGBOOK
-    _init_small_couts_per_cm2((float)temp_dword / temp_byte, pos_row);
+    _init_small_couts_per_cm2((float)temp_dword / temp_byte, pos_row); //отрисовываем ч/см2
 #else
-    _init_rads_unit(0, temp_dword, 1, 4, RIGHT, pos_row, 0, RIGHT, pos_row); //единицы замера
+    _init_rads_unit(0, temp_dword, 1, 4, RIGHT, pos_row, 0, RIGHT, pos_row); //отрисовываем мкР/ч
 #endif
 #endif
   }
@@ -2602,46 +2604,46 @@ void _logbook_data_switch(boolean inv, uint8_t num, uint8_t pos, uint8_t data_nu
 //------------------------------------Очистка журнала------------------------------------------------------
 void _logbook_data_clear(void) //очистка журнала
 {
-  uint8_t byte_data = 200;
-  uint8_t dataByte_read[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+  uint8_t byte_data = 200; //устанавливаем начальную позицию
+  uint8_t dataByte_read[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; //буфер обнуления заглавлений данных
   for (uint8_t i = 0; i < 4; i++) {
-    eeprom_write_block((void*)&dataByte_read, byte_data, sizeof(dataByte_read));
-    byte_data += 10;
+    eeprom_write_block((void*)&dataByte_read, byte_data, sizeof(dataByte_read)); //стираем заглавления
+    byte_data += 10; //переходим на следующий блок
   }
 }
 //------------------------------------Обновление журнала------------------------------------------------------
 void _logbook_data_update(uint8_t data_num, uint8_t num, uint32_t data) //обновление журнала
 {
-  uint8_t dataByte_read[10];
-  uint32_t dataDword_read[10];
+  uint8_t dataByte_read[10]; //временный буфер данных
+  uint32_t dataDword_read[10]; //временный буфер данных
 
-  uint8_t byte_data = 200 + data_num * 10;
-  uint16_t dword_data = 240 + data_num * 40;
+  uint8_t byte_data = 200 + data_num * 10; //находим запрашиваемую позицию
+  uint16_t dword_data = 240 + data_num * 40; //находим запрашиваемую позицию
 
-  eeprom_read_block((void*)&dataByte_read, byte_data, sizeof(dataByte_read));
-  eeprom_read_block((void*)&dataDword_read, dword_data, sizeof(dataDword_read));
+  eeprom_read_block((void*)&dataByte_read, byte_data, sizeof(dataByte_read)); //считываем информацию во временный буфер
+  eeprom_read_block((void*)&dataDword_read, dword_data, sizeof(dataDword_read)); //считываем информацию во временный буфер
 
-  for (uint8_t b = 9; b; b--) dataByte_read[b] = dataByte_read[b - 1];
-  dataByte_read[0] = num;
-  for (uint8_t d = 9; d; d--) dataDword_read[d] = dataDword_read[d - 1];
-  dataDword_read[0] = data;
+  for (uint8_t b = 9; b; b--) dataByte_read[b] = dataByte_read[b - 1]; //смещаяем информацию в буфере
+  dataByte_read[0] = num; //добавляем в начало буфера новое значение
+  for (uint8_t d = 9; d; d--) dataDword_read[d] = dataDword_read[d - 1]; //смещаяем информацию в буфере
+  dataDword_read[0] = data; //добавляем в начало буфера новое значение
 
-  eeprom_write_block((void*)&dataByte_read, byte_data, sizeof(dataByte_read));
-  eeprom_write_block((void*)&dataDword_read, dword_data, sizeof(dataDword_read));
+  eeprom_write_block((void*)&dataByte_read, byte_data, sizeof(dataByte_read)); //записываем в память временный буфер
+  eeprom_write_block((void*)&dataDword_read, dword_data, sizeof(dataDword_read)); //записываем в память временный буфер
 }
 //-----------------------------------Чтение журнала byte---------------------------------
 uint8_t _data_read_byte(uint8_t num_byte, uint8_t data_byte) //чтение журнала byte
 {
-  uint8_t dataByte_read[10];
-  eeprom_read_block((void*)&dataByte_read, data_byte, sizeof(dataByte_read));
-  return dataByte_read[num_byte];
+  uint8_t dataByte_read[10]; //временный буфер данных
+  eeprom_read_block((void*)&dataByte_read, data_byte, sizeof(dataByte_read)); //считываем информацию во временный буфер
+  return dataByte_read[num_byte]; //возвращаем запрошенные данные
 }
 //-----------------------------------Чтение журнала dword---------------------------------
 uint32_t _data_read_dword(uint8_t num_byte, uint16_t data_byte) //чтение журнала dword
 {
-  uint32_t dataDword_read[10];
-  eeprom_read_block((void*)&dataDword_read, data_byte, sizeof(dataDword_read));
-  return dataDword_read[num_byte];
+  uint32_t dataDword_read[10]; //временный буфер данных
+  eeprom_read_block((void*)&dataDword_read, data_byte, sizeof(dataDword_read)); //считываем информацию во временный буфер
+  return dataDword_read[num_byte]; //возвращаем запрошенные данные
 }
 //------------------------------------Журнал------------------------------------------------------
 void logbook(void) //журнал
@@ -2728,19 +2730,18 @@ void logbook(void) //журнал
             n = c = 0;
             max_item = (p != 5) ? 9 : 3;
             switch (p) {
-              case 1: if (logbook_alarm) logbook_alarm = 1; break;
-              case 2: if (logbook_warn) logbook_warn = 1; break;
-              case 3: if (logbook_measur) logbook_measur = 1; break;
-              case 4: if (error_switch) error_switch = 0; break;
-                data_reset(2);
+              case 1: if (logbook_alarm) logbook_alarm = 1; break; //сбрасываем флаг журнала тревоги
+              case 2: if (logbook_warn) logbook_warn = 1; break; //сбрасываем флаг журнала предупрежлений
+              case 3: if (logbook_measur) logbook_measur = 1; break; //сбрасываем флаг журнала замеров
+              case 4: if (error_switch) error_switch = 0; break; //сбрасываем флаг журнала ошибок
             }
             break;
-          case 4: err_sw = (err_sw) ? 0 : 1; break;
+          case 4: err_sw = (err_sw) ? 0 : 1; break; //переходим на предпросмотр ошибки
           case 5:
             switch (n) {
-              case 0: logbook_alarm = (logbook_alarm) ? 0 : 1; break;
-              case 1: logbook_warn = (logbook_warn) ? 0 : 1; break;
-              case 2: logbook_measur = (logbook_measur) ? 0 : 1; break;
+              case 0: logbook_alarm = (logbook_alarm) ? 0 : 1; break; //вкл/выкл журнала тревоги
+              case 1: logbook_warn = (logbook_warn) ? 0 : 1; break; //вкл/выкл журнала предупреждений
+              case 2: logbook_measur = (logbook_measur) ? 0 : 1; break; //вкл/выкл журнала замеров
               case 3: data_reset(2); break;
             }
             break;
