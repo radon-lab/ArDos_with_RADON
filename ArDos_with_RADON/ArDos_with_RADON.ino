@@ -482,7 +482,6 @@ int main(void)  //инициализация
   for (;;) //главная
   {
     data_convert(); //преобразование данных
-    bat_massege(); //обработка сообщения разряженой батареи
     error_messege(); //обработка сообщений ошибок
     alarm_warning(); //обработка сообщений тревоги
     main_screen(); //основные режимы
@@ -636,6 +635,7 @@ void data_convert(void) //преобразование данных
 
   low_pwr(); //отключение дисплея и подсветки, уход в сон для экономии энергии
   pump(); //накачка по обратной связи с АЦП
+  bat_massege(); //обработка сообщения разряженой батареи
 
   float imp_per_sec; //текущее количество имп/с
   uint16_t graf_max = 0; //максимальное значение графика
@@ -3329,8 +3329,8 @@ void choice_menu(boolean n) //меню выбора
   for (uint8_t i = 0; i < 2; i++) { //отрисовка пунктов
     if (n == i) invertText(true); //включаем инверсию
     switch (i) {
-      case 0: print("  ytn  ", LEFT, 32); break; //нет
-      case 1: print("  lf  ", RIGHT, 32); break; //да
+      case 0: print("  YTN  ", LEFT, 32); break; //нет
+      case 1: print("  LF  ", RIGHT, 32); break; //да
     }
     if (n == i) invertText(false); //выключаем инверсию
   }
