@@ -1532,8 +1532,6 @@ void warn_messege(boolean set, uint8_t sound) //предупреждение
 //-------------------------------Тревога-----------------------------------------------------
 void alarm_messege(boolean set, uint8_t sound, char *mode) //тревога
 {
-  boolean i = 0; //переключатель анимации
-
   sleep_out(); //просыпаемся если спали
   buzz_switch = 0; //запретить звуковую индикацию импульсов
 
@@ -1553,13 +1551,7 @@ void alarm_messege(boolean set, uint8_t sound, char *mode) //тревога
 
 #if TYPE_ALARM_IND != 2
       clrRow(4); //очистка строки 5
-      if (i) {
-        invertText(true);
-        _screen_line(0, 84, 0, 0, 32); //рисуем линию
-      }
-      print("NHTDJUF!", CENTER, 32); //строка ТРЕВОГА!
-      invertText(false);
-      i = !i;
+      _init_alarm_massage(1); //тревога
 #endif
 
       print(mode, LEFT, 40); //фон
@@ -1594,6 +1586,22 @@ void alarm_messege(boolean set, uint8_t sound, char *mode) //тревога
       return;
     }
   }
+}
+//--------------------------Инициализация сообщения тревоги---------------------------------
+void _init_alarm_massage(boolean text) { //инициализация сообщения тревоги
+  static boolean i = 0; //переключатель анимации
+
+  if (i) {
+    invertText(true);
+    _screen_line(0, 84, 0, 0, 32); //рисуем линию
+  }
+  setFont(RusFont); //установка шрифта
+  switch (text) {
+    case 0: print("JGFCYJCNM!", CENTER, 32); break; //строка ОПАСНОСТЬ!
+    case 1: print("NHTDJUF!", CENTER, 32); break; //строка ТРЕВОГА!
+  }
+  invertText(false);
+  i = !i; //меняем значение
 }
 //--------------------------Вибрация и световая индикация тревоги---------------------------------
 void _vibro_on(void) //вибрация и световая индикация тревоги
@@ -3472,7 +3480,6 @@ void _init_back_bar(uint32_t num) //отрисовка предела фона
 //----------------------------------Главные экраны------------------------------------------------------
 void main_screen(void)
 {
-  static boolean i; //анимация оповещения
   static uint8_t back_mode; //переключатель режима фон
 
   //+++++++++++++++++++   вывод информации на экран  +++++++++++++++++++++++++
@@ -3532,16 +3539,7 @@ void main_screen(void)
             _screen_line(map(geiger_time_now, 0, BUFF_LENGTHY, 5, 82), map(mid_time_now, 0, MID_BUFF_LENGTHY, 5, 82), 1, 1, 24); //шкалы точности и усреднения
 #endif
             break;
-          case 3:
-            setFont(RusFont); //установка шрифта
-            if (i) {
-              invertText(true);
-              _screen_line(0, 84, 0, 0, 24); //рисуем линию
-            }
-            print("JGFCYJCNM!", CENTER, 24); //строка ОПАСНОСТЬ!
-            invertText(false);
-            i = !i;
-            break;
+          case 3: _init_alarm_massage(0); break; //предупреждение
         }
 
         switch (back_mode) {
@@ -3577,16 +3575,7 @@ void main_screen(void)
 
             switch (alarm_switch) {
               case 0: _screen_line(0, map(stat_upd_tmr, 0, STAT_UPD_TIME, 5, 82), 1, 1, 32); break; //шкала времени до сохранения дозы
-              case 4:
-                setFont(RusFont); //установка шрифта
-                if (i) {
-                  invertText(true);
-                  _screen_line(0, 84, 0, 0, 32); //рисуем линию
-                }
-                print("JGFCYJCNM!", CENTER, 32); //строка ОПАСНОСТЬ!
-                invertText(false);
-                i = !i;
-                break;
+              case 4: _init_alarm_massage(0); break; //предупреждение
             }
 
             _init_rads_unit(1, rad_dose, 10, 5, 1, 8, 1, 66, 16); //строка 1 текущая доза
