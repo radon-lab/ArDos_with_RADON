@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.4.1 low_pwr final 05.01.21 специально для проекта ArDos
+  Версия программы RADON v3.4.2 low_pwr final 17.01.21 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -467,7 +467,7 @@ int main(void)  //инициализация
 
   setFont(RusFont); //установка шрифта
   print("-=HFLJY=-", CENTER, 32); //-=РАДОН=-
-  print("3.4.1", CENTER, 40); //версия по
+  print("3.4.2", CENTER, 40); //версия по
 
   bat_check(); //опрос батареи
 
