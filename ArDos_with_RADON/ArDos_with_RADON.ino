@@ -3457,11 +3457,11 @@ void task_bar(char *title) //шапка экрана
 //----------------------------------Отрисовка точности------------------------------------------------
 void _init_accur_percent(uint8_t num) //отрисовка точности
 {
-  setFont(TinyNumbersUp); //установка шрифта
+  setFont(TinyNumbersDown); //установка шрифта
   drawBitmap(54, 8, plus_minus_img, 3, 8); //±
-  printNumI(num, 58, 8, 2, 48); //точность
+  printNumI(num, 58, 7, 2, 48); //точность
   drawBitmap(66, 8, percent_img, 6, 8); //%
-  printNumI(sigma_pos + 1, 75, 8); //сигма
+  printNumI(sigma_pos + 1, 75, 7); //сигма
   drawBitmap(79, 8, sigma_img, 5, 8); //σ
 }
 //----------------------------------Отрисовка предела фона------------------------------------------------
