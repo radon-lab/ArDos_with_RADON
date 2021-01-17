@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.5.0 low_pwr final 17.01.21 специально для проекта ArDos
+  Версия программы RADON v3.5.2 low_pwr final 17.01.21 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -467,7 +467,7 @@ int main(void)  //инициализация
 
   setFont(RusFont); //установка шрифта
   print("-=HFLJY=-", CENTER, 32); //-=РАДОН=-
-  print("3.5.0", CENTER, 40); //версия по
+  print("3.5.2", CENTER, 40); //версия по
 
   bat_check(); //опрос батареи
 
@@ -1349,19 +1349,18 @@ void measur_menu(void) //режим замера
           if (next_measur) {
             switch (n) {
               case 0:
-                drawBitmap(19, 24, measur_result_img, 45, 8); //результат
+                print("HTPEKMNFN", CENTER, 24); //результат
                 _init_couts_per_cm2((float)buff / pgm_read_byte(&diff_measuring[measur_pos])); //результат ч/см2*м
                 n = 1;
                 break;
               case 1:
-                drawBitmap(11, 24, measur_ok_img, 15, 8); //ок -
-                drawBitmap(27, 24, measur_first_img, 47, 8); //первый замер
+                print("JR-PFVTH AJYF", CENTER, 24); //ок - замер фона
                 _init_rads_unit(1, buff * ((float)GEIGER_TIME / (pgm_read_byte(&diff_measuring[measur_pos]) * 60)), 1, 4, 1, 8, 0, 54, 16); //результат мкр/ч
                 n = 0;
                 break;
             }
           }
-          else drawBitmap(19, 24, measur_result_img, 45, 8); //результат
+          else print("HTPEKMNFN", CENTER, 24); //результат
 
           _init_accur_percent(_init_accur(buff)); //отрисовка точности
 
@@ -1377,11 +1376,11 @@ void measur_menu(void) //режим замера
         case 1: //1-й замер
           if (next_measur) {
             switch (n) {
-              case 0: drawBitmap(18, 24, measur_first_img, 47, 8); n = 1; break; //первый замер
-              case 1: drawBitmap(3, 24, measur_ok_img, 15, 8); drawBitmap(18, 24, measur_second_img, 62, 8); n = 0; break; //ок - второй замер
+              case 0: print("PFVTH AJYF", CENTER, 24); n = 1; break; //замер фона
+              case 1: print("JR-PFV.J<HFPWF", CENTER, 24); n = 0; break; //ок - зам. образца
             }
           }
-          else drawBitmap(18, 24, measur_first_img, 47, 8); //первый замер
+          else print("PFVTH AJYF", CENTER, 24); //замер фона
           _init_couts_per_cm2(first_froze / (((time_switch) ? time_switch : 1) / 60.0)); //рассчитываем результат замера в ч*см2/м); //первый замер ч/см2*м
           _init_accur_percent(_init_accur(first_froze)); //отрисовка точности
           break;
@@ -1389,7 +1388,8 @@ void measur_menu(void) //режим замера
         case 2: //2-й замер
           _init_couts_per_cm2(second_froze / (((time_switch) ? time_switch : 1) / 60.0)); //второй замер ч/см2*м
           _init_accur_percent(_init_accur(second_froze)); //отрисовка точности
-          drawBitmap(11, 24, measur_second_img, 62, 8); //второй замер
+          setFont(RusFont); //установка шрифта
+          print("PFVTH J<HFPWF", CENTER, 24); //замер образца
           break;
       }
 
@@ -1532,13 +1532,15 @@ void warn_messege(boolean set, uint8_t sound) //предупреждение
 //-------------------------------Тревога-----------------------------------------------------
 void alarm_messege(boolean set, uint8_t sound, char *mode) //тревога
 {
+  boolean i = 0; //переключатель анимации
+
   sleep_out(); //просыпаемся если спали
   buzz_switch = 0; //запретить звуковую индикацию импульсов
 
   clrScr(); //очистка экрана
   setFont(RusFont); //установка шрифта
   drawBitmap(26, 0, rad_img, 32, 32);
-  print("Nhtdjuf!", CENTER, 32); //Тревога!
+  print("NHTDJUF!", CENTER, 32); //строка ТРЕВОГА!
 
   scr = 0; //разрешаем обновления экрана
 
@@ -1548,6 +1550,17 @@ void alarm_messege(boolean set, uint8_t sound, char *mode) //тревога
     if (!scr) {
       scr = 1;
       clrRow(5); //очистка строки 5
+
+#if TYPE_ALARM_IND != 2
+      clrRow(4); //очистка строки 5
+      if (i) {
+        invertText(true);
+        _screen_line(0, 84, 0, 0, 32); //рисуем линию
+      }
+      print("NHTDJUF!", CENTER, 32); //строка ТРЕВОГА!
+      invertText(false);
+      i = !i;
+#endif
 
       print(mode, LEFT, 40); //фон
       _init_rads_unit(0, (set) ? rad_dose : rad_back, 10, 5, RIGHT, 40, set, RIGHT, 40); //результат
@@ -3519,20 +3532,23 @@ void main_screen(void)
             _screen_line(map(geiger_time_now, 0, BUFF_LENGTHY, 5, 82), map(mid_time_now, 0, MID_BUFF_LENGTHY, 5, 82), 1, 1, 24); //шкалы точности и усреднения
 #endif
             break;
-
           case 3:
-            switch (i) {
-              case 0: drawBitmap(18, 24, warning_img, 48, 8); i = 1; break;
-              case 1: drawBitmap(17, 24, warning_inv_img, 50, 8); i = 0; break;
+            setFont(RusFont); //установка шрифта
+            if (i) {
+              invertText(true);
+              _screen_line(0, 84, 0, 0, 24); //рисуем линию
             }
+            print("JGFCYJCNM!", CENTER, 24); //строка ОПАСНОСТЬ!
+            invertText(false);
+            i = !i;
             break;
         }
 
         switch (back_mode) {
           case 0: for (uint8_t i = 4; i < 80; i++) graf_lcd(map(rad_buff[(i >> 1) - 1], 0, maxLevel_back, 0, 15), i, 15, 2); break; //инициализируем график
           case 1: //максимальный и средний фон
-            drawBitmap(0, 32, dose_min_img, 23, 8); //строка 2 средн:
-            drawBitmap(0, 40, dose_max_img, 23, 8); //строка 3 макс:
+            print("VBY&", 0, 32); //строка 2 мин:
+            print("VFRC&", 0, 40); //строка 3 макс:
             _init_rads_unit(0, rad_min, 1, 4, RIGHT, 32, 0, RIGHT, 32); //строка 2 минимальный
             setFont(RusFont); //установка шрифта
             if (accur_percent > RAD_ACCUR_START) print("----", 30, 32); //если недостаточно точности
@@ -3562,15 +3578,20 @@ void main_screen(void)
             switch (alarm_switch) {
               case 0: _screen_line(0, map(stat_upd_tmr, 0, STAT_UPD_TIME, 5, 82), 1, 1, 32); break; //шкала времени до сохранения дозы
               case 4:
-                switch (i) {
-                  case 0: drawBitmap(18, 32, warning_img, 48, 8); i = 1; break;
-                  case 1: drawBitmap(17, 32, warning_inv_img, 50, 8); i = 0; break;
+                setFont(RusFont); //установка шрифта
+                if (i) {
+                  invertText(true);
+                  _screen_line(0, 84, 0, 0, 32); //рисуем линию
                 }
+                print("JGFCYJCNM!", CENTER, 32); //строка ОПАСНОСТЬ!
+                invertText(false);
+                i = !i;
                 break;
             }
 
             _init_rads_unit(1, rad_dose, 10, 5, 1, 8, 1, 66, 16); //строка 1 текущая доза
-            drawBitmap(0, 40, dose_all_img, 24, 8); //строка 2 всего
+            setFont(RusFont); //установка шрифта
+            print("DCTUJ&", 0, 40); //строка 2 всего
             _init_rads_unit(0, rad_dose_save, 10, 5, RIGHT, 40, 1, RIGHT, 40); //строка 2 сохранённая доза
             break;
 
