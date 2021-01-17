@@ -68,7 +68,7 @@ void  setFont(uint8_t* font);
 void  drawBitmap(uint8_t x, uint8_t y, bitmapdatatype bitmap, uint8_t sx, uint8_t sy,  boolean inv = 0);
 
 void  _LCD_Write(unsigned char data, unsigned char mode);
-void  _print_char(unsigned char c, uint8_t x, uint8_t row);
+void  _print_char(unsigned char c, uint8_t x, uint8_t row, uint8_t steps);
 
 _current_font cfont;
 
@@ -208,7 +208,7 @@ void invertText(bool mode) //инверсия текста
 //-------------------------Вывод текста----------------------------------------------------
 void print(char *st, uint8_t x, uint8_t y, uint8_t length, char filler) //вывод текста
 {
-  uint8_t stl, row, xp;
+  uint8_t stl, row, xp, steps;
 
   stl = strlen(st);
 
@@ -216,10 +216,17 @@ void print(char *st, uint8_t x, uint8_t y, uint8_t length, char filler) //выв
     case RIGHT: x = 84 - (stl * cfont.x_size); break;
     case CENTER: x = (84 - (stl * cfont.x_size)) / 2; break;
   }
-  row = y / 8;
+  if (y % 8 == 0) {
+    row = y / 8;
+    steps = 0;
+  }
+  else {
+    row = (y / 8) + 1;
+    steps = 8 - y % 8;
+  }
   xp = x;
 
-  for (int cnt = 0; cnt < stl; cnt++) _print_char(*st++, x + (cnt * (cfont.x_size)), row);
+  for (int cnt = 0; cnt < stl; cnt++) _print_char(*st++, x + (cnt * (cfont.x_size)), row, steps);
 }
 //-------------------------Вывод чисел----------------------------------------------------
 void printNumI(uint32_t num, uint8_t x, uint8_t y, uint8_t length, char filler) //вывод чисел
@@ -244,7 +251,7 @@ void printNumF(float num, uint8_t dec, uint8_t x, uint8_t y, char divider, uint8
   print(st, x, y);
 }
 //-------------------------Отрисовка символа----------------------------------------------------
-void _print_char(unsigned char c, uint8_t x, uint8_t row) //отрисовка символа
+void _print_char(unsigned char c, uint8_t x, uint8_t row, uint8_t steps) //отрисовка символа
 {
 #if ROTATE_DISP
   x = 84 - x - cfont.x_size;
@@ -262,8 +269,8 @@ void _print_char(unsigned char c, uint8_t x, uint8_t row) //отрисовка �
       for (uint16_t cnt = cfont.x_size; cnt > 0; cnt--)
       {
         switch (cfont.inverted) {
-          case 0: _LCD_Write(fontbyte(font_idx + cnt - 1 + (rowcnt * cfont.x_size)), LCD_DATA); break;
-          case 1: _LCD_Write(~(fontbyte(font_idx + cnt - 1 + (rowcnt * cfont.x_size))), LCD_DATA); break;
+          case 0: _LCD_Write(fontbyte(font_idx + cnt - 1 + (rowcnt * cfont.x_size)) >> steps, LCD_DATA); break;
+          case 1: _LCD_Write(~(fontbyte(font_idx + cnt - 1 + (rowcnt * cfont.x_size)) >> steps), LCD_DATA); break;
         }
       }
     }
@@ -280,8 +287,8 @@ void _print_char(unsigned char c, uint8_t x, uint8_t row) //отрисовка �
 
       for (uint16_t cnt = 0; cnt < cfont.x_size; cnt++) {
         switch (cfont.inverted) {
-          case 0: _LCD_Write(fontbyte(font_idx + cnt + (rowcnt * cfont.x_size)), LCD_DATA); break;
-          case 1: _LCD_Write(~(fontbyte(font_idx + cnt + (rowcnt * cfont.x_size))), LCD_DATA); break;
+          case 0: _LCD_Write(fontbyte(font_idx + cnt + (rowcnt * cfont.x_size)) >> steps, LCD_DATA); break;
+          case 1: _LCD_Write(~(fontbyte(font_idx + cnt + (rowcnt * cfont.x_size)) >> steps), LCD_DATA); break;
         }
       }
     }

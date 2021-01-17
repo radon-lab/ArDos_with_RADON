@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.4.2 low_pwr final 17.01.21 специально для проекта ArDos
+  Версия программы RADON v3.5.0 low_pwr final 17.01.21 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -467,7 +467,7 @@ int main(void)  //инициализация
 
   setFont(RusFont); //установка шрифта
   print("-=HFLJY=-", CENTER, 32); //-=РАДОН=-
-  print("3.4.2", CENTER, 40); //версия по
+  print("3.5.0", CENTER, 40); //версия по
 
   bat_check(); //опрос батареи
 
@@ -1340,7 +1340,7 @@ void measur_menu(void) //режим замера
       scr = 1; //устанавливаем флаг
 
       clrScr(); //очистка экрана
-      drawBitmap(0, 0, mesur_img, 84, 8); //устанавлваем фон
+      task_bar("Pfvth ,tnf"); //отрисовываем фон
 
       switch (measur) {
         case 0: //результат
@@ -1366,10 +1366,10 @@ void measur_menu(void) //режим замера
           _init_accur_percent(_init_accur(buff)); //отрисовка точности
 
           setFont(RusFont); //установка шрифта
-          print("ajy", LEFT, 32); //строка 1 фон
+          print("AJY", LEFT, 32); //строка 1 фон
           _init_small_couts_per_cm2((float)first_froze / pgm_read_byte(&diff_measuring[measur_pos]), 32);
 
-          print("j,h", LEFT, 40); //строка 2 обр
+          print("J<H", LEFT, 40); //строка 2 обр
           _init_small_couts_per_cm2((float)second_froze / pgm_read_byte(&diff_measuring[measur_pos]), 40);
 
           break;
@@ -1833,7 +1833,7 @@ void search_menu(void) //инициализация режима поиск
       clrRow(1); //очистка строки 1
       clrRow(2); //очистка строки 2
 
-      drawBitmap(0, 0, serch_img, 84, 8); //отрисовываем фон
+      task_bar("Gjbcr"); //отрисовываем фон
       drawBitmap(0, 8, scan_ind_scale_img, 51, 8); //рисуем шкалу
 
       setFont(RusFont); //установка шрифта
@@ -1967,8 +1967,7 @@ void parameters(void) //параметры
       bat_check(); //опрос батареи
 
       clrScr(); //очистка экрана
-      setFont(RusFont); //установка шрифта
-      drawBitmap(0, 0, stat_img, 84, 8); //устанавлваем фон
+      task_bar("Gfhfvtnhs"); //отрисовываем фон
 
       print("<fnfhtz&", LEFT, 8); //Батарея:
       printNumF(_convert_vcc_bat(bat_adc), 2, RIGHT, 8, 46, 4, 48); //напряжение акб
@@ -2023,8 +2022,7 @@ void debug(void) //отладка
 #endif
 
       clrScr(); //очистка экрана
-      setFont(RusFont); //установка шрифта
-      drawBitmap(0, 0, debug_img, 84, 8); //устанавлваем фон
+      task_bar("Jnkflrf"); //отрисовываем фон
 
       bat_check(); //опрос батареи
 
@@ -2330,8 +2328,7 @@ void setings(void) //настройки
 #endif
 
       clrScr(); // Очистка экрана
-      drawBitmap(0, 0, setings_img, 84, 8); //отрисовываем фон
-      setFont(RusFont); //установка шрифта
+      task_bar("Yfcnhjqrb"); //отрисовываем фон
 
       for (uint8_t i = 0; i < 5; i++) { //отсчет строк
         for (uint8_t r = 0; r < 2; r++) { //отсчет позиции
@@ -2448,7 +2445,7 @@ void menu(void) //меню
 #endif
 
       clrScr(); // Очистка экрана
-      drawBitmap(0, 0, menu_img, 84, 8); //отрисовываем фон
+      task_bar("Vty/"); //отрисовываем фон
       setFont(RusFont); //установка шрифта
 
       for (uint8_t i = 0; i < 5; i++) _menu_item_switch((i == c) ? 1 : 0, n - c + i, i); //отрисовываем пункты настроек
@@ -2672,8 +2669,7 @@ void logbook(void) //журнал
 #endif
 
       clrScr(); // Очистка экрана
-      drawBitmap(0, 0, logbook_img, 84, 8); //отрисовываем фон
-      setFont(RusFont); //установка шрифта
+      task_bar(":ehyfk"); //отрисовываем фон
 
       if (!err_sw) {
         for (uint8_t i = 0; i < 5; i++) {
@@ -2781,8 +2777,7 @@ void logbook(void) //журнал
 #endif
 
       clrScr(); // Очистка экрана
-      drawBitmap(0, 0, logbook_img, 84, 8); //отрисовываем фон
-      setFont(RusFont); //установка шрифта
+      task_bar(":ehyfk"); //отрисовываем фон
 
       for (uint8_t i = 0; i < 5; i++) _logbook_data_switch((i == c) ? 1 : 0, n - c + i, i, 2); //отрисовывам информацию
     }
@@ -3428,47 +3423,15 @@ void _alarm_init(uint8_t waint, uint8_t alarm) //индикация тревог
   }
 }
 //----------------------------------Шапка экрана------------------------------------------------
-void task_bar(void) //шапка экрана
+void task_bar(char *title) //шапка экрана
 {
-  static boolean n; //переключатель мигания
-  drawBitmap(0, 0, font_alt_img, 84, 8); //устанавлваем фон
+  _screen_line(0, 84, 0, 0, 0); //рисуем линию
+  drawBitmap(70, 0, font_bat_img, 12, 8); //устанавлваем фон батареи
   drawBitmap(70, 0, bat_alt_img, bat * 2, 8); //отображаем состояние батареи
-
-#if LOGBOOK_RETURN
-  if (error_switch) {
-    if (n) drawBitmap(27, 0, error_ico_img, 14, 8); //ERR
-    n = (n) ? 0 : 1;
-  }
-  else {
-    if (logbook_alarm == 2 || logbook_warn == 2 || logbook_measur == 2) {
-      if (n) drawBitmap(32, 0, logbook_ico_img, 9, 8); //logbook
-      n = (n) ? 0 : 1;
-    }
-    else if (logbook_alarm == 1 || logbook_warn == 1 || logbook_measur == 1) drawBitmap(32, 0, logbook_ico_img, 9, 8); //logbook
-  }
-#endif
-
-  if (buzz_switch && !knock_disable) drawBitmap(47, 0, buzz_alt_on_img, 7, 8); //если щелчки и зв.кнопок включен
-  else if (buzz_switch) drawBitmap(47, 0, buzz_alt_img, 7, 8); //если щелчки включены и зв.кнопок выключен
-  else if (!knock_disable) drawBitmap(47, 0, beep_alt_waint_img, 7, 8); //если щелчки выключены и зв.кнопок включен
-  else drawBitmap(47, 0, buzz_alt_off_img, 7, 8); //иначе выключено все
-
-  switch (scr_mode)
-  {
-    case 0: drawBitmap(0, 0, backgr_img, 17, 8); _alarm_init(alarm_back_wait + warn_back_wait, alarm_back); break;  //режим текущего фона
-    case 1: drawBitmap(0, 0, dose_img, 22, 8); _alarm_init(0, alarm_dose); break;  //режим накопленной дозы
-  }
-#if COEF_DEBUG //отладка коэффициента
-  switch (scr_mode)
-  {
-    case 0: setFont(TinyNumbersUp); //установка шрифта
-      invertText(true);
-      printNumF(now, 2, 19, 0, 46, 5, 43); //строка 1
-      printNumF(debug_coef, 2, 40, 0, 46, 5, 43); //строка 2
-      invertText(false);
-      break;
-  }
-#endif
+  setFont(RusFont); //установка шрифта
+  invertText(true);
+  print(title, 1, 0);
+  invertText(false);
 }
 //----------------------------------Отрисовка точности------------------------------------------------
 void _init_accur_percent(uint8_t num) //отрисовка точности
@@ -3504,7 +3467,46 @@ void main_screen(void)
     scr = 1; //сброс флага
 
     clrScr(); //очистка экрана
-    task_bar(); //рисуем шапку экрана
+
+    //рисуем шапку экрана
+    switch (scr_mode) {
+      case 0: task_bar("Ajy"); _alarm_init(alarm_back_wait + warn_back_wait, alarm_back); break;  //режим текущего фона
+      case 1: task_bar("Ljpf"); _alarm_init(0, alarm_dose); break;  //режим накопленной дозы
+    }
+
+    drawBitmap(55, 0, font_alarm_img, 5, 8); //устанавлваем фон звуков
+    drawBitmap(43, 0, font_sound_img, 4, 8); //устанавлваем фон тревоги
+    if (buzz_switch && !knock_disable) drawBitmap(47, 0, buzz_alt_on_img, 7, 8); //если щелчки и зв.кнопок включен
+    else if (buzz_switch) drawBitmap(47, 0, buzz_alt_img, 7, 8); //если щелчки включены и зв.кнопок выключен
+    else if (!knock_disable) drawBitmap(47, 0, beep_alt_waint_img, 7, 8); //если щелчки выключены и зв.кнопок включен
+    else drawBitmap(47, 0, buzz_alt_off_img, 7, 8); //иначе выключено все
+
+#if LOGBOOK_RETURN
+    static boolean n; //переключатель мигания
+    if (error_switch) {
+      if (n) drawBitmap(27, 0, error_ico_img, 14, 8); //ERR
+      n = (n) ? 0 : 1;
+    }
+    else {
+      if (logbook_alarm == 2 || logbook_warn == 2 || logbook_measur == 2) {
+        if (n) drawBitmap(32, 0, logbook_ico_img, 9, 8); //logbook
+        n = (n) ? 0 : 1;
+      }
+      else if (logbook_alarm == 1 || logbook_warn == 1 || logbook_measur == 1) drawBitmap(32, 0, logbook_ico_img, 9, 8); //logbook
+    }
+#endif
+
+#if COEF_DEBUG //отладка коэффициента
+    switch (scr_mode)
+    {
+      case 0: setFont(TinyNumbersUp); //установка шрифта
+        invertText(true);
+        printNumF(now, 2, 19, 0, 46, 5, 43); //строка 1
+        printNumF(debug_coef, 2, 40, 0, 46, 5, 43); //строка 2
+        invertText(false);
+        break;
+    }
+#endif
 
     //===========================================================//
     switch (scr_mode) { //отрисовываем выбранный экран
@@ -3582,7 +3584,7 @@ void main_screen(void)
             print("v", 68, 40);
 
             print("yfrjgktyj", CENTER, 24);          //накоплено
-            print("dctuj pf&", CENTER, 32);          //всего за:
+            print("dctuj pf&", CENTER, 30);          //всего за:
 
             _init_rads_unit(1, rad_dose_save, 10, 5, 1, 8, 1, 66, 16); //строка 1 сохранённая доза
             break;
