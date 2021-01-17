@@ -1551,7 +1551,7 @@ void alarm_messege(boolean set, uint8_t sound, char *mode) //тревога
 
 #if TYPE_ALARM_IND != 2
       clrRow(4); //очистка строки 5
-      _init_alarm_massage(1); //тревога
+      _init_alarm_massage(1, 32); //тревога
 #endif
 
       print(mode, LEFT, 40); //фон
@@ -1588,17 +1588,17 @@ void alarm_messege(boolean set, uint8_t sound, char *mode) //тревога
   }
 }
 //--------------------------Инициализация сообщения тревоги---------------------------------
-void _init_alarm_massage(boolean text) { //инициализация сообщения тревоги
+void _init_alarm_massage(boolean text, uint8_t pos) { //инициализация сообщения тревоги
   static boolean i = 0; //переключатель анимации
 
   if (i) {
     invertText(true);
-    _screen_line(0, 84, 0, 0, 32); //рисуем линию
+    _screen_line(0, 84, 0, 0, pos); //рисуем линию
   }
   setFont(RusFont); //установка шрифта
   switch (text) {
-    case 0: print("JGFCYJCNM!", CENTER, 32); break; //строка ОПАСНОСТЬ!
-    case 1: print("NHTDJUF!", CENTER, 32); break; //строка ТРЕВОГА!
+    case 0: print("JGFCYJCNM!", CENTER, pos); break; //строка ОПАСНОСТЬ!
+    case 1: print("NHTDJUF!", CENTER, pos); break; //строка ТРЕВОГА!
   }
   invertText(false);
   i = !i; //меняем значение
@@ -3539,7 +3539,7 @@ void main_screen(void)
             _screen_line(map(geiger_time_now, 0, BUFF_LENGTHY, 5, 82), map(mid_time_now, 0, MID_BUFF_LENGTHY, 5, 82), 1, 1, 24); //шкалы точности и усреднения
 #endif
             break;
-          case 3: _init_alarm_massage(0); break; //предупреждение
+          case 3: _init_alarm_massage(0, 24); break; //предупреждение
         }
 
         switch (back_mode) {
@@ -3575,7 +3575,7 @@ void main_screen(void)
 
             switch (alarm_switch) {
               case 0: _screen_line(0, map(stat_upd_tmr, 0, STAT_UPD_TIME, 5, 82), 1, 1, 32); break; //шкала времени до сохранения дозы
-              case 4: _init_alarm_massage(0); break; //предупреждение
+              case 4: _init_alarm_massage(0, 32); break; //предупреждение
             }
 
             _init_rads_unit(1, rad_dose, 10, 5, 1, 8, 1, 66, 16); //строка 1 текущая доза
