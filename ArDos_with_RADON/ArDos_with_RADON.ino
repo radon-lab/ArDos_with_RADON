@@ -3531,8 +3531,8 @@ void main_screen(void)
         switch (back_mode) {
           case 0: for (uint8_t i = 4; i < 80; i++) graf_lcd(map(rad_buff[(i >> 1) - 1], 0, maxLevel_back, 0, 15), i, 15, 2); break; //инициализируем график
           case 1: //максимальный и средний фон
-            drawBitmap(0, 32, dose_min_img, 23, 8);       //строка 2 средн:
-            drawBitmap(0, 40, dose_max_img, 23, 8);       //строка 3 макс:
+            drawBitmap(0, 32, dose_min_img, 23, 8); //строка 2 средн:
+            drawBitmap(0, 40, dose_max_img, 23, 8); //строка 3 макс:
             _init_rads_unit(0, rad_min, 1, 4, RIGHT, 32, 0, RIGHT, 32); //строка 2 минимальный
             setFont(RusFont); //установка шрифта
             if (accur_percent > RAD_ACCUR_START) print("----", 30, 32); //если недостаточно точности
@@ -3570,7 +3570,7 @@ void main_screen(void)
             }
 
             _init_rads_unit(1, rad_dose, 10, 5, 1, 8, 1, 66, 16); //строка 1 текущая доза
-            drawBitmap(0, 40, dose_all_img, 24, 8);       //строка 2 всего
+            drawBitmap(0, 40, dose_all_img, 24, 8); //строка 2 всего
             _init_rads_unit(0, rad_dose_save, 10, 5, RIGHT, 40, 1, RIGHT, 40); //строка 2 сохранённая доза
             break;
 
@@ -3583,8 +3583,8 @@ void main_screen(void)
             printNumI((time_save / 60) % 60, 56, 40, 2, 48);
             print("v", 68, 40);
 
-            print("yfrjgktyj", CENTER, 24);          //накоплено
-            print("dctuj pf&", CENTER, 30);          //всего за:
+            print("yfrjgktyj", CENTER, 24); //накоплено
+            print("dctuj pf&", 16, 30); //всего за:
 
             _init_rads_unit(1, rad_dose_save, 10, 5, 1, 8, 1, 66, 16); //строка 1 сохранённая доза
             break;
