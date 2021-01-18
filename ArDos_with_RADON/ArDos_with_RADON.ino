@@ -756,7 +756,7 @@ void data_convert(void) //преобразование данных
           if (geiger_time_now > 1) imp_per_sec = (float)tmp_buff / ((uint16_t)mid_time_now * BUFF_LENGTHY + back_time_now); //расчет имп/с
 #if GEIGER_OWN_BACK
           if (imp_per_sec > OWN_BACK) imp_per_sec -= OWN_BACK; //убираем собственный фон счетчика
-          else imp_per_sec = 0; //иначе ничего кроме собственного фона нету
+          else imp_per_sec = tmp_buff = 0; //иначе ничего кроме собственного фона нету
 #endif
           for (uint8_t i = 0; i < PATTERNS_APROX; i++) { //выбор паттерна
             if (imp_per_sec <= pgm_read_word(&back_aprox[i][0])) { //если имп/с совпадают с паттерном
