@@ -635,6 +635,7 @@ void data_convert(void) //преобразование данных
   bat_massege(); //обработка сообщения разряженой батареи
 
   float imp_per_sec; //текущее количество имп/с
+  float own_back_now; //текущее количество имп собственного фона
   uint16_t graf_max = 0; //максимальное значение графика
 
   for (; tick_wdt > 0; tick_wdt--) { //если был тик, обрабатываем данные
@@ -766,7 +767,8 @@ void data_convert(void) //преобразование данных
           }
 #else
 #if GEIGER_OWN_BACK
-          if (tmp_buff > geiger_time_now * OWN_BACK) tmp_buff -= geiger_time_now * OWN_BACK; //убираем собственный фон счетчика
+          own_back_now = ((uint16_t)mid_time_now * BUFF_LENGTHY + back_time_now) * OWN_BACK; //рассчитываем количество импульсов собственного фона
+          if (tmp_buff > own_back_now) tmp_buff -= own_back_now; //убираем собственный фон счетчика
           else tmp_buff = 0; //иначе ничего кроме собственного фона нету
 #endif
           if (geiger_time_now > 1) rad_back = tmp_buff * ((float)GEIGER_TIME / ((uint16_t)mid_time_now * BUFF_LENGTHY + back_time_now)); //расчет фона мкР/ч
