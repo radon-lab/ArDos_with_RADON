@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.5.2 low_pwr final 17.01.21 специально для проекта ArDos
+  Версия программы RADON v3.5.3 low_pwr final 18.01.21 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -465,7 +465,7 @@ int main(void)  //инициализация
   clrRow(5); //очистка строки 5
 
   print("-=HFLJY=-", CENTER, 32); //-=РАДОН=-
-  print("3.5.2", CENTER, 40); //версия по
+  print("3.5.3", CENTER, 40); //версия по
 
   bat_check(); //опрос батареи
 
@@ -753,9 +753,10 @@ void data_convert(void) //преобразование данных
         case TIME_FACT_8: //расчет текущего фона этап-6
           if (tmp_buff > 9999999) tmp_buff = 9999999; //переполнение буфера импульсов
 #if APPROX_BACK_SCORE
-          if (geiger_time_now > 1) imp_per_sec = (float)tmp_buff / (mid_time_now * BUFF_LENGTHY + back_time_now); //расчет имп/с
+          if (geiger_time_now > 1) imp_per_sec = (float)tmp_buff / ((uint16_t)mid_time_now * BUFF_LENGTHY + back_time_now); //расчет имп/с
 #if GEIGER_OWN_BACK
           if (imp_per_sec > OWN_BACK) imp_per_sec -= OWN_BACK; //убираем собственный фон счетчика
+          else imp_per_sec = 0; //иначе ничего кроме собственного фона нету
 #endif
           for (uint8_t i = 0; i < PATTERNS_APROX; i++) { //выбор паттерна
             if (imp_per_sec <= pgm_read_word(&back_aprox[i][0])) { //если имп/с совпадают с паттерном
@@ -766,8 +767,9 @@ void data_convert(void) //преобразование данных
 #else
 #if GEIGER_OWN_BACK
           if (tmp_buff > geiger_time_now * OWN_BACK) tmp_buff -= geiger_time_now * OWN_BACK; //убираем собственный фон счетчика
+          else tmp_buff = 0; //иначе ничего кроме собственного фона нету
 #endif
-          if (geiger_time_now > 1) rad_back = tmp_buff * ((float)GEIGER_TIME / (mid_time_now * BUFF_LENGTHY + back_time_now)); //расчет фона мкР/ч
+          if (geiger_time_now > 1) rad_back = tmp_buff * ((float)GEIGER_TIME / ((uint16_t)mid_time_now * BUFF_LENGTHY + back_time_now)); //расчет фона мкР/ч
 #endif
           for (uint8_t k = BUFF_LENGTHY - 1; k > 0; k--) rad_buff[k] = rad_buff[k - 1]; //перезапись массива
           break;
@@ -3427,7 +3429,7 @@ void task_bar(char *title) //шапка экрана
   _screen_line(0, 84, 0, 0, 0); //рисуем линию
   drawBitmap(70, 0, font_bat_img, 12, 8); //устанавлваем фон батареи
   drawBitmap(70, 0, bat_alt_img, bat * 2, 8); //отображаем состояние батареи
-  
+
   invertText(true);
   print(title, 1, 0);
   invertText(false);
