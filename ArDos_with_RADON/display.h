@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include "connection.h"
+#include "DefaultFonts.c"
 
 // *** Переменные для управления дисплеем ***
 #define pulseClock bitClear(SCK_PORT, SCK_BIT); asm ("nop"); bitSet(SCK_PORT, SCK_BIT)
@@ -133,7 +134,7 @@ void InitLCD(uint8_t contrast) //инициализация дисплея
   for (uint16_t c = 0; c < 504; c++) _LCD_Write(0x00, LCD_DATA);
   _LCD_Write(PCD8544_DISPLAYCONTROL | PCD8544_DISPLAYNORMAL, LCD_COMMAND);
 
-  cfont.font = 0;
+  setFont(RusFont); //установка шрифта
 }
 //-------------------------Установка контрастности----------------------------------------------------
 void setContrast(uint8_t contrast) //установка контрастности
@@ -227,6 +228,7 @@ void print(char *st, uint8_t x, uint8_t y, uint8_t length, char filler) //выв
   xp = x;
 
   for (int cnt = 0; cnt < stl; cnt++) _print_char(*st++, x + (cnt * (cfont.x_size)), row, steps);
+  setFont(RusFont); //установка шрифта
 }
 //-------------------------Вывод чисел----------------------------------------------------
 void printNumI(uint32_t num, uint8_t x, uint8_t y, uint8_t length, char filler) //вывод чисел

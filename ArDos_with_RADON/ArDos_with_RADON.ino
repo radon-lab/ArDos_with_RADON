@@ -231,7 +231,6 @@
 #include "display.h"
 #include "resources.c"
 #include "connection.h"
-#include "DefaultFonts.c"
 
 //-------------Для разработчиков-------------
 const float ALARM_AUTO_GISTERESIS = (1.00 - (ALARM_AUTO_GIST / 100.00)); //инвертируем проценты
@@ -465,7 +464,6 @@ int main(void)  //инициализация
   clrRow(4); //очистка строки 4
   clrRow(5); //очистка строки 5
 
-  setFont(RusFont); //установка шрифта
   print("-=HFLJY=-", CENTER, 32); //-=РАДОН=-
   print("3.5.2", CENTER, 40); //версия по
 
@@ -565,7 +563,6 @@ void ADC_disable(void) //выключение ADC
 void _init_logo(void) //вывод логотипа
 {
   drawBitmap(0, 0, logo_img, 84, 24); //выводим лого
-  setFont(RusFont); //установка шрифта
 }
 //-------------------------------Включение питания----------------------------------------------------
 #if PWR_ON_RETURN
@@ -1235,7 +1232,6 @@ void measur_stop(void) //остановка замера
   uint8_t n = 0; //курсор
 
   clrScr(); //очистка экрана
-  setFont(RusFont); //установка шрифта
   print("Jcnfyjdbnm", CENTER, 8); //Остановить
   print("pfvth&", CENTER, 16); //замер?
 
@@ -1279,7 +1275,6 @@ void measur_massege(void) //окончание замера
   if (next_measur && !alarm_measur) { //если поднят флаг следующего замера и оповещение окончания замера разешено
 
     clrScr(); //очистка экрана
-    setFont(RusFont); //установка шрифта
     print("Pfvth", CENTER, 16); //Замер
     print("pfdthity!", CENTER, 24); //завершен!
 
@@ -1364,7 +1359,6 @@ void measur_menu(void) //режим замера
 
           _init_accur_percent(_init_accur(buff)); //отрисовка точности
 
-          setFont(RusFont); //установка шрифта
           print("AJY", LEFT, 32); //строка 1 фон
           _init_small_couts_per_cm2((float)first_froze / pgm_read_byte(&diff_measuring[measur_pos]), 32);
 
@@ -1388,13 +1382,11 @@ void measur_menu(void) //режим замера
         case 2: //2-й замер
           _init_couts_per_cm2(second_froze / (((time_switch) ? time_switch : 1) / 60.0)); //второй замер ч/см2*м
           _init_accur_percent(_init_accur(second_froze)); //отрисовка точности
-          setFont(RusFont); //установка шрифта
           print("PFVTH J<HFPWF", CENTER, 24); //замер образца
           break;
       }
 
       if (measur) { //если идет замер
-        setFont(RusFont); //установка шрифта
         printNumI(pgm_read_byte(&diff_measuring[measur_pos]), 50, 40, 2, 32); //минут всего
         print("vby", RIGHT, 40);            //строка 1 мин
 #if (TYPE_CHAR_FILL > 44)
@@ -1475,7 +1467,6 @@ void _init_couts_per_cm2(float num) //частиц/см2*мин
 
   setFont(MediumNumbers); //установка шрифта
   printNumF(num, (num < 100) ? 1 : 0, 1, 8, 46, 4, TYPE_CHAR_FILL); //строка 1
-  setFont(RusFont); //установка шрифта
   print("x|cv2", 54, 16); //строка 1 ч/см2
 }
 //-------------------------------Частиц/см2*мин----------------------------------------------------------
@@ -1536,7 +1527,6 @@ void alarm_messege(boolean set, uint8_t sound, char *mode) //тревога
   buzz_switch = 0; //запретить звуковую индикацию импульсов
 
   clrScr(); //очистка экрана
-  setFont(RusFont); //установка шрифта
   drawBitmap(26, 0, rad_img, 32, 32);
   print("NHTDJUF!", CENTER, 32); //строка ТРЕВОГА!
 
@@ -1595,7 +1585,6 @@ void _init_alarm_massage(boolean text, uint8_t pos) { //инициализаци
     invertText(true);
     _screen_line(0, 84, 0, 0, pos); //рисуем линию
   }
-  setFont(RusFont); //установка шрифта
   switch (text) {
     case 0: print("JGFCYJCNM!", CENTER, pos); break; //строка ОПАСНОСТЬ!
     case 1: print("NHTDJUF!", CENTER, pos); break; //строка ТРЕВОГА!
@@ -1735,7 +1724,6 @@ void bat_check(void) //опрос батареи
 void _init_low_bat(void) //отрисовка сообщения разряженной батареи
 {
   drawBitmap(26, 0, low_bat_img, 32, 32); //рисуем заставку
-  setFont(RusFont); //установка шрифта
   print("<fnfhtz", CENTER, 32); //Батарея
   print("hfphz;tyf!", CENTER, 40); //разряжена!
 }
@@ -1857,7 +1845,6 @@ void search_menu(void) //инициализация режима поиск
       task_bar("Gjbcr"); //отрисовываем фон
       drawBitmap(0, 8, scan_ind_scale_img, 51, 8); //рисуем шкалу
 
-      setFont(RusFont); //установка шрифта
       switch (c) {
         case 0:
           drawBitmap(57, 8, imp_s_img, 26, 8); //имп/с
@@ -2467,7 +2454,6 @@ void menu(void) //меню
 
       clrScr(); // Очистка экрана
       task_bar("Vty/"); //отрисовываем фон
-      setFont(RusFont); //установка шрифта
 
       for (uint8_t i = 0; i < 5; i++) _menu_item_switch((i == c) ? 1 : 0, n - c + i, i); //отрисовываем пункты настроек
     }
@@ -2873,7 +2859,6 @@ void fast_light(void) //вкл/выкл подсветки
 void _init_error_messege(uint8_t err, uint32_t data) //отрисовка сообщения об ошибке
 {
   clrScr(); //очистка экрана
-  setFont(RusFont); //установка шрифта
 
   invertText(true);
   print(" - JIB<RF - ", CENTER, 0); //- ОШИБКА -
@@ -2929,7 +2914,6 @@ void error_messege(void) //сообщение об ошибке
     _init_error_messege(_data_read_byte(0, 230), _data_read_dword(0, 360));
 #else
     clrScr(); //очистка экрана
-    setFont(RusFont); //установка шрифта
 
     invertText(true);
     print(" - JIB<RF - ", CENTER, 0); //- ОШИБКА -
@@ -3110,7 +3094,6 @@ void data_reset(uint8_t sw) //сброс текущей дозы
   sleep_disable = 1; //запрещаем сон
 
   clrScr(); //очистка экрана
-  setFont(RusFont); //установка шрифта
   switch (sw) {
     case 0: //текущая доза
       print("C,hjcbnm", CENTER, 8); //Сбросить
@@ -3179,7 +3162,6 @@ void data_reset(uint8_t sw) //сброс текущей дозы
                 warn_dose_wait = 0;
 
                 clrScr(); //очистка экрана
-                setFont(RusFont); //установка шрифта
                 print("Ntreofz ljpf", CENTER, 16); //Текущая доза
                 print("c,hjityf!", CENTER, 24); //сброшена!
                 break;
@@ -3190,7 +3172,6 @@ void data_reset(uint8_t sw) //сброс текущей дозы
                 statistic_update(); //обновление статистики
                 rad_dose_old = rad_dose;
                 clrScr(); //очистка экрана
-                setFont(RusFont); //установка шрифта
                 print("Cnfnbcnbrf", CENTER, 16); //Статистика
                 print("c,hjityf!", CENTER, 24); //сброшена!
                 break;
@@ -3198,7 +3179,6 @@ void data_reset(uint8_t sw) //сброс текущей дозы
               case 2: //журнал
                 _logbook_data_clear(); //очистка журнала
                 clrScr(); //очистка экрана
-                setFont(RusFont); //установка шрифта
                 print(":ehyfk", CENTER, 16); //Журнал
                 print("jxboty!", CENTER, 24); //очищен!
                 break;
@@ -3267,7 +3247,6 @@ void setings_save(uint8_t sw) //сохранить настройки
   uint8_t time_out = 0; //таймер автовыхода
 
   clrScr(); //очистка экрана
-  setFont(RusFont); //установка шрифта
   print("Cj[hfybnm", CENTER, 8); //Сохранить
   print("yfcnhjqrb?", CENTER, 16); //настройки?
 
@@ -3387,7 +3366,6 @@ void _init_rads_unit(boolean type, uint32_t num, uint8_t divisor, uint8_t char_a
 //----------------------------------Единицы измерения------------------------------------------------------
 uint8_t _rads_unit(boolean set, boolean unit, uint8_t unit_x, uint8_t unit_y) //Единицы измерения
 {
-  setFont(RusFont); //установка шрифта
   switch (rad_mode)
   {
     case 0:
@@ -3449,7 +3427,7 @@ void task_bar(char *title) //шапка экрана
   _screen_line(0, 84, 0, 0, 0); //рисуем линию
   drawBitmap(70, 0, font_bat_img, 12, 8); //устанавлваем фон батареи
   drawBitmap(70, 0, bat_alt_img, bat * 2, 8); //отображаем состояние батареи
-  setFont(RusFont); //установка шрифта
+  
   invertText(true);
   print(title, 1, 0);
   invertText(false);
@@ -3457,10 +3435,11 @@ void task_bar(char *title) //шапка экрана
 //----------------------------------Отрисовка точности------------------------------------------------
 void _init_accur_percent(uint8_t num) //отрисовка точности
 {
-  setFont(TinyNumbersDown); //установка шрифта
   drawBitmap(54, 8, plus_minus_img, 3, 8); //±
+  setFont(TinyNumbersDown); //установка шрифта
   printNumI(num, 58, 7, 2, 48); //точность
   drawBitmap(66, 8, percent_img, 6, 8); //%
+  setFont(TinyNumbersDown); //установка шрифта
   printNumI(sigma_pos + 1, 75, 7); //сигма
   drawBitmap(79, 8, sigma_img, 5, 8); //σ
 }
@@ -3519,9 +3498,11 @@ void main_screen(void)
 #if COEF_DEBUG //отладка коэффициента
     switch (scr_mode)
     {
-      case 0: setFont(TinyNumbersUp); //установка шрифта
+      case 0:
         invertText(true);
+        setFont(TinyNumbersDown); //установка шрифта
         printNumF(now, 2, 19, 0, 46, 5, 43); //строка 1
+        setFont(TinyNumbersDown); //установка шрифта
         printNumF(debug_coef, 2, 40, 0, 46, 5, 43); //строка 2
         invertText(false);
         break;
@@ -3548,7 +3529,6 @@ void main_screen(void)
             print("VBY&", 0, 32); //строка 2 мин:
             print("VFRC&", 0, 40); //строка 3 макс:
             _init_rads_unit(0, rad_min, 1, 4, RIGHT, 32, 0, RIGHT, 32); //строка 2 минимальный
-            setFont(RusFont); //установка шрифта
             if (accur_percent > RAD_ACCUR_START) print("----", 30, 32); //если недостаточно точности
             _init_rads_unit(0, rad_max, 1, 4, RIGHT, 40, 0, RIGHT, 40); //строка 3 максимальный
             break;
@@ -3567,10 +3547,13 @@ void main_screen(void)
             setFont(TinyNumbersDown); //установка шрифта
             printNumI(time_sec / 60 / 60 / 24, 34, 24, 2, 48); //дней
             drawBitmap(42, 24, day_img, 8, 8); //дн
+            setFont(TinyNumbersDown); //установка шрифта
             printNumI((time_sec / 60 / 60) % 24, 54, 24, 2, 48); //часов
             drawBitmap(62, 24, colon_img, 3, 8); //ч
+            setFont(TinyNumbersDown); //установка шрифта
             printNumI((time_sec / 60) % 60, 65, 24, 2, 48); //минут
             drawBitmap(73, 24, colon_img, 5, 8); //м
+            setFont(TinyNumbersDown); //установка шрифта
             printNumI(time_sec % 60, 76, 24, 2, 48); //секунд
 
             switch (alarm_switch) {
@@ -3579,13 +3562,11 @@ void main_screen(void)
             }
 
             _init_rads_unit(1, rad_dose, 10, 5, 1, 8, 1, 66, 16); //строка 1 текущая доза
-            setFont(RusFont); //установка шрифта
             print("DCTUJ&", 0, 40); //строка 2 всего
             _init_rads_unit(0, rad_dose_save, 10, 5, RIGHT, 40, 1, RIGHT, 40); //строка 2 сохранённая доза
             break;
 
           case 1: //общая накопленная доза и время
-            setFont(RusFont); //установка шрифта
             printNumI(time_save / 60 / 60 / 24, 8, 40, 2, 48);
             print("l", 20, 40);
             printNumI((time_save / 60 / 60) % 24, 32, 40, 2, 48);
