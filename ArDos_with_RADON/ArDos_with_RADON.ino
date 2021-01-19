@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.5.3 low_pwr final 19.01.21 специально для проекта ArDos
+  Версия программы RADON v3.5.4 low_pwr final 19.01.21 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -433,8 +433,8 @@ int main(void)  //инициализация
   }
 
   if (eeprom_read_byte(100) != 100) { //если настройки были сброшены, восстанавливаем из переменных
-    print("Gj;fkeqcnf", CENTER, 32); //Пожалуйста
-    print("gjlj;lbnt...", CENTER, 40); //подождите...
+    print(PLEASE, CENTER, 32); //Пожалуйста
+    print(WAINT, CENTER, 40); //подождите...
 
     _delay_ms(START_TIME); //ждем
     setings_update(); //обновляем настройки
@@ -464,8 +464,8 @@ int main(void)  //инициализация
   clrRow(4); //очистка строки 4
   clrRow(5); //очистка строки 5
 
-  print("-=HFLJY=-", CENTER, 32); //-=РАДОН=-
-  print("3.5.3", CENTER, 40); //версия по
+  print(INTRO, CENTER, 32); //-=РАДОН=-
+  print(VERSION, CENTER, 40); //версия по
 
   bat_check(); //опрос батареи
 
@@ -1236,8 +1236,8 @@ void measur_stop(void) //остановка замера
   uint8_t n = 0; //курсор
 
   clrScr(); //очистка экрана
-  print("Jcnfyjdbnm", CENTER, 8); //Остановить
-  print("pfvth&", CENTER, 16); //замер?
+  print(M_STOP, CENTER, 8); //Остановить
+  print(M_MEASUR, CENTER, 16); //замер?
 
   while (1) {
     data_convert(); //преобразование данных
@@ -1279,8 +1279,8 @@ void measur_massege(void) //окончание замера
   if (next_measur && !alarm_measur) { //если поднят флаг следующего замера и оповещение окончания замера разешено
 
     clrScr(); //очистка экрана
-    print("Pfvth", CENTER, 16); //Замер
-    print("pfdthity!", CENTER, 24); //завершен!
+    print(M_MEASURS, CENTER, 16); //Замер
+    print(M_COMPLET, CENTER, 24); //завершен!
 
     for (timer_millis = MASSEGE_TIME; timer_millis && !check_keys();) { //ждём
       data_convert(); //преобразование данных
@@ -1339,7 +1339,7 @@ void measur_menu(void) //режим замера
       scr = 1; //устанавливаем флаг
 
       clrScr(); //очистка экрана
-      task_bar("Pfvth ,tnf"); //отрисовываем фон
+      task_bar(M_MEASUR_BETA); //отрисовываем фон
 
       switch (measur) {
         case 0: //результат
@@ -1348,25 +1348,25 @@ void measur_menu(void) //режим замера
           if (next_measur) {
             switch (n) {
               case 0:
-                print("HTPEKMNFN", CENTER, 24); //результат
+                print(M_RESULT, CENTER, 24); //результат
                 _init_couts_per_cm2((float)buff / pgm_read_byte(&diff_measuring[measur_pos])); //результат ч/см2*м
                 n = 1;
                 break;
               case 1:
-                print("JR-PFVTH AJYF", CENTER, 24); //ок - замер фона
+                print(M_BACK_OK, CENTER, 24); //ок - замер фона
                 _init_rads_unit(1, buff * ((float)GEIGER_TIME / (pgm_read_byte(&diff_measuring[measur_pos]) * 60)), 1, 4, 1, 8, 0, 54, 16); //результат мкр/ч
                 n = 0;
                 break;
             }
           }
-          else print("HTPEKMNFN", CENTER, 24); //результат
+          else print(M_RESULT, CENTER, 24); //результат
 
           _init_accur_percent(_init_accur(buff)); //отрисовка точности
 
-          print("AJY", LEFT, 32); //строка 1 фон
+          print(M_BACK_I, LEFT, 32); //строка 1 фон
           _init_small_couts_per_cm2((float)first_froze / pgm_read_byte(&diff_measuring[measur_pos]), 32);
 
-          print("J<H", LEFT, 40); //строка 2 обр
+          print(M_SAMP_I, LEFT, 40); //строка 2 обр
           _init_small_couts_per_cm2((float)second_froze / pgm_read_byte(&diff_measuring[measur_pos]), 40);
 
           break;
@@ -1374,11 +1374,11 @@ void measur_menu(void) //режим замера
         case 1: //1-й замер
           if (next_measur) {
             switch (n) {
-              case 0: print("PFVTH AJYF", CENTER, 24); n = 1; break; //замер фона
-              case 1: print("JR-PFV.J<HFPWF", CENTER, 24); n = 0; break; //ок - зам. образца
+              case 0: print(M_BACK, CENTER, 24); n = 1; break; //замер фона
+              case 1: print(M_SAMP_OK, CENTER, 24); n = 0; break; //ок - зам. образца
             }
           }
-          else print("PFVTH AJYF", CENTER, 24); //замер фона
+          else print(M_BACK, CENTER, 24); //замер фона
           _init_couts_per_cm2(first_froze / (((time_switch) ? time_switch : 1) / 60.0)); //рассчитываем результат замера в ч*см2/м); //первый замер ч/см2*м
           _init_accur_percent(_init_accur(first_froze)); //отрисовка точности
           break;
@@ -1386,19 +1386,19 @@ void measur_menu(void) //режим замера
         case 2: //2-й замер
           _init_couts_per_cm2(second_froze / (((time_switch) ? time_switch : 1) / 60.0)); //второй замер ч/см2*м
           _init_accur_percent(_init_accur(second_froze)); //отрисовка точности
-          print("PFVTH J<HFPWF", CENTER, 24); //замер образца
+          print(M_SAMP, CENTER, 24); //замер образца
           break;
       }
 
       if (measur) { //если идет замер
         printNumI(pgm_read_byte(&diff_measuring[measur_pos]), 50, 40, 2, 32); //минут всего
-        print("vby", RIGHT, 40);            //строка 1 мин
+        print(M_MIN, RIGHT, 40);            //строка 1 мин
 #if (TYPE_CHAR_FILL > 44)
         printNumI(((pgm_read_byte(&diff_measuring[measur_pos]) * 60 - time_switch) / 60), 0, 40, 2, TYPE_CHAR_FILL); //минут
 #else
         printNumI(((pgm_read_byte(&diff_measuring[measur_pos]) * 60 - time_switch) / 60), 0, 40, 2, 32); //минут
 #endif
-        print("&", 12, 40);            //строка 2
+        print(M_TIME, 12, 40);            //строка 2
         printNumI((pgm_read_byte(&diff_measuring[measur_pos]) * 60 - time_switch) % 60, 18, 40, 2, 48); //секунд
 
         _screen_line(0, map(time_switch, 0, pgm_read_byte(&diff_measuring[measur_pos]) * 60, 5, 82), 1, 1, 32); //шкала пройденого времени
@@ -1471,14 +1471,14 @@ void _init_couts_per_cm2(float num) //частиц/см2*мин
 
   setFont(MediumNumbers); //установка шрифта
   printNumF(num, (num < 100) ? 1 : 0, 1, 8, 46, 4, TYPE_CHAR_FILL); //строка 1
-  print("x|cv2", 54, 16); //строка 1 ч/см2
+  print(UNIT_COUNT_PER_SQUARE_CM, 54, 16); //строка 1 ч/см2
 }
 //-------------------------------Частиц/см2*мин----------------------------------------------------------
 void _init_small_couts_per_cm2(float num, uint8_t pos_y) //частиц/см2*мин
 {
   num /= GEIGER_AREA;
 
-  print("x|cv2", 54, pos_y); //строка 2 ч/см2
+  print(UNIT_COUNT_PER_SQUARE_CM, 54, pos_y); //строка 2 ч/см2
 #if (TYPE_CHAR_FILL > 44)
   printNumF(num, (num < 100) ? 1 : 0, 30, pos_y, 46, 4, TYPE_CHAR_FILL); //строка 2
 #else
@@ -1489,8 +1489,8 @@ void _init_small_couts_per_cm2(float num, uint8_t pos_y) //частиц/см2*м
 void alarm_warning(void) //выбор тревоги
 {
   switch (alarm_switch) {
-    case 1: alarm_messege(0, alarm_back, "Ajy"); break; //фон 2
-    case 2: alarm_messege(1, alarm_dose, "Ljpf"); break; //доза 2
+    case 1: alarm_messege(0, alarm_back, A_BACK); break; //фон 2
+    case 2: alarm_messege(1, alarm_dose, A_DOSE); break; //доза 2
     case 3: warn_messege(0, alarm_back); break; //фон 1
     case 4: warn_messege(1, alarm_dose); break; //доза 1
   }
@@ -1532,7 +1532,7 @@ void alarm_messege(boolean set, uint8_t sound, char *mode) //тревога
 
   clrScr(); //очистка экрана
   drawBitmap(26, 0, rad_img, 32, 32);
-  print("NHTDJUF!", CENTER, 32); //строка ТРЕВОГА!
+  print(A_ALARM, CENTER, 32); //строка ТРЕВОГА!
 
   scr = 0; //разрешаем обновления экрана
 
@@ -1590,8 +1590,8 @@ void _init_alarm_massage(boolean text, uint8_t pos) { //инициализаци
     _screen_line(0, 84, 0, 0, pos); //рисуем линию
   }
   switch (text) {
-    case 0: print("JGFCYJCNM!", CENTER, pos); break; //строка ОПАСНОСТЬ!
-    case 1: print("NHTDJUF!", CENTER, pos); break; //строка ТРЕВОГА!
+    case 0: print(A_WARN, CENTER, pos); break; //строка ОПАСНОСТЬ!
+    case 1: print(A_ALARM, CENTER, pos); break; //строка ТРЕВОГА!
   }
   invertText(false);
   i = !i; //меняем значение
@@ -1649,7 +1649,7 @@ void _vibro_off(void) //выключение вибрация и светово�
 void start_pump(void) //первая накачка
 {
   uint16_t i = 0; //таймер авто-выхода
-  print("pfuheprf...", CENTER, 40); //загрузка...
+  print(LOAD, CENTER, 40); //загрузка...
 
   for (hv_adc = Read_HV(); hv_adc < ADC_value; hv_adc = Read_HV()) { //значение АЦП при котором на выходе 400В
 
@@ -1728,8 +1728,8 @@ void bat_check(void) //опрос батареи
 void _init_low_bat(void) //отрисовка сообщения разряженной батареи
 {
   drawBitmap(26, 0, low_bat_img, 32, 32); //рисуем заставку
-  print("<fnfhtz", CENTER, 32); //Батарея
-  print("hfphz;tyf!", CENTER, 40); //разряжена!
+  print(B_BAT, CENTER, 32); //Батарея
+  print(B_LOW, CENTER, 40); //разряжена!
 }
 //-----------------------------------Сообщение об разряженной батареи-----------------------------------------------
 void bat_massege(void) //сообщение об разряженной батареи
@@ -1846,12 +1846,12 @@ void search_menu(void) //инициализация режима поиск
       clrRow(1); //очистка строки 1
       clrRow(2); //очистка строки 2
 
-      task_bar("Gjbcr"); //отрисовываем фон
+      task_bar(S_SEARCH); //отрисовываем фон
       drawBitmap(0, 8, scan_ind_scale_img, 51, 8); //рисуем шкалу
 
       switch (c) {
         case 0:
-          drawBitmap(57, 8, imp_s_img, 26, 8); //имп/с
+          print(S_IMP_PER_SEC, RIGHT, 8); //имп/с
 #if (TYPE_CHAR_FILL > 44)
           printNumF(rad_imp, (rad_imp < 100) ? 0 : 0, 54, 16, 46, 5, TYPE_CHAR_FILL); //строка 1
 #else
@@ -1860,7 +1860,7 @@ void search_menu(void) //инициализация режима поиск
           break;
 
         case 1:
-          drawBitmap(57, 8, imp_m_img, 27, 8); //имп/м
+          print(S_IMP_PER_MIN, RIGHT, 8); //имп/м
 #if (TYPE_CHAR_FILL > 44)
           printNumF(rad_imp_m, (rad_imp_m < 100) ? 2 : 0, 54, 16, 46, 5, TYPE_CHAR_FILL); //строка 1
 #else
@@ -1979,19 +1979,19 @@ void parameters(void) //параметры
       bat_check(); //опрос батареи
 
       clrScr(); //очистка экрана
-      task_bar("Gfhfvtnhs"); //отрисовываем фон
+      task_bar(P_PARAM); //отрисовываем фон
 
-      print("<fnfhtz&", LEFT, 8); //Батарея:
+      print(P_BAT, LEFT, 8); //Батарея:
       printNumF(_convert_vcc_bat(bat_adc), 2, RIGHT, 8, 46, 4, 48); //напряжение акб
-      print("Pyfx.FWG&", LEFT, 16); //Знач.АЦП:
+      print(P_ADC_BAT, LEFT, 16); //Знач.АЦП:
       printNumI(bat_adc, RIGHT, 16); //значение ацп акб
 
-      print("Yfrfxrf DD&", LEFT, 24); //Накачка ВВ:
+      print(P_HV_PUMP, LEFT, 24); //Накачка ВВ:
       printNumI(_convert_vcc_hv(hv_adc), RIGHT, 24);//напряжение высокого
-      print("Crjhjcnm&", LEFT, 32); //Скорость:
+      print(P_PUMP_SPEED, LEFT, 32); //Скорость:
       printNumI(speed_hv, RIGHT, 32);//скорость накачки
 
-      print("Jgjhyjt&", LEFT, 40); //Опорное:
+      print(P_REFERENCE, LEFT, 40); //Опорное:
       printNumF(opornoe, 2, RIGHT, 40, 46, 4, 48); //опорное напряжение
     }
 
@@ -2034,17 +2034,17 @@ void debug(void) //отладка
 #endif
 
       clrScr(); //очистка экрана
-      task_bar("Jnkflrf"); //отрисовываем фон
+      task_bar(D_DEBUG); //отрисовываем фон
 
       bat_check(); //опрос батареи
 
-      print("<FN", LEFT, 8); //БАТ
+      print(D_BAT, LEFT, 8); //БАТ
       printNumF(_convert_vcc_bat(bat_adc), 2, 20, 8, 46, 4, 48); //напряжение акб
-      print("FWG", 46, 8); //АЦП
+      print(D_ADC_BAT, 46, 8); //АЦП
       printNumI(bat_adc, RIGHT, 8); //значение ацп акб
-      print("CRH", 0, 16); //СКР
+      print(D_PUMP_SPEED, 0, 16); //СКР
       printNumI(speed_hv, 20, 16); //скорость накачки
-      print("DD", 46, 16); //ВВ
+      print(D_HV_PUMP, 46, 16); //ВВ
       printNumI(_convert_vcc_hv(hv_adc), RIGHT, 16); //напряжение высокого
 
       printNumF(opornoe, 2, 20, 24, 46, 4, 48); //опорное напряжение
@@ -2057,12 +2057,12 @@ void debug(void) //отладка
       for (uint8_t i = 0; i < 6; i++) {
         if (n == i) invertText(true); //включаем инверсию
         switch (i) {
-          case 0: print("JGH", LEFT, 24); break; //ОПР
-          case 1: print("BVG", 46, 24 ); break; //ИМП
-          case 2: print("RLK", LEFT, 32); break; //КДЛ
-          case 3: print("FWG", 46, 32); break; //АЦП
-          case 4: print("GTH", LEFT, 40); break; //ПЕР
-          case 5: print("CXN", 46, 40); break; //СЧТ
+          case 0: print(D_REFERENCE, LEFT, 24); break; //ОПР
+          case 1: print(D_PULS_LEN, 46, 24 ); break; //ИМП
+          case 2: print(D_COEF_DIV, LEFT, 32); break; //КДЛ
+          case 3: print(D_PUMP_ADC, 46, 32); break; //АЦП
+          case 4: print(D_WDT_PER, LEFT, 40); break; //ПЕР
+          case 5: print(D_GEIGER_TIME, 46, 40); break; //СЧТ
         }
         if (n == i) invertText(false); //выключаем инверсию
       }
@@ -2120,117 +2120,117 @@ void _setings_item_switch(boolean set, boolean inv, uint8_t num, uint8_t pos) //
   switch (num) {
     case 0: //Сон
       switch (set) {
-        case 0: print("Cjy&", LEFT, pos_row); break; //Сон:
-        case 1: if (sleep_switch < 2) print("DSRK", RIGHT, pos_row); else printNumI(TIME_SLEEP, RIGHT, pos_row); break;
+        case 0: print(S_ITEM_SLEEP, LEFT, pos_row); break; //Сон:
+        case 1: if (sleep_switch < 2) print(ALL_SWITCH_OFF, RIGHT, pos_row); else printNumI(TIME_SLEEP, RIGHT, pos_row); break;
       }
       break;
 
     case 1: //Подсветка
       switch (set) {
-        case 0: print("Gjlcdtnrf&", LEFT, pos_row); break; //Подсветка:
-        case 1: if (!sleep_switch) print("HEXY", RIGHT, pos_row); else printNumI(TIME_BRIGHT, RIGHT, pos_row); break;
+        case 0: print(S_ITEM_LIGHT, LEFT, pos_row); break; //Подсветка:
+        case 1: if (!sleep_switch) print(S_SWITCH_MANUAL, RIGHT, pos_row); else printNumI(TIME_BRIGHT, RIGHT, pos_row); break;
       }
       break;
 
     case 2: //Контраст
       switch (set) {
-        case 0: print("Rjynhfcn&", LEFT, pos_row); break; //Контраст:
+        case 0: print(S_ITEM_CONTRAST, LEFT, pos_row); break; //Контраст:
         case 1: printNumI(contrast, RIGHT, pos_row); break;
       }
       break;
 
     case 3: //Вспышки
       switch (set) {
-        case 0: print("Dcgsirb&", LEFT, pos_row); break; //Вспышки:
-        case 1: if (!rad_flash) print("DSRK", RIGHT, pos_row); else if (rad_flash == 2) print("RH.CYF", RIGHT, pos_row); else print("DRK", RIGHT, pos_row); break;
+        case 0: print(S_ITEM_FLASHES, LEFT, pos_row); break; //Вспышки:
+        case 1: if (!rad_flash) print(ALL_SWITCH_OFF, RIGHT, pos_row); else if (rad_flash == 2) print(S_SWITCH_MANUAL_EXCEPT_SLEEP, RIGHT, pos_row); else print(ALL_SWITCH_ON, RIGHT, pos_row); break;
       }
       break;
 
     case 4: //Щелчки
       switch (set) {
-        case 0: print("Otkxrb&", LEFT, pos_row); break; //Щелчки:
-        case 1: if (!buzz_switch) print("DSRK", RIGHT, pos_row); else if (buzz_switch == 1) print("DRK", RIGHT, pos_row); else print("AJY1", RIGHT, pos_row); break;
+        case 0: print(S_ITEM_CLICKS, LEFT, pos_row); break; //Щелчки:
+        case 1: if (!buzz_switch) print(ALL_SWITCH_OFF, RIGHT, pos_row); else if (buzz_switch == 1) print(ALL_SWITCH_ON, RIGHT, pos_row); else print(S_SWITCH_BACK_1, RIGHT, pos_row); break;
       }
       break;
 
     case 5: //Зв.Кнопок
       switch (set) {
-        case 0: print("Pd.Ryjgjr&", LEFT, pos_row); break; //Зв.Кнопок:
-        case 1: if (knock_disable) print("DSRK", RIGHT, pos_row); else print("DRK", RIGHT, pos_row); break;
+        case 0: print(S_ITEM_BUTT_SOUND, LEFT, pos_row); break; //Зв.Кнопок:
+        case 1: if (knock_disable) print(ALL_SWITCH_OFF, RIGHT, pos_row); else print(ALL_SWITCH_ON, RIGHT, pos_row); break;
       }
       break;
 
     case 6: //Разн.зам
       switch (set) {
-        case 0: print("Hfpy.pfv&", LEFT, pos_row); break; //Разн.зам:
+        case 0: print(S_ITEM_DIFF_MEASUR, LEFT, pos_row); break; //Разн.зам:
         case 1: printNumI(pgm_read_byte(&diff_measuring[measur_pos]), RIGHT, pos_row); break;
       }
       break;
 
     case 7: //Сигма
       switch (set) {
-        case 0: print("Cbuvf&", LEFT, pos_row); break; //Сигма:
+        case 0: print(S_ITEM_SIGMA, LEFT, pos_row); break; //Сигма:
         case 1: printNumI(sigma_pos + 1, RIGHT, pos_row); break;
       }
       break;
 
     case 8: //Поиск
       switch (set) {
-        case 0: print("Gjbcr&", LEFT, pos_row); break; //Поиск:
-        case 1: if (search_pos != 8) printNumI(pgm_read_word(&search_time[search_pos]), RIGHT, pos_row); else print("FDNJ", RIGHT, pos_row); break;
+        case 0: print(S_ITEM_SEARCH, LEFT, pos_row); break; //Поиск:
+        case 1: if (search_pos != 8) printNumI(pgm_read_word(&search_time[search_pos]), RIGHT, pos_row); else print(S_SWITCH_AUTO, RIGHT, pos_row); break;
       }
       break;
 
     case 9: //Ед.измер
       switch (set) {
-        case 0: print("Tl.bpvth&", LEFT, pos_row); break; //Ед.измер:
-        case 1: if (!rad_mode) print("vrH", RIGHT, pos_row); else print("vrPd", RIGHT, pos_row); break;
+        case 0: print(S_ITEM_UNITS, LEFT, pos_row); break; //Ед.измер:
+        case 1: if (!rad_mode) print(UNIT_UR, RIGHT, pos_row); else print(UNIT_USV, RIGHT, pos_row); break;
       }
       break;
 
     case 10: //Тревога Ф
       switch (set) {
-        case 0: print("Nhtdjuf A&", LEFT, pos_row); break; //Тревога Ф:
-        case 1: if (!alarm_back) print("DSRK", RIGHT, pos_row); else if (alarm_back == 1) print("PDER", RIGHT, pos_row); else if (alarm_back == 2) print("DB<H", RIGHT, pos_row); else print("D+PD", RIGHT, pos_row); break;
+        case 0: print(S_ITEM_ALARM_BACK, LEFT, pos_row); break; //Тревога Ф:
+        case 1: if (!alarm_back) print(ALL_SWITCH_OFF, RIGHT, pos_row); else if (alarm_back == 1) print(S_SWITCH_SOUND, RIGHT, pos_row); else if (alarm_back == 2) print(S_SWITCH_VIBRO, RIGHT, pos_row); else print(S_SWITCH_SOUND_VIBRO, RIGHT, pos_row); break;
       }
       break;
 
     case 11: //Порог Ф1
       switch (set) {
-        case 0: print("Gjhju A1&", LEFT, pos_row); break; //Порог Ф1:
+        case 0: print(S_ITEM_ALARM_THRESHOLD_BACK_1, LEFT, pos_row); break; //Порог Ф1:
         case 1: printNumI(warn_level_back, RIGHT, pos_row); break;
       }
       break;
 
     case 12: //Порог Ф2
       switch (set) {
-        case 0: print("Gjhju A2&", LEFT, pos_row); break; //Порог Ф2:
+        case 0: print(S_ITEM_ALARM_THRESHOLD_BACK_2, LEFT, pos_row); break; //Порог Ф2:
         case 1: printNumI(alarm_level_back, RIGHT, pos_row); break;
       }
       break;
 
     case 13: //Тревога Д
       switch (set) {
-        case 0: print("Nhtdjuf L&", LEFT, pos_row); break; //Тревога Д:
-        case 1: if (!alarm_dose) print("DSRK", RIGHT, pos_row); else if (alarm_dose == 1) print("PDER", RIGHT, pos_row); else if (alarm_dose == 2) print("DB<H", RIGHT, pos_row); else print("D+PD", RIGHT, pos_row); break;
+        case 0: print(S_ITEM_ALARM_DOSE, LEFT, pos_row); break; //Тревога Д:
+        case 1: if (!alarm_dose) print(ALL_SWITCH_OFF, RIGHT, pos_row); else if (alarm_dose == 1) print(S_SWITCH_SOUND, RIGHT, pos_row); else if (alarm_dose == 2) print(S_SWITCH_VIBRO, RIGHT, pos_row); else print(S_SWITCH_SOUND_VIBRO, RIGHT, pos_row); break;
       }
       break;
 
     case 14: //Порог Д1
       switch (set) {
-        case 0: print("Gjhju L1&", LEFT, pos_row); break; //Порог Д1:
+        case 0: print(S_ITEM_ALARM_THRESHOLD_DOSE_1, LEFT, pos_row); break; //Порог Д1:
         case 1: printNumI(warn_level_dose, RIGHT, pos_row); break;
       }
       break;
 
     case 15: //Порог Д2
       switch (set) {
-        case 0: print("Gjhju L2&", LEFT, pos_row); break; //Порог Д2:
+        case 0: print(S_ITEM_ALARM_THRESHOLD_DOSE_2, LEFT, pos_row); break; //Порог Д2:
         case 1: printNumI(alarm_level_dose, RIGHT, pos_row); break;
       }
       break;
   }
-  if (inv) invertText(false); //выключаем инверсию
+  invertText(false); //выключаем инверсию
 }
 //------------------------------------Прибавление данных------------------------------------------------------
 void _setings_data_up(uint8_t pos) //прибавление данных
@@ -2340,7 +2340,7 @@ void setings(void) //настройки
 #endif
 
       clrScr(); // Очистка экрана
-      task_bar("Yfcnhjqrb"); //отрисовываем фон
+      task_bar(S_SETINGS); //отрисовываем фон
 
       for (uint8_t i = 0; i < 5; i++) { //отсчет строк
         for (uint8_t r = 0; r < 2; r++) { //отсчет позиции
@@ -2420,15 +2420,15 @@ void _menu_item_switch(boolean inv, uint8_t num, uint8_t pos) //отрисовк
   }
 
   switch (num) {
-    case 0: print("Ajy | Ljpf", CENTER, pos_row); break; //Фон / Доза
-    case 1: print("Ht;bv gjbcrf", CENTER, pos_row); break; //Режим поиска
-    case 2: print("Pfvth ,tnf", CENTER, pos_row); break; //Замер бета
-    case 3: print(":ehyfk", CENTER, pos_row); break; //Журнал
-    case 4: print("Yfcnhjqrb", CENTER, pos_row); break; //Настройки
-    case 5: print("Gfhfvtnhs", CENTER, pos_row); break; //Параметры
-    case 6: print("Dsrk/xtybt", CENTER, pos_row); break; //Выключение
+    case 0: print(MAIN_BACK_DOSE, CENTER, pos_row); break; //Фон / Доза
+    case 1: print(MAIN_SEARCH, CENTER, pos_row); break; //Режим поиска
+    case 2: print(MAIN_MEASUR, CENTER, pos_row); break; //Замер бета
+    case 3: print(MAIN_LOGBOOK, CENTER, pos_row); break; //Журнал
+    case 4: print(MAIN_SETINGS, CENTER, pos_row); break; //Настройки
+    case 5: print(MAIN_PARAM, CENTER, pos_row); break; //Параметры
+    case 6: print(MAIN_POWER_DOWN, CENTER, pos_row); break; //Выключение
   }
-  if (inv) invertText(false); //выключаем инверсию
+  invertText(false); //выключаем инверсию
 }
 //------------------------------------Меню------------------------------------------------------
 void menu(void) //меню
@@ -2457,7 +2457,7 @@ void menu(void) //меню
 #endif
 
       clrScr(); // Очистка экрана
-      task_bar("Vty/"); //отрисовываем фон
+      task_bar(MAIN_MENU); //отрисовываем фон
 
       for (uint8_t i = 0; i < 5; i++) _menu_item_switch((i == c) ? 1 : 0, n - c + i, i); //отрисовываем пункты настроек
     }
@@ -2532,12 +2532,12 @@ void _logbook_settings(boolean inv, uint8_t num, uint8_t pos) //отрисовк
   }
 
   switch (num) {
-    case 0: print("Nhtdjuf&", LEFT, pos_row); if (logbook_alarm) print("DRK", RIGHT, pos_row); else  print("DSRK", RIGHT, pos_row); break; //Тревога
-    case 1: print("Jgfcyjcnm&", LEFT, pos_row); if (logbook_warn) print("DRK", RIGHT, pos_row); else  print("DSRK", RIGHT, pos_row); break; //Опасность
-    case 2: print("Pfvths&", LEFT, pos_row); if (logbook_measur) print("DRK", RIGHT, pos_row); else  print("DSRK", RIGHT, pos_row); break; //Замеры бета
-    case 3: print("Jxbcnbnm", CENTER, pos_row); break; //Очистить
+    case 0: print(L_SETINGS_ALARM, LEFT, pos_row); if (logbook_alarm) print(ALL_SWITCH_ON, RIGHT, pos_row); else print(ALL_SWITCH_OFF, RIGHT, pos_row); break; //Тревога
+    case 1: print(L_SETINGS_WARN, LEFT, pos_row); if (logbook_warn) print(ALL_SWITCH_ON, RIGHT, pos_row); else print(ALL_SWITCH_OFF, RIGHT, pos_row); break; //Опасность
+    case 2: print(L_SETINGS_MEASUR, LEFT, pos_row); if (logbook_measur) print(ALL_SWITCH_ON, RIGHT, pos_row); else print(ALL_SWITCH_OFF, RIGHT, pos_row); break; //Замеры бета
+    case 3: print(L_SETINGS_CLEAR, CENTER, pos_row); break; //Очистить
   }
-  if (inv) invertText(false); //выключаем инверсию
+  invertText(false); //выключаем инверсию
 }
 //------------------------------------Отрисовка пунктов журнала------------------------------------------------------
 void _logbook_item_switch(boolean inv, uint8_t num, uint8_t pos) //отрисовка пунктов журнала
@@ -2550,13 +2550,13 @@ void _logbook_item_switch(boolean inv, uint8_t num, uint8_t pos) //отрисо�
   }
 
   switch (num) {
-    case 0: print("Nhtdjuf", CENTER, pos_row); if (logbook_alarm == 2) print("*", RIGHT, pos_row); break; //Тревога
-    case 1: print("Jgfcyjcnm", CENTER, pos_row); if (logbook_warn == 2) print("*", RIGHT, pos_row); break; //Опасность
-    case 2: print("Pfvths ,tnf", CENTER, pos_row); if (logbook_measur == 2) print("*", RIGHT, pos_row); break; //Замеры бета
-    case 3: print("Jib,rb", CENTER, pos_row); if (error_switch) print("*", RIGHT, pos_row); break; //Ошибки
-    case 4: print("Yfcnhjqrb", CENTER, pos_row); break; //Настройки
+    case 0: print(L_ITEM_ALARM, CENTER, pos_row); if (logbook_alarm == 2) print(L_ITEM_ASTER, RIGHT, pos_row); break; //Тревога
+    case 1: print(L_ITEM_WARN, CENTER, pos_row); if (logbook_warn == 2) print(L_ITEM_ASTER, RIGHT, pos_row); break; //Опасность
+    case 2: print(L_ITEM_MEASUR, CENTER, pos_row); if (logbook_measur == 2) print(L_ITEM_ASTER, RIGHT, pos_row); break; //Замеры бета
+    case 3: print(L_ITEM_ERRORS, CENTER, pos_row); if (error_switch) print(L_ITEM_ASTER, RIGHT, pos_row); break; //Ошибки
+    case 4: print(L_ITEM_SETINGS, CENTER, pos_row); break; //Настройки
   }
-  if (inv) invertText(false); //выключаем инверсию
+  invertText(false); //выключаем инверсию
 }
 //------------------------------------Отрисовка информации журнала------------------------------------------------------
 void _logbook_data_switch(boolean inv, uint8_t num, uint8_t pos, uint8_t data_num) //отрисовка информации журнала
@@ -2576,13 +2576,13 @@ void _logbook_data_switch(boolean inv, uint8_t num, uint8_t pos, uint8_t data_nu
     switch (data_num) {
       case 0:
       case 1:
-        if (temp_byte == 2) print("LJPF", LEFT, pos_row); //ДОЗА
-        else print("AJY", LEFT, pos_row); //ФОН
+        if (temp_byte == 2) print(L_DATA_DOSE, LEFT, pos_row); //ДОЗА
+        else print(L_DATA_BACK, LEFT, pos_row); //ФОН
         _init_rads_unit(0, temp_dword, 1, 4, RIGHT, pos_row, temp_byte - 1, RIGHT, pos_row); //единицы фона/дозы
         break;
       case 2:
         printNumI(temp_byte, LEFT, pos_row, 2); //время замера
-        print("v", 12, pos_row); //м
+        print(L_DATA_MINS, 12, pos_row); //м
 #if TYPE_MEASUR_LOGBOOK
         _init_small_couts_per_cm2((float)temp_dword / temp_byte, pos_row); //отрисовываем ч/см2
 #else
@@ -2590,13 +2590,13 @@ void _logbook_data_switch(boolean inv, uint8_t num, uint8_t pos, uint8_t data_nu
 #endif
         break;
       case 3:
-        print("Jib,rf #", LEFT, pos_row); //Ошибка #
+        print(L_DATA_ERROR_NUM, LEFT, pos_row); //Ошибка #
         printNumI(temp_byte, RIGHT, pos_row); //номер ошибки
         break;
     }
 #else
     printNumI(temp_byte, LEFT, pos_row, 2); //вркмя замера
-    print("v", 12, pos_row); //м
+    print(L_DATA_MINS, 12, pos_row); //м
 #if TYPE_MEASUR_LOGBOOK
     _init_small_couts_per_cm2((float)temp_dword / temp_byte, pos_row); //отрисовываем ч/см2
 #else
@@ -2604,9 +2604,9 @@ void _logbook_data_switch(boolean inv, uint8_t num, uint8_t pos, uint8_t data_nu
 #endif
 #endif
   }
-  else print("- gecnj -", CENTER, pos_row); //- пусто -
+  else print(L_DATA_NULL, CENTER, pos_row); //- пусто -
 
-  if (inv) invertText(false); //выключаем инверсию
+  invertText(false); //выключаем инверсию
 }
 //------------------------------------Очистка журнала------------------------------------------------------
 void _logbook_data_clear(void) //очистка журнала
@@ -2680,7 +2680,7 @@ void logbook(void) //журнал
 #endif
 
       clrScr(); // Очистка экрана
-      task_bar(":ehyfk"); //отрисовываем фон
+      task_bar(L_LOGBOOK); //отрисовываем фон
 
       if (!err_sw) {
         for (uint8_t i = 0; i < 5; i++) {
@@ -2788,7 +2788,7 @@ void logbook(void) //журнал
 #endif
 
       clrScr(); // Очистка экрана
-      task_bar(":ehyfk"); //отрисовываем фон
+      task_bar(L_LOGBOOK); //отрисовываем фон
 
       for (uint8_t i = 0; i < 5; i++) _logbook_data_switch((i == c) ? 1 : 0, n - c + i, i, 2); //отрисовывам информацию
     }
@@ -2865,38 +2865,38 @@ void _init_error_messege(uint8_t err, uint32_t data) //отрисовка соо
   clrScr(); //очистка экрана
 
   invertText(true);
-  print(" - JIB<RF - ", CENTER, 0); //- ОШИБКА -
+  print(E_ERROR, CENTER, 0); //- ОШИБКА -
   invertText(false);
 
   switch (err) {
     case 0:
-      print("* gecnj *", CENTER, 16); //пусто
+      print(E_ERROR_NULL, CENTER, 16); //пусто
       break;
 
     case 2:
-      print("Gthtuheprf", CENTER, 16); //Перегрузка
-      print("ghtj,hfpjdfn!", CENTER, 24); //преобразоват!
-      print("CRH&", 18, 32); //СКР:
+      print(E_DATA_OVERLOAD, CENTER, 16); //Перегрузка
+      print(E_DATA_PUMP, CENTER, 24); //преобразователя!
+      print(E_DATA_SPEED, 18, 32); //СКР:
       printNumI(data, 43, 32);
       break;
 
     case 3:
-      print("Rjhjnrjt pfv.", CENTER, 16); //Короткое зам.
-      print("ghtj,hfpjdfn!", CENTER, 24); //преобразователя!
-      print("YFG&", 18, 32); //НАП:
+      print(E_DATA_SHOT_CIRCUIT, CENTER, 16); //Короткое зам.
+      print(E_DATA_PUMP, CENTER, 24); //преобразователя!
+      print(E_DATA_HV, 18, 32); //НАП:
       printNumI(_convert_vcc_hv(data), 43, 32);
       break;
 
     case 4:
-      print("Ybprjt", CENTER, 16); //Низкое
-      print("yfghz;tybt", CENTER, 24); //напряжение
-      print("ghtj,hfpjdfn!", CENTER, 32); //преобразователя!
-      print("YFG&", 18, 40); //НАП:
+      print(E_DATA_LOW, CENTER, 16); //Низкое
+      print(E_DATA_VOLTAGE, CENTER, 24); //напряжение
+      print(E_DATA_PUMP, CENTER, 32); //преобразователя!
+      print(E_DATA_HV, 18, 40); //НАП:
       printNumI(_convert_vcc_hv(data), 43, 40);
       break;
 
     case 5:
-      print("Ytn cxtnf!", CENTER, 24); //Нет счета!
+      print(E_DATA_NO_ACCOUNT, CENTER, 24); //Нет счета!
       break;
   }
 }
@@ -2920,46 +2920,38 @@ void error_messege(void) //сообщение об ошибке
     clrScr(); //очистка экрана
 
     invertText(true);
-    print(" - JIB<RF - ", CENTER, 0); //- ОШИБКА -
+    print(E_ERROR, CENTER, 0); //- ОШИБКА -
     invertText(false);
 
     switch (error_switch) {
       case 0:
-        print("* gecnj *", CENTER, 16); //пусто
-        break;
-
-      case 1:
-        print("Rfkb,hjdrf", CENTER, 16); //Калибровка
-        print("nfqvthf", CENTER, 24); //таймера
-        print("yt elfkfcm!", CENTER, 32); //не удалась!
-        print("GTH&", 18, 40); //ПЕР:
-        printNumI(wdt_period, 43, 40);
+        print(E_ERROR_NULL, CENTER, 16); //пусто
         break;
 
       case 2:
-        print("Gthtuheprf", CENTER, 16); //Перегрузка
-        print("ghtj,hfpjdfn!", CENTER, 24); //преобразоват!
-        print("CRH&", 18, 32); //СКР:
+        print(E_DATA_OVERLOAD, CENTER, 16); //Перегрузка
+        print(E_DATA_PUMP, CENTER, 24); //преобразователя!
+        print(E_DATA_SPEED, 18, 32); //СКР:
         printNumI(speed_hv, 43, 32);
         break;
 
       case 3:
-        print("Rjhjnrjt pfv.", CENTER, 16); //Короткое зам.
-        print("ghtj,hfpjdfn!", CENTER, 24); //преобразователя!
-        print("YFG&", 18, 32); //НАП:
+        print(E_DATA_SHOT_CIRCUIT, CENTER, 16); //Короткое зам.
+        print(E_DATA_PUMP, CENTER, 24); //преобразователя!
+        print(E_DATA_HV, 18, 32); //НАП:
         printNumI(_convert_vcc_hv(hv_adc), 43, 32);
         break;
 
       case 4:
-        print("Ybprjt", CENTER, 16); //Низкое
-        print("yfghz;tybt", CENTER, 24); //напряжение
-        print("ghtj,hfpjdfn!", CENTER, 32); //преобразователя!
-        print("YFG&", 18, 40); //НАП:
+        print(E_DATA_LOW, CENTER, 16); //Низкое
+        print(E_DATA_VOLTAGE, CENTER, 24); //напряжение
+        print(E_DATA_PUMP, CENTER, 32); //преобразователя!
+        print(E_DATA_HV, 18, 40); //НАП:
         printNumI(_convert_vcc_hv(hv_adc), 43, 40);
         break;
 
       case 5:
-        print("Ytn cxtnf!", CENTER, 24); //Нет счета!
+        print(E_DATA_NO_ACCOUNT, CENTER, 24); //Нет счета!
         break;
     }
 #endif
@@ -3100,18 +3092,18 @@ void data_reset(uint8_t sw) //сброс текущей дозы
   clrScr(); //очистка экрана
   switch (sw) {
     case 0: //текущая доза
-      print("C,hjcbnm", CENTER, 8); //Сбросить
-      print("ntreoe/ ljpe?", CENTER, 16); //текущую дозу?
+      print(R_RESET, CENTER, 8); //Сбросить
+      print(R_CURRENT_DOSE, CENTER, 16); //текущую дозу?
       break;
 
     case 1: //накопленная доза
-      print("C,hjcbnm", CENTER, 8); //Сбросить
-      print("j,oe/ ljpe?", CENTER, 16); //общую дозу?
+      print(R_RESET, CENTER, 8); //Сбросить
+      print(R_ALL_DOSE, CENTER, 16); //общую дозу?
       break;
 
     case 2: //журнал
-      print("Jxbcnbnm", CENTER, 8); //Очистить
-      print("dtcm ;ehyfk?", CENTER, 16); //весь журнал?
+      print(R_CLEAR, CENTER, 8); //Очистить
+      print(R_ALL_LOGBOOK, CENTER, 16); //весь журнал?
       break;
   }
 
@@ -3166,8 +3158,8 @@ void data_reset(uint8_t sw) //сброс текущей дозы
                 warn_dose_wait = 0;
 
                 clrScr(); //очистка экрана
-                print("Ntreofz ljpf", CENTER, 16); //Текущая доза
-                print("c,hjityf!", CENTER, 24); //сброшена!
+                print(R_SUCC_CURRENT_DOSE, CENTER, 16); //Текущая доза
+                print(R_SUCC_RESET, CENTER, 24); //сброшена!
                 break;
 
               case 1: //накопленная доза
@@ -3176,15 +3168,15 @@ void data_reset(uint8_t sw) //сброс текущей дозы
                 statistic_update(); //обновление статистики
                 rad_dose_old = rad_dose;
                 clrScr(); //очистка экрана
-                print("Cnfnbcnbrf", CENTER, 16); //Статистика
-                print("c,hjityf!", CENTER, 24); //сброшена!
+                print(R_SUCC_ALL_DOSE, CENTER, 16); //Общая доза
+                print(R_SUCC_RESET, CENTER, 24); //сброшена!
                 break;
 
               case 2: //журнал
                 _logbook_data_clear(); //очистка журнала
                 clrScr(); //очистка экрана
-                print(":ehyfk", CENTER, 16); //Журнал
-                print("jxboty!", CENTER, 24); //очищен!
+                print(R_SUCC_LOGBOOK, CENTER, 16); //Журнал
+                print(R_SUCC_CLEAR, CENTER, 24); //очищен!
                 break;
             }
             for (timer_millis = MASSEGE_TIME; timer_millis && !check_keys();) data_convert(); // ждем, преобразование данных
@@ -3251,8 +3243,8 @@ void setings_save(uint8_t sw) //сохранить настройки
   uint8_t time_out = 0; //таймер автовыхода
 
   clrScr(); //очистка экрана
-  print("Cj[hfybnm", CENTER, 8); //Сохранить
-  print("yfcnhjqrb?", CENTER, 16); //настройки?
+  print(W_SAVE, CENTER, 8); //Сохранить
+  print(W_SETINGS, CENTER, 16); //настройки?
 
   while (1) {
     data_convert(); //преобразование данных
@@ -3295,8 +3287,8 @@ void setings_save(uint8_t sw) //сохранить настройки
         switch (n) {
           case 1:
             clrScr(); //очистка экрана
-            print("Yfcnhjqrb", CENTER, 16); //Настройки
-            print("Cj[hfytys!", CENTER, 24); //Сохранены!
+            print(W_SETINGS_SUCC, CENTER, 16); //Настройки
+            print(W_SAVE_SUCC, CENTER, 24); //Сохранены!
             switch (sw) {
               case 0: setings_update(); break; //обновляем настройки
 #if DEBUG_RETURN
@@ -3333,8 +3325,8 @@ void choice_menu(boolean n) //меню выбора
   for (uint8_t i = 0; i < 2; i++) { //отрисовка пунктов
     if (n == i) invertText(true); //включаем инверсию
     switch (i) {
-      case 0: print("  YTN  ", LEFT, 32); break; //нет
-      case 1: print("  LF  ", RIGHT, 32); break; //да
+      case 0: print(ALL_NO, LEFT, 32); break; //нет
+      case 1: print(ALL_YES, RIGHT, 32); break; //да
     }
     if (n == i) invertText(false); //выключаем инверсию
   }
@@ -3377,15 +3369,15 @@ uint8_t _rads_unit(boolean set, boolean unit, uint8_t unit_x, uint8_t unit_y) //
       switch (set) {
         case 0:
           switch (unit) {
-            case 0: print("vrH|x", unit_x, unit_y); return 30; //строка 2 мкР/ч
-            case 1: print("vrH", unit_x, unit_y); return 18; //строка 2 мкР
+            case 0: print(UNIT_UR_H, unit_x, unit_y); return 30; //строка 2 мкР/ч
+            case 1: print(UNIT_UR, unit_x, unit_y); return 18; //строка 2 мкР
           }
           break;
 
         case 1:
           switch (unit) {
-            case 0: print("vH|x", unit_x, unit_y); return 24; //строка 2 мР/ч
-            case 1: print("vH", unit_x, unit_y); return 12; //строка 2 мР
+            case 0: print(UNIT_MR_H, unit_x, unit_y); return 24; //строка 2 мР/ч
+            case 1: print(UNIT_MR, unit_x, unit_y); return 12; //строка 2 мР
           }
           break;
       }
@@ -3396,15 +3388,15 @@ uint8_t _rads_unit(boolean set, boolean unit, uint8_t unit_x, uint8_t unit_y) //
       switch (set) {
         case 0:
           switch (unit) {
-            case 0: print("vrP|x", unit_x, unit_y); return 30; //строка 2 мкЗ/ч
-            case 1: print("vrP", unit_x, unit_y); return 18; //строка 2 мкЗ
+            case 0: print(UNIT_USV_H, unit_x, unit_y); return 30; //строка 2 мкЗ/ч
+            case 1: print(UNIT_USV, unit_x, unit_y); return 18; //строка 2 мкЗ
           }
           break;
 
         case 1:
           switch (unit) {
-            case 0: print("vP|x", unit_x, unit_y); return 24; //строка 2 мЗ/ч
-            case 1: print("vP", unit_x, unit_y); return 12; //строка 2 мЗ
+            case 0: print(UNIT_MSV_H, unit_x, unit_y); return 24; //строка 2 мЗ/ч
+            case 1: print(UNIT_MSV, unit_x, unit_y); return 12; //строка 2 мЗ
           }
           break;
       }
@@ -3473,8 +3465,8 @@ void main_screen(void)
 
     //рисуем шапку экрана
     switch (scr_mode) {
-      case 0: task_bar("Ajy"); _alarm_init(alarm_back_wait + warn_back_wait, alarm_back); break;  //режим текущего фона
-      case 1: task_bar("Ljpf"); _alarm_init(0, alarm_dose); break;  //режим накопленной дозы
+      case 0: task_bar(MAIN_SCREEN_BACK); _alarm_init(alarm_back_wait + warn_back_wait, alarm_back); break;  //режим текущего фона
+      case 1: task_bar(MAIN_SCREEN_DOSE); _alarm_init(0, alarm_dose); break;  //режим накопленной дозы
     }
 
     drawBitmap(55, 0, font_alarm_img, 5, 8); //устанавлваем фон звуков
@@ -3530,8 +3522,8 @@ void main_screen(void)
         switch (back_mode) {
           case 0: for (uint8_t i = 4; i < 80; i++) graf_lcd(map(rad_buff[(i >> 1) - 1], 0, maxLevel_back, 0, 15), i, 15, 2); break; //инициализируем график
           case 1: //максимальный и средний фон
-            print("VBY&", 0, 32); //строка 2 мин:
-            print("VFRC&", 0, 40); //строка 3 макс:
+            print(MAIN_SCREEN_BACK_MIN, 0, 32); //строка 2 мин:
+            print(MAIN_SCREEN_BACK_MAX, 0, 40); //строка 3 макс:
             _init_rads_unit(0, rad_min, 1, 4, RIGHT, 32, 0, RIGHT, 32); //строка 2 минимальный
             if (accur_percent > RAD_ACCUR_START) print("----", 30, 32); //если недостаточно точности
             _init_rads_unit(0, rad_max, 1, 4, RIGHT, 40, 0, RIGHT, 40); //строка 3 максимальный
@@ -3566,20 +3558,20 @@ void main_screen(void)
             }
 
             _init_rads_unit(1, rad_dose, 10, 5, 1, 8, 1, 66, 16); //строка 1 текущая доза
-            print("DCTUJ&", 0, 40); //строка 2 всего
+            print(MAIN_SCREEN_CURRENT_DOSE_ALL, 0, 40); //строка 2 всего
             _init_rads_unit(0, rad_dose_save, 10, 5, RIGHT, 40, 1, RIGHT, 40); //строка 2 сохранённая доза
             break;
 
           case 1: //общая накопленная доза и время
             printNumI(time_save / 60 / 60 / 24, 8, 40, 2, 48);
-            print("l", 20, 40);
+            print(MAIN_SCREEN_DOSE_DAYS, 20, 40);
             printNumI((time_save / 60 / 60) % 24, 32, 40, 2, 48);
-            print("x", 44, 40);
+            print(MAIN_SCREEN_DOSE_HOURSE, 44, 40);
             printNumI((time_save / 60) % 60, 56, 40, 2, 48);
-            print("v", 68, 40);
+            print(MAIN_SCREEN_DOSE_MINS, 68, 40);
 
-            print("yfrjgktyj", CENTER, 24); //накоплено
-            print("dctuj pf&", 16, 30); //всего за:
+            print(MAIN_SCREEN_DOSE_ACCUM, CENTER, 24); //накоплено
+            print(MAIN_SCREEN_DOSE_JUST_OVER, 16, 30); //всего за:
 
             _init_rads_unit(1, rad_dose_save, 10, 5, 1, 8, 1, 66, 16); //строка 1 сохранённая доза
             break;
