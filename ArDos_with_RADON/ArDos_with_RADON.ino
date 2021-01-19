@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.5.3 low_pwr final 18.01.21 специально для проекта ArDos
+  Версия программы RADON v3.5.3 low_pwr final 19.01.21 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -3549,16 +3549,16 @@ void main_screen(void)
         {
           case 0: //текущая доза
             setFont(TinyNumbersDown); //установка шрифта
-            printNumI(time_sec / 60 / 60 / 24, 34, 24, 2, 48); //дней
+            printNumI(time_sec / 60 / 60 / 24, 34, 23, 2, 48); //дней
             drawBitmap(42, 24, day_img, 8, 8); //дн
             setFont(TinyNumbersDown); //установка шрифта
-            printNumI((time_sec / 60 / 60) % 24, 54, 24, 2, 48); //часов
-            drawBitmap(62, 24, colon_img, 3, 8); //ч
+            printNumI((time_sec / 60 / 60) % 24, 54, 23, 2, 48); //часов
+            drawBitmap(62, 24, colon_img, 3, 8); //:
             setFont(TinyNumbersDown); //установка шрифта
-            printNumI((time_sec / 60) % 60, 65, 24, 2, 48); //минут
-            drawBitmap(73, 24, colon_img, 5, 8); //м
+            printNumI((time_sec / 60) % 60, 65, 23, 2, 48); //минут
+            drawBitmap(73, 24, colon_img, 3, 8); //:
             setFont(TinyNumbersDown); //установка шрифта
-            printNumI(time_sec % 60, 76, 24, 2, 48); //секунд
+            printNumI(time_sec % 60, 76, 23, 2, 48); //секунд
 
             switch (alarm_switch) {
               case 0: _screen_line(0, map(stat_upd_tmr, 0, STAT_UPD_TIME, 5, 82), 1, 1, 32); break; //шкала времени до сохранения дозы
