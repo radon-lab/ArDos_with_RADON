@@ -3332,7 +3332,7 @@ void choice_menu(boolean n) //меню выбора
   }
 }
 // -----------------------------Отрисовка линий точности---------------------------------------
-void _screen_line(uint8_t up_bar, uint8_t down_bar, boolean rent_bar, uint8_t start_bar, uint8_t pos_bar) //отрисовка линий
+void _screen_line(uint8_t up_bar, uint8_t down_bar, uint8_t rent_bar, uint8_t start_bar, uint8_t pos_bar) //отрисовка линий
 {
   for (uint8_t i = 0; i < down_bar; i++) { //рисуем верхнюю шкалу
     drawBitmap(i + start_bar, pos_bar, (uint8_t*)pgm_read_word(&_scale[rent_bar]), 1, 8); //шкала готовности общая
