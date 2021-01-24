@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.5.4 low_pwr final 19.01.21 специально для проекта ArDos
+  Версия программы RADON v3.5.5 low_pwr final 24.01.21 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -239,11 +239,14 @@ const float IMP_PWR_GISTERESIS = (1.00 - (IMP_PWR_GIST / 100.00)); //инвер�
 const uint8_t MASS_TIME_FACT = (MASS_TIME - 1); //фактический номер элемента массивов секунд
 const uint8_t MASS_BACK_FACT = (MASS_BACK - 1); //фактический номер элемента массивов фона
 
+const uint16_t buzz_time = (TIME_BUZZ / float(1.00 / FREQ_BUZZ * 1000)); //пересчитываем частоту и время щелчков в циклы таймера
+const uint16_t buzz_freq = (F_CPU / SOUND_PRESCALER) / FREQ_BUZZ; //устанавливаем частоту таймера щелчков
+
 uint8_t GEIGER_CYCLE; //минимум секунд для начала расчетов
 uint8_t GEIGER_MASS; //максимум секунд для окончания смещения коэффициентов
 
 //пищалка старт/стоп
-#define SOUND_START  PRR &= ~(1 << 3); OCR1A = SOUND_PRELOAD; TIMSK1 = 0b00000010
+#define SOUND_START(x)  PRR &= ~(1 << 3); OCR1A = x; TIMSK1 = 0b00000010
 #define SOUND_STOP   TIMSK1 = 0b00000000; PRR |= (1 << 3)
 
 //вспышки старт/стоп
@@ -369,9 +372,6 @@ uint8_t cnt_pwr; //счетчик ухода в сон
 uint32_t timer_millis; //таймер отсчета миллисекунд
 uint32_t timer_melody; //таймер отсчета миллисекунд для мелодий
 
-uint16_t buzz_freq; //рассчитанная частота щелчков
-uint16_t buzz_time; //рассчитанное время щелчков
-
 uint8_t btn_tmr; //таймер тиков обработки
 boolean btn_check; //флаг разрешения опроса кнопки
 boolean btn_state; //флаг текущего состояния кнопки
@@ -384,7 +384,8 @@ uint32_t first_froze = 0; //счетчик 1-го замера
 uint32_t second_froze = 0; //счетчик 2-го замера
 
 volatile uint16_t cnt_puls; //количество циклов для работы пищалки
-volatile uint16_t SOUND_PRELOAD; //частота для генерации звука пищалкой
+uint8_t melody_switch; //переключатель мелодии
+uint8_t vibro_switch; //переключатель вибрации
 
 float now = 0.00; //текущее соотношение ячеек сравнения
 #if COEF_DEBUG //отладка коэффициента
@@ -427,18 +428,18 @@ int main(void)  //инициализация
 
   if (!OK_OUT) { //если зажата кнопка ок при запуске
 #if DEBUG_RETURN
-    if (!UP_OUT) eeprom_update_byte(101, 0); //если зажата кнопка вверх при запуске, сбрасываем настройки преобразователя
+    if (!UP_OUT) eeprom_update_byte((uint8_t*)101, 0); //если зажата кнопка вверх при запуске, сбрасываем настройки преобразователя
 #endif
-    eeprom_update_byte(100, 0); //сбрасываем настройки
+    eeprom_update_byte((uint8_t*)100, 0); //сбрасываем настройки
   }
 
-  if (eeprom_read_byte(100) != 100) { //если настройки были сброшены, восстанавливаем из переменных
+  if (eeprom_read_byte((uint8_t*)100) != 100) { //если настройки были сброшены, восстанавливаем из переменных
     print(PLEASE, CENTER, 32); //Пожалуйста
     print(WAINT, CENTER, 40); //подождите...
 
     _delay_ms(START_TIME); //ждем
     setings_update(); //обновляем настройки
-    eeprom_update_byte(100, 100); //делаем метку
+    eeprom_update_byte((uint8_t*)100, 100); //делаем метку
 
     clrRow(4); //очистка строки 4
     clrRow(5); //очистка строки 5
@@ -446,9 +447,9 @@ int main(void)  //инициализация
   else setings_read(); //иначе загружаем настройки из памяти
 
 #if DEBUG_RETURN
-  if (eeprom_read_byte(101) != 101) { //если настройки преобразователя были сброшены, восстанавливаем из переменных
+  if (eeprom_read_byte((uint8_t*)101) != 101) { //если настройки преобразователя были сброшены, восстанавливаем из переменных
     pump_update(); //обновляем настройки преобразователя
-    eeprom_update_byte(101, 101); //делаем метку
+    eeprom_update_byte((uint8_t*)101, 101); //делаем метку
   }
   else pump_read(); //считываение параметров преобразователя из памяти
 #elif PUMP_READ_MEM
@@ -510,9 +511,6 @@ void initParam(void) //инициализация параметров
 
   GEIGER_CYCLE = (pgm_read_byte(&time_mass[0][0]) + pgm_read_byte(&time_mass[0][1])); //минимум секунд для начала расчетов
   GEIGER_MASS = (pgm_read_byte(&time_mass[MASS_TIME_FACT][0]) + pgm_read_byte(&time_mass[MASS_TIME_FACT][1])); //максимум секунд для окончания смещения коэффициентов
-
-  buzz_time = (TIME_BUZZ / float(1.00 / FREQ_BUZZ * 1000)); //пересчитываем частоту и время щелчков в циклы таймера
-  buzz_freq = (F_CPU / SOUND_PRESCALER) / FREQ_BUZZ; //устанавливаем частоту таймера щелчков
 }
 //------------------------Подсветка старт/стоп--------------------------------------------------
 void _LIGHT_ON(void) { //подсветка старт
@@ -813,9 +811,12 @@ void data_convert(void) //преобразование данных
             break;
           }
           else if (alarm_dose && (rad_dose - warn_dose_wait) >= warn_level_dose) { //если предупреждения не запрещены и текущая(предыдущая) доза больше порога
+            if (!alarm_switch) { //если это первая сработка тревоги
+              melody_switch = 0; vibro_switch = 0; //сбрасываем переключатель мелодии и вибрации
 #if LOGBOOK_RETURN
-            if (!alarm_switch && logbook_alarm) _logbook_data_update(1, 2, rad_dose); //обновление журнала
+              if (logbook_alarm) _logbook_data_update(1, 2, rad_dose); //обновление журнала
 #endif
+            }
             alarm_switch = 4;  //превышение дозы 1
             break;
           }
@@ -829,9 +830,12 @@ void data_convert(void) //преобразование данных
               break;
             }
             else if (alarm_back && !warn_back_wait && rad_back >= warn_level_back) { //если предупреждения не запрещены и текущий фон больше порога
+              if (!alarm_switch) { //если это первая сработка тревоги
+                melody_switch = 0; vibro_switch = 0; //сбрасываем переключатель мелодии и вибрации
 #if LOGBOOK_RETURN
-              if (!alarm_switch && logbook_alarm) _logbook_data_update(1, 1, rad_back); //обновление журнала
+                if (logbook_alarm) _logbook_data_update(1, 1, rad_back); //обновление журнала
 #endif
+              }
               alarm_switch = 3;  //превышение фона 1
               break;
             }
@@ -858,6 +862,8 @@ void data_convert(void) //преобразование данных
               if (rad_back < (warn_level_back * ALARM_AUTO_GISTERESIS)) { //иначе ждем понижения фона тревоги 1
                 _vibro_off(); //выключаем вибрацию
                 buzz_read(); //чтение состояния щелчков
+                melody_switch = 0; //сбрасываем переключатель мелодии
+                vibro_switch = 0; //сбрасываем переключатель вибрации
                 alarm_switch = 0; //устанавливаем признак отсутствия тревоги
               }
               break;
@@ -1127,30 +1133,21 @@ ISR(TIMER1_COMPA_vect) //прерывание сигнала для пищалк
 void buzz_pulse(uint16_t freq, uint8_t time) //генерация частоты бузера (частота 10..10000, длительность мс.)
 {
   cnt_puls = time / float(1.00 / freq * 1000); //пересчитываем частоту и время в циклы таймера
-  SOUND_PRELOAD = (F_CPU / SOUND_PRESCALER) / freq; //устанавливаем частоту таймера
-  SOUND_START; //запускаем таймер
+  SOUND_START((F_CPU / SOUND_PRESCALER) / freq); //устанавливаем частоту и запускаем таймер
 }
 //--------------------------------Щелчок пищалкой-------------------------------------------------
 inline void buzz_click(void) //щелчок пищалкой
 {
   cnt_puls = buzz_time; //устанавливаем длительность щелчка
-  SOUND_PRELOAD = buzz_freq; //устанавливаем частоту щелчка
-  SOUND_START; //запускаем таймер
+  SOUND_START(buzz_freq); //устанавливаем частоту и запускаем таймер
 }
 //---------------------------------Воспроизведение мелодии---------------------------------------
-void _melody_chart(uint16_t arr[][3], uint8_t n, uint8_t s) //воспроизведение мелодии
+void _melody_chart(const uint16_t arr[][3], uint8_t n) //воспроизведение мелодии
 {
-  static uint8_t i; //переключатель мелодии
-  static uint8_t signature; //переключатель мелодии
-
-  if (signature != s) { //если сигнатура мелодии не равна старой
-    i = 0; //сбрасываем переключатель
-    signature = s; //устанавливаем новую сигнатуру
-  }
   if (!timer_melody) { //если пришло время
-    buzz_pulse(pgm_read_word(&arr[i][0]), pgm_read_word(&arr[i][1])); //запускаем звук с задоной частотой и временем
-    timer_melody = pgm_read_word(&arr[i][2]); //устанавливаем паузу перед воспроизведением нового звука
-    if (++i > n - 1) i = 0; //переключпем на следующий семпл
+    buzz_pulse(pgm_read_word(&arr[melody_switch][0]), pgm_read_word(&arr[melody_switch][1])); //запускаем звук с задоной частотой и временем
+    timer_melody = pgm_read_word(&arr[melody_switch][2]); //устанавливаем паузу перед воспроизведением нового звука
+    if (++melody_switch > n - 1) melody_switch = 0; //переключаем на следующий семпл
   }
 }
 //-----------------------------Проверка кнопок----------------------------------------------------
@@ -1281,12 +1278,14 @@ void measur_massege(void) //окончание замера
     clrScr(); //очистка экрана
     print(M_MEASURS, CENTER, 16); //Замер
     print(M_COMPLET, CENTER, 24); //завершен!
+    
+    melody_switch = 0; //сбрасываем переключатель мелодии
 
     for (timer_millis = MASSEGE_TIME; timer_millis && !check_keys();) { //ждём
       data_convert(); //преобразование данных
       //==================================================================
 #if MEASUR_SOUND
-      _melody_chart(measur_sound, SAMPLS_MEASUR, 0); //играем волшебную мелодию
+      _melody_chart(measur_sound, SAMPLS_MEASUR); //играем волшебную мелодию
 #endif
       //==================================================================
     }
@@ -1518,17 +1517,20 @@ void warn_messege(boolean set, uint8_t sound) //предупреждение
   }
   //==================================================================
   switch (sound) {
-    case 1: _melody_chart(warn_sound, SAMPLS_WARN, 2); break; //играем волшебную мелодию
+    case 1: _melody_chart(warn_sound, SAMPLS_WARN); break; //играем волшебную мелодию
     case 2: _vibro_on(); break; //включаем вибрацию
-    case 3: _melody_chart(warn_sound, SAMPLS_WARN, 2); _vibro_on(); break; //играем волшебную мелодию и включаем вибрацию
+    case 3: _melody_chart(warn_sound, SAMPLS_WARN); _vibro_on(); break; //играем волшебную мелодию и включаем вибрацию
   }
   //==================================================================
 }
 //-------------------------------Тревога-----------------------------------------------------
-void alarm_messege(boolean set, uint8_t sound, char *mode) //тревога
+void alarm_messege(boolean set, uint8_t sound, const char *mode) //тревога
 {
   sleep_out(); //просыпаемся если спали
   buzz_switch = 0; //запретить звуковую индикацию импульсов
+
+  melody_switch = 0; //сбрасываем переключатель мелодии
+  vibro_switch = 0; //сбрасываем переключатель вибрации
 
   clrScr(); //очистка экрана
   drawBitmap(26, 0, rad_img, 32, 32);
@@ -1554,9 +1556,9 @@ void alarm_messege(boolean set, uint8_t sound, char *mode) //тревога
 
     //==================================================================
     switch (sound) {
-      case 1: _melody_chart(alarm_sound, SAMPLS_ALARM, 1); break; //играем волшебную мелодию
+      case 1: _melody_chart(alarm_sound, SAMPLS_ALARM); break; //играем волшебную мелодию
       case 2: _vibro_on(); break; //включаем вибрацию
-      case 3: _melody_chart(alarm_sound, SAMPLS_ALARM, 1); _vibro_on(); break; //играем волшебную мелодию и включаем вибрацию
+      case 3: _melody_chart(alarm_sound, SAMPLS_ALARM); _vibro_on(); break; //играем волшебную мелодию и включаем вибрацию
     }
     //==================================================================
 
@@ -1574,6 +1576,8 @@ void alarm_messege(boolean set, uint8_t sound, char *mode) //тревога
         case 1: alarm_dose_wait = warn_dose_wait = rad_dose; break;
       }
 
+      melody_switch = 0; //сбрасываем переключатель мелодии
+      vibro_switch = 0; //сбрасываем переключатель вибрации
       alarm_switch = 0; //устанавливаем признак отсутствия тревоги
       cnt_pwr = 0; //обнуляем счетчик сна
       scr = 0; //разрешаем обновление экрана
@@ -1599,10 +1603,8 @@ void _init_alarm_massage(boolean text, uint8_t pos) { //инициализаци
 //--------------------------Вибрация и световая индикация тревоги---------------------------------
 void _vibro_on(void) //вибрация и световая индикация тревоги
 {
-  static uint8_t i; //переключатель вибрации
-
   if (!timer_millis) { //если пришло время
-    switch (pgm_read_word(&alarm_vibro[i][0])) {
+    switch (pgm_read_word(&alarm_vibro[vibro_switch][0])) {
       case 0:
 #if (TYPE_ALARM_IND == 1)
         VIBRO_ON;
@@ -1627,8 +1629,8 @@ void _vibro_on(void) //вибрация и световая индикация �
 #endif
         break;
     }
-    timer_millis = pgm_read_word(&alarm_vibro[i][1]); //устанавливаем паузу перед воспроизведением нового семпла
-    if (++i > SAMPLS_VIBRO - 1) i = 0; //переключпем на следующий семпл
+    timer_millis = pgm_read_word(&alarm_vibro[vibro_switch][1]); //устанавливаем паузу перед воспроизведением нового семпла
+    if (++vibro_switch > SAMPLS_VIBRO - 1) vibro_switch = 0; //переключпем на следующий семпл
   }
 }
 //-----------------------Выключение вибрация и световой индикаци--------------------------------
@@ -1739,6 +1741,7 @@ void bat_massege(void) //сообщение об разряженной бата
 
     sleep_out(); //просыпаемся если спали
     buzz_switch = 0; //запретить звуковую индикацию импульсов
+    melody_switch = 0; //сбрасываем переключатель мелодии
 
     clrScr(); // Очистка экрана
     _init_low_bat(); //отрисовка сообщения разряженной батареи
@@ -1747,7 +1750,7 @@ void bat_massege(void) //сообщение об разряженной бата
       data_convert(); //преобразование данных
       //--------------------------------------------------------------------------------------
 #if BAT_LOW_SOUND
-      _melody_chart(bat_low_sound, SAMPLS_BAT_LOW, 3); //играем волшебную мелодию
+      _melody_chart(bat_low_sound, SAMPLS_BAT_LOW); //играем волшебную мелодию
 #endif
       //--------------------------------------------------------------------------------------
     }
@@ -2614,7 +2617,7 @@ void _logbook_data_clear(void) //очистка журнала
   uint8_t byte_data = 200; //устанавливаем начальную позицию
   uint8_t dataByte_read[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; //буфер обнуления заглавлений данных
   for (uint8_t i = 0; i < 4; i++) {
-    eeprom_write_block((void*)&dataByte_read, byte_data, sizeof(dataByte_read)); //стираем заглавления
+    eeprom_update_block((void*)&dataByte_read, (void*)byte_data, sizeof(dataByte_read)); //стираем заглавления
     byte_data += 10; //переходим на следующий блок
   }
 }
@@ -2627,29 +2630,29 @@ void _logbook_data_update(uint8_t data_num, uint8_t num, uint32_t data) //обн
   uint8_t byte_data = 200 + data_num * 10; //находим запрашиваемую позицию
   uint16_t dword_data = 240 + data_num * 40; //находим запрашиваемую позицию
 
-  eeprom_read_block((void*)&dataByte_read, byte_data, sizeof(dataByte_read)); //считываем информацию во временный буфер
-  eeprom_read_block((void*)&dataDword_read, dword_data, sizeof(dataDword_read)); //считываем информацию во временный буфер
+  eeprom_read_block((void*)&dataByte_read, (void*)byte_data, sizeof(dataByte_read)); //считываем информацию во временный буфер
+  eeprom_read_block((void*)&dataDword_read, (void*)dword_data, sizeof(dataDword_read)); //считываем информацию во временный буфер
 
   for (uint8_t b = 9; b; b--) dataByte_read[b] = dataByte_read[b - 1]; //смещаяем информацию в буфере
   dataByte_read[0] = num; //добавляем в начало буфера новое значение
   for (uint8_t d = 9; d; d--) dataDword_read[d] = dataDword_read[d - 1]; //смещаяем информацию в буфере
   dataDword_read[0] = data; //добавляем в начало буфера новое значение
 
-  eeprom_write_block((void*)&dataByte_read, byte_data, sizeof(dataByte_read)); //записываем в память временный буфер
-  eeprom_write_block((void*)&dataDword_read, dword_data, sizeof(dataDword_read)); //записываем в память временный буфер
+  eeprom_update_block((void*)&dataByte_read, (void*)byte_data, sizeof(dataByte_read)); //записываем в память временный буфер
+  eeprom_update_block((void*)&dataDword_read, (void*)dword_data, sizeof(dataDword_read)); //записываем в память временный буфер
 }
 //-----------------------------------Чтение журнала byte---------------------------------
 uint8_t _data_read_byte(uint8_t num_byte, uint8_t data_byte) //чтение журнала byte
 {
   uint8_t dataByte_read[10]; //временный буфер данных
-  eeprom_read_block((void*)&dataByte_read, data_byte, sizeof(dataByte_read)); //считываем информацию во временный буфер
+  eeprom_read_block((void*)&dataByte_read, (void*)data_byte, sizeof(dataByte_read)); //считываем информацию во временный буфер
   return dataByte_read[num_byte]; //возвращаем запрошенные данные
 }
 //-----------------------------------Чтение журнала dword---------------------------------
 uint32_t _data_read_dword(uint8_t num_byte, uint16_t data_byte) //чтение журнала dword
 {
   uint32_t dataDword_read[10]; //временный буфер данных
-  eeprom_read_block((void*)&dataDword_read, data_byte, sizeof(dataDword_read)); //считываем информацию во временный буфер
+  eeprom_read_block((void*)&dataDword_read, (void*)data_byte, sizeof(dataDword_read)); //считываем информацию во временный буфер
   return dataDword_read[num_byte]; //возвращаем запрошенные данные
 }
 //------------------------------------Журнал------------------------------------------------------
@@ -2919,6 +2922,8 @@ void error_messege(void) //сообщение об ошибке
 #else
     clrScr(); //очистка экрана
 
+    melody_switch = 0; //сбрасываем переключатель мелодии
+
     invertText(true);
     print(E_ERROR, CENTER, 0); //- ОШИБКА -
     invertText(false);
@@ -2959,7 +2964,7 @@ void error_messege(void) //сообщение об ошибке
     for (timer_millis = ERROR_MASSEGE_TIME; timer_millis;) { //ждем
       data_convert(); //преобразование данных
       //==================================================================
-      _melody_chart(error_sound, SAMPLS_ERROR, 5); //играем волшебную мелодию
+      _melody_chart(error_sound, SAMPLS_ERROR); //играем волшебную мелодию
       //==================================================================
       if (check_keys()) {
         error_switch = 0; //сбрасываем флаг ошибки
@@ -2980,23 +2985,23 @@ void error_messege(void) //сообщение об ошибке
 //------------------------------------Чтение настроек----------------------------------------------
 void setings_read(void) //чтение настроек
 {
-  contrast = eeprom_read_byte(41);
-  alarm_back = eeprom_read_byte(43);
+  contrast = eeprom_read_byte((uint8_t*)41);
+  alarm_back = eeprom_read_byte((uint8_t*)43);
   buzz_read();
-  knock_disable = eeprom_read_byte(45);
-  measur_pos = eeprom_read_byte(46);
-  alarm_dose = eeprom_read_byte(47);
-  sleep_switch = eeprom_read_byte(48);
-  TIME_BRIGHT = eeprom_read_byte(49);
-  TIME_SLEEP = eeprom_read_byte(50);
-  rad_mode = eeprom_read_byte(57);
+  knock_disable = eeprom_read_byte((uint8_t*)45);
+  measur_pos = eeprom_read_byte((uint8_t*)46);
+  alarm_dose = eeprom_read_byte((uint8_t*)47);
+  sleep_switch = eeprom_read_byte((uint8_t*)48);
+  TIME_BRIGHT = eeprom_read_byte((uint8_t*)49);
+  TIME_SLEEP = eeprom_read_byte((uint8_t*)50);
+  rad_mode = eeprom_read_byte((uint8_t*)57);
   rad_flash_read();
-  sigma_pos = eeprom_read_byte(60);
-  search_pos = eeprom_read_byte(61);
-  warn_level_back = eeprom_read_word(62);
-  alarm_level_back = eeprom_read_word(64);
-  warn_level_dose = eeprom_read_word(66);
-  alarm_level_dose = eeprom_read_word(68);
+  sigma_pos = eeprom_read_byte((uint8_t*)60);
+  search_pos = eeprom_read_byte((uint8_t*)61);
+  warn_level_back = eeprom_read_word((uint16_t*)62);
+  alarm_level_back = eeprom_read_word((uint16_t*)64);
+  warn_level_dose = eeprom_read_word((uint16_t*)66);
+  alarm_level_dose = eeprom_read_word((uint16_t*)68);
 #if LOGBOOK_RETURN
   logbook_read();
 #endif
@@ -3004,23 +3009,23 @@ void setings_read(void) //чтение настроек
 //---------------------------------------Обновление настроек------------------------------------------------
 void setings_update(void) //обновление настроек
 {
-  eeprom_update_byte(41, contrast);
-  eeprom_update_byte(43, alarm_back);
-  eeprom_update_byte(44, buzz_switch);
-  eeprom_update_byte(45, knock_disable);
-  eeprom_update_byte(46, measur_pos);
-  eeprom_update_byte(47, alarm_dose);
-  eeprom_update_byte(48, sleep_switch);
-  eeprom_update_byte(49, TIME_BRIGHT);
-  eeprom_update_byte(50, TIME_SLEEP);
-  eeprom_update_byte(57, rad_mode);
-  eeprom_update_byte(59, rad_flash);
-  eeprom_update_byte(60, sigma_pos);
-  eeprom_update_byte(61, search_pos);
-  eeprom_update_word(62, warn_level_back);
-  eeprom_update_word(64, alarm_level_back);
-  eeprom_update_word(66, warn_level_dose);
-  eeprom_update_word(68, alarm_level_dose);
+  eeprom_update_byte((uint8_t*)41, contrast);
+  eeprom_update_byte((uint8_t*)43, alarm_back);
+  eeprom_update_byte((uint8_t*)44, buzz_switch);
+  eeprom_update_byte((uint8_t*)45, knock_disable);
+  eeprom_update_byte((uint8_t*)46, measur_pos);
+  eeprom_update_byte((uint8_t*)47, alarm_dose);
+  eeprom_update_byte((uint8_t*)48, sleep_switch);
+  eeprom_update_byte((uint8_t*)49, TIME_BRIGHT);
+  eeprom_update_byte((uint8_t*)50, TIME_SLEEP);
+  eeprom_update_byte((uint8_t*)57, rad_mode);
+  eeprom_update_byte((uint8_t*)59, rad_flash);
+  eeprom_update_byte((uint8_t*)60, sigma_pos);
+  eeprom_update_byte((uint8_t*)61, search_pos);
+  eeprom_update_word((uint16_t*)62, warn_level_back);
+  eeprom_update_word((uint16_t*)64, alarm_level_back);
+  eeprom_update_word((uint16_t*)66, warn_level_dose);
+  eeprom_update_word((uint16_t*)68, alarm_level_dose);
 #if LOGBOOK_RETURN
   logbook_update();
 #endif
@@ -3028,58 +3033,58 @@ void setings_update(void) //обновление настроек
 //---------------------------------------Чтение журнала--------------------------------------------------
 void logbook_read(void) //чтение журнала
 {
-  logbook_alarm = eeprom_read_byte(70);
-  logbook_warn = eeprom_read_byte(71);
-  logbook_measur = eeprom_read_byte(72);
+  logbook_alarm = eeprom_read_byte((uint8_t*)70);
+  logbook_warn = eeprom_read_byte((uint8_t*)71);
+  logbook_measur = eeprom_read_byte((uint8_t*)72);
 }
 //--------------------------------------Обновление журнала-----------------------------------------------
 void logbook_update(void) //обновление журнала
 {
-  eeprom_update_byte(70, logbook_alarm);
-  eeprom_update_byte(71, logbook_warn);
-  eeprom_update_byte(72, logbook_measur);
+  eeprom_update_byte((uint8_t*)70, logbook_alarm);
+  eeprom_update_byte((uint8_t*)71, logbook_warn);
+  eeprom_update_byte((uint8_t*)72, logbook_measur);
 }
 //---------------------------------------Чтение статистики--------------------------------------------------
 void statistic_read(void) //чтение статистики
 {
-  time_save = eeprom_read_dword(114);
-  rad_dose_save = eeprom_read_dword(118);
+  time_save = eeprom_read_dword((uint32_t*)114);
+  rad_dose_save = eeprom_read_dword((uint32_t*)118);
 }
 //--------------------------------------Обновление статистики-----------------------------------------------
 void statistic_update(void) //обновление статистики
 {
-  eeprom_update_dword(114, time_save);
-  eeprom_update_dword(118, rad_dose_save);
+  eeprom_update_dword((uint32_t*)114, time_save);
+  eeprom_update_dword((uint32_t*)118, rad_dose_save);
 }
 //--------------------------------Чтение настроек преобразователя-------------------------------------------
 void pump_read(void) //чтение настроек преобразователя
 {
-  GEIGER_TIME = eeprom_read_byte(51);
-  puls = eeprom_read_byte(52);
-  opornoe = eeprom_read_float(53);
-  ADC_value = eeprom_read_byte(102);
-  k_delitel = eeprom_read_word(104);
-  wdt_period = eeprom_read_word(110);
+  GEIGER_TIME = eeprom_read_byte((uint8_t*)51);
+  puls = eeprom_read_byte((uint8_t*)52);
+  opornoe = eeprom_read_float((float*)53);
+  ADC_value = eeprom_read_byte((uint8_t*)102);
+  k_delitel = eeprom_read_word((uint16_t*)104);
+  wdt_period = eeprom_read_word((uint16_t*)110);
 }
 //-----------------------------Обновление настроек преобразователя------------------------------------------
 void pump_update(void) //обновление настроек преобразователя
 {
-  eeprom_update_byte(51, GEIGER_TIME);
-  eeprom_update_byte(52, puls);
-  eeprom_update_float(53, opornoe);
-  eeprom_update_byte(102, ADC_value);
-  eeprom_update_word(104, k_delitel);
-  eeprom_update_word(110, wdt_period);
+  eeprom_update_byte((uint8_t*)51, GEIGER_TIME);
+  eeprom_update_byte((uint8_t*)52, puls);
+  eeprom_update_float((float*)53, opornoe);
+  eeprom_update_byte((uint8_t*)102, ADC_value);
+  eeprom_update_word((uint16_t*)104, k_delitel);
+  eeprom_update_word((uint16_t*)110, wdt_period);
 }
 //------------------------------------Чтение состояния щелчков----------------------------------------------
 void buzz_read(void) //чтение состояния щелчков
 {
-  buzz_switch = eeprom_read_byte(44);
+  buzz_switch = eeprom_read_byte((uint8_t*)44);
 }
 //------------------------------------Чтение состояния вспышек----------------------------------------------
 void rad_flash_read(void) //чтение состояния вспышек
 {
-  rad_flash = eeprom_read_byte(59);
+  rad_flash = eeprom_read_byte((uint8_t*)59);
 }
 //---------------------------------------Сброс текущей дозы--------------------------------------------
 void data_reset(uint8_t sw) //сброс текущей дозы
@@ -3140,6 +3145,7 @@ void data_reset(uint8_t sw) //сброс текущей дозы
       case 5: //select key
         switch (n) {
           case 1:
+            clrScr(); //очистка экрана
             switch (sw) {
               case 0: //текущая доза
                 rad_dose_save += rad_dose - rad_dose_old;
@@ -3157,7 +3163,6 @@ void data_reset(uint8_t sw) //сброс текущей дозы
                 alarm_dose_wait = 0;
                 warn_dose_wait = 0;
 
-                clrScr(); //очистка экрана
                 print(R_SUCC_CURRENT_DOSE, CENTER, 16); //Текущая доза
                 print(R_SUCC_RESET, CENTER, 24); //сброшена!
                 break;
@@ -3167,14 +3172,14 @@ void data_reset(uint8_t sw) //сброс текущей дозы
                 rad_dose_save = 0;
                 statistic_update(); //обновление статистики
                 rad_dose_old = rad_dose;
-                clrScr(); //очистка экрана
+
                 print(R_SUCC_ALL_DOSE, CENTER, 16); //Общая доза
                 print(R_SUCC_RESET, CENTER, 24); //сброшена!
                 break;
 
               case 2: //журнал
                 _logbook_data_clear(); //очистка журнала
-                clrScr(); //очистка экрана
+
                 print(R_SUCC_LOGBOOK, CENTER, 16); //Журнал
                 print(R_SUCC_CLEAR, CENTER, 24); //очищен!
                 break;
@@ -3198,43 +3203,43 @@ void setings_save(uint8_t sw) //сохранить настройки
   switch (sw) {
     case 0:
       if (
-        contrast == eeprom_read_byte(41) &&
-        alarm_back == eeprom_read_byte(43) &&
-        buzz_switch == eeprom_read_byte(44) &&
-        knock_disable == eeprom_read_byte(45) &&
-        measur_pos == eeprom_read_byte(46) &&
-        alarm_dose == eeprom_read_byte(47) &&
-        sleep_switch == eeprom_read_byte(48) &&
-        TIME_BRIGHT == eeprom_read_byte(49) &&
-        TIME_SLEEP == eeprom_read_byte(50) &&
-        rad_mode == eeprom_read_byte(57) &&
-        rad_flash == eeprom_read_byte(59) &&
-        sigma_pos == eeprom_read_byte(60) &&
-        search_pos == eeprom_read_byte(61) &&
-        warn_level_back == eeprom_read_word(62) &&
-        alarm_level_back == eeprom_read_word(64) &&
-        warn_level_dose == eeprom_read_word(66) &&
-        alarm_level_dose == eeprom_read_word(68)
+        contrast == eeprom_read_byte((uint8_t*)41) &&
+        alarm_back == eeprom_read_byte((uint8_t*)43) &&
+        buzz_switch == eeprom_read_byte((uint8_t*)44) &&
+        knock_disable == eeprom_read_byte((uint8_t*)45) &&
+        measur_pos == eeprom_read_byte((uint8_t*)46) &&
+        alarm_dose == eeprom_read_byte((uint8_t*)47) &&
+        sleep_switch == eeprom_read_byte((uint8_t*)48) &&
+        TIME_BRIGHT == eeprom_read_byte((uint8_t*)49) &&
+        TIME_SLEEP == eeprom_read_byte((uint8_t*)50) &&
+        rad_mode == eeprom_read_byte((uint8_t*)57) &&
+        rad_flash == eeprom_read_byte((uint8_t*)59) &&
+        sigma_pos == eeprom_read_byte((uint8_t*)60) &&
+        search_pos == eeprom_read_byte((uint8_t*)61) &&
+        warn_level_back == eeprom_read_word((uint16_t*)62) &&
+        alarm_level_back == eeprom_read_word((uint16_t*)64) &&
+        warn_level_dose == eeprom_read_word((uint16_t*)66) &&
+        alarm_level_dose == eeprom_read_word((uint16_t*)68)
       ) return;
       break;
 #if DEBUG_RETURN
     case 1:
       if (
-        GEIGER_TIME == eeprom_read_byte(51) &&
-        puls == eeprom_read_byte(52) &&
-        opornoe == eeprom_read_float(53) &&
-        ADC_value == eeprom_read_byte(102) &&
-        k_delitel == eeprom_read_word(104) &&
-        wdt_period == eeprom_read_word(110)
+        GEIGER_TIME == eeprom_read_byte((uint8_t*)51) &&
+        puls == eeprom_read_byte((uint8_t*)52) &&
+        opornoe == eeprom_read_float((float*)53) &&
+        ADC_value == eeprom_read_byte((uint8_t*)102) &&
+        k_delitel == eeprom_read_word((uint16_t*)104) &&
+        wdt_period == eeprom_read_word((uint16_t*)110)
       ) return;
       break;
 #endif
 #if LOGBOOK_RETURN
     case 2:
       if (
-        logbook_alarm == eeprom_read_byte(70) &&
-        logbook_warn == eeprom_read_byte(71) &&
-        logbook_measur == eeprom_read_byte(72)
+        logbook_alarm == eeprom_read_byte((uint8_t*)70) &&
+        logbook_warn == eeprom_read_byte((uint8_t*)71) &&
+        logbook_measur == eeprom_read_byte((uint8_t*)72)
       ) return;
       break;
 #endif
@@ -3418,7 +3423,7 @@ void _alarm_init(uint8_t waint, uint8_t alarm) //индикация тревог
   }
 }
 //----------------------------------Шапка экрана------------------------------------------------
-void task_bar(char *title) //шапка экрана
+void task_bar(const char *title) //шапка экрана
 {
   _screen_line(0, 84, 0, 0, 0); //рисуем линию
   drawBitmap(70, 0, font_bat_img, 12, 8); //устанавлваем фон батареи

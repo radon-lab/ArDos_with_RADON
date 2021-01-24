@@ -10,7 +10,7 @@
 #define fontbyte(x) pgm_read_byte(&cfont.font[x])
 #define bitmapbyte(x) pgm_read_byte(&bitmap[x])
 
-#define bitmapdatatype uint8_t*
+#define bitmapdatatype const uint8_t*
 
 // ------------------
 #define LEFT 0
@@ -46,7 +46,7 @@
 
 struct _current_font
 {
-  uint8_t* font;
+  const uint8_t* font;
   uint8_t x_size;
   uint8_t y_size;
   uint8_t offset;
@@ -62,11 +62,10 @@ void  clrScr(void);
 void  clrRow(uint8_t row, uint8_t start_x = 0, uint8_t end_x = 83);
 void  invert(bool mode);
 void  invertText(bool mode);
-void  print(char *st, uint8_t x, uint8_t y, uint8_t length = 0, char filler = ' ');
-void  print(String st, uint8_t x, uint8_t y, uint8_t length = 0, char filler = ' ');
+void  print(const char *st, uint8_t x, uint8_t y, uint8_t length = 0, char filler = ' ');
 void  printNumI(uint32_t num, uint8_t x, uint8_t y, uint8_t length = 0, char filler = ' ');
 void  printNumF(float num, uint8_t dec, uint8_t x, uint8_t y, char divider = '.', uint8_t length = 0, char filler = ' ');
-void  setFont(uint8_t* font);
+void  setFont(const uint8_t* font);
 void  drawBitmap(uint8_t x, uint8_t y, bitmapdatatype bitmap, uint8_t sx, uint8_t sy,  boolean inv = 0);
 
 void  _LCD_Write(unsigned char data, unsigned char mode);
@@ -208,9 +207,9 @@ void invertText(bool mode) //инверсия текста
   }
 }
 //-------------------------Вывод текста----------------------------------------------------
-void print(char *st, uint8_t x, uint8_t y, uint8_t length, char filler) //вывод текста
+void print(const char *st, uint8_t x, uint8_t y, uint8_t length, char filler) //вывод текста
 {
-  uint8_t stl, row, xp, steps;
+  uint8_t stl, row, steps;
 
   stl = strlen(st);
 
@@ -226,7 +225,6 @@ void print(char *st, uint8_t x, uint8_t y, uint8_t length, char filler) //выв
     row = (y / 8) + 1;
     steps = 8 - y % 8;
   }
-  xp = x;
 
   for (int cnt = 0; cnt < stl; cnt++) _print_char(*st++, x + (cnt * (cfont.x_size)), row, steps);
 
@@ -302,7 +300,7 @@ void _print_char(unsigned char c, uint8_t x, uint8_t row, uint8_t steps) //от�
 #endif
 }
 //-------------------------Установка шрифта----------------------------------------------------
-void setFont(uint8_t* font) //установка шрифта
+void setFont(const uint8_t* font) //установка шрифта
 {
   cfont.font = font;
   cfont.x_size = fontbyte(0);
