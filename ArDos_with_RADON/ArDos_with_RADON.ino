@@ -246,8 +246,8 @@ uint8_t GEIGER_CYCLE; //минимум секунд для начала расч
 uint8_t GEIGER_MASS; //максимум секунд для окончания смещения коэффициентов
 
 //пищалка старт/стоп
-#define SOUND_START(x)  PRR &= ~(1 << 3); OCR1A = x; TIMSK1 = 0b00000010
-#define SOUND_STOP   TIMSK1 = 0b00000000; PRR |= (1 << 3)
+#define SOUND_START(x)  PRR &= ~(1 << 3); OCR1A = x; TCNT1 = 0; TIMSK1 = 0b00000010
+#define SOUND_STOP      TIMSK1 = 0b00000000; PRR |= (1 << 3)
 
 //вспышки старт/стоп
 #define _RAD_FLASH_ON  PRR &= ~(1 << 5); TIMSK0 = 0b00000001; RAD_FLASH_ON
@@ -1138,8 +1138,10 @@ void buzz_pulse(uint16_t freq, uint8_t time) //генерация частоты
 //--------------------------------Щелчок пищалкой-------------------------------------------------
 inline void buzz_click(void) //щелчок пищалкой
 {
-  cnt_puls = buzz_time; //устанавливаем длительность щелчка
-  SOUND_START(buzz_freq); //устанавливаем частоту и запускаем таймер
+  if (!TIMSK1) {
+    cnt_puls = buzz_time; //устанавливаем длительность щелчка
+    SOUND_START(buzz_freq); //устанавливаем частоту и запускаем таймер
+  }
 }
 //---------------------------------Воспроизведение мелодии---------------------------------------
 void _melody_chart(const uint16_t arr[][3], uint8_t n) //воспроизведение мелодии
@@ -1278,7 +1280,7 @@ void measur_massege(void) //окончание замера
     clrScr(); //очистка экрана
     print(M_MEASURS, CENTER, 16); //Замер
     print(M_COMPLET, CENTER, 24); //завершен!
-    
+
     melody_switch = 0; //сбрасываем переключатель мелодии
 
     for (timer_millis = MASSEGE_TIME; timer_millis && !check_keys();) { //ждём
