@@ -1277,6 +1277,9 @@ void measur_massege(void) //окончание замера
 {
   if (next_measur && !alarm_measur) { //если поднят флаг следующего замера и оповещение окончания замера разешено
 
+    sleep_out(); //просыпаемся если спали
+    buzz_switch = 0; //запрещаем щелчки
+
     clrScr(); //очистка экрана
     print(M_MEASURS, CENTER, 16); //Замер
     print(M_COMPLET, CENTER, 24); //завершен!
@@ -1316,6 +1319,8 @@ void measur_massege(void) //окончание замера
 #endif
         break;
     }
+    buzz_read(); //считываем настроку щелчков
+    cnt_pwr = 0; //обнуляем счетчик сна
     scr = 0; //разрешаем обновления экрана
   }
 }
