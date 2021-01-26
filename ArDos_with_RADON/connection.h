@@ -95,10 +95,11 @@
 #define CONV_BIT   5 // D5
 #define CONV_PORT  PORTD
 
-#define CONV_CLR   (bitClear(CONV_PORT, CONV_BIT))
+#define CONV_ON    (bitSet(CONV_PORT, CONV_BIT))
+#define CONV_OFF   (bitClear(CONV_PORT, CONV_BIT))
 #define CONV_INP   (bitSet((DDR_REG(CONV_PORT)), CONV_BIT))
 
-#define CONV_INIT  CONV_CLR; CONV_INP
+#define CONV_INIT  CONV_OFF; CONV_INP
 
 //пин подсветки A2
 #define LIGHT_BIT   2 // A2

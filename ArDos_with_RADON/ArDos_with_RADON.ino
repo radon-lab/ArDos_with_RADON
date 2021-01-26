@@ -1657,9 +1657,9 @@ void start_pump(void) //первая накачка
 
   for (hv_adc = Read_HV(); hv_adc < ADC_value; hv_adc = Read_HV()) { //значение АЦП при котором на выходе 400В
 
-    PORTD |= (1 << 5); //пин накачки
+    CONV_ON; //пин накачки вкл
     for (uint8_t c = puls; c > 0; c--) asm("nop"); //ждем
-    PORTD &= ~(1 << 5); //пин накачки
+    CONV_OFF; //пин накачки выкл
 
     if (++i >= START_PUMP_TIME) break; //если время вышло, останавливаем накачку
 
@@ -1673,9 +1673,9 @@ void pump(void) //накачка по обратной связи с АЦП
 
   for (hv_adc = Read_HV(); hv_adc < ADC_value; hv_adc = Read_HV()) { //значение АЦП при котором на выходе 400В
 
-    PORTD |= (1 << 5); //пин накачки
+    CONV_ON; //пин накачки вкл
     for (uint8_t c = puls; c > 0; c--) asm("nop"); //ждем
-    PORTD &= ~(1 << 5); //пин накачки
+    CONV_OFF; //пин накачки выкл
 
     speed_pump++; //считаем скорость накачки
 
