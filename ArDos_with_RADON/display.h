@@ -54,7 +54,7 @@ struct _current_font
   uint8_t inverted;
 };
 
-void  InitLCD(uint8_t contrast = LCD_CONTRAST);
+void  InitLCD(void);
 void  setContrast(uint8_t contrast);
 void  enableSleep(void);
 void  disableSleep(uint8_t contrast);
@@ -120,12 +120,12 @@ void _LCD_Write(unsigned char data, unsigned char mode)
 #endif
 }
 //-------------------------Инициализация дисплея----------------------------------------------------
-void InitLCD(uint8_t contrast) //инициализация дисплея
+void InitLCD(void) //инициализация дисплея
 {
   resetLCD;
 
   _LCD_Write(PCD8544_FUNCTIONSET | PCD8544_EXTENDEDINSTRUCTION, LCD_COMMAND);
-  _LCD_Write(PCD8544_SETVOP | contrast, LCD_COMMAND);
+  _LCD_Write(PCD8544_SETVOP | DEFAULT_CONTRAST, LCD_COMMAND);
   _LCD_Write(PCD8544_SETTEMP | LCD_TEMP, LCD_COMMAND);
   _LCD_Write(PCD8544_SETBIAS | LCD_BIAS, LCD_COMMAND);
   _LCD_Write(PCD8544_FUNCTIONSET, LCD_COMMAND);
