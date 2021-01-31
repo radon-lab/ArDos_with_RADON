@@ -3383,7 +3383,7 @@ void _init_rads_unit(boolean type, uint32_t num, uint8_t divisor, uint8_t char_a
 
   for (uint8_t i = 0; i < _ptr; i++) { //перебираем патерны
     if (num <= pgm_read_dword(&pattern_all[rad_mode][i][0]) * divisor) { //если есть совпадение
-      uint8_t char_unit = _rads_unit(pgm_read_dword(&pattern_all[rad_mode][i][3]), unit, unit_x, unit_y); //устанавливаем единицы измерения
+      uint8_t char_unit = _rads_unit(pgm_read_dword(&pattern_all[rad_mode][i][3]), unit, unit_x, unit_y) * cfont.x_size; //устанавливаем единицы измерения
       if (type) setFont(MediumNumbers); //установка шрифта
 #if (TYPE_CHAR_FILL > 44)
       printNumF(float(num) / pgm_read_dword(&pattern_all[rad_mode][i][2]), pgm_read_dword(&pattern_all[rad_mode][i][1]), (num_x == RIGHT) ? 84 - char_all * cfont.x_size - char_unit : num_x, num_y, 46, char_all, TYPE_CHAR_FILL); //строка 1
@@ -3404,15 +3404,15 @@ uint8_t _rads_unit(boolean set, boolean unit, uint8_t unit_x, uint8_t unit_y) //
       switch (set) {
         case 0:
           switch (unit) {
-            case 0: print(UNIT_UR_H, unit_x, unit_y); return 30; //строка 2 мкР/ч
-            case 1: print(UNIT_UR, unit_x, unit_y); return 18; //строка 2 мкР
+            case 0: print(UNIT_UR_H, unit_x, unit_y); return sizeof(UNIT_UR_H); //строка 2 мкР/ч
+            case 1: print(UNIT_UR, unit_x, unit_y); return sizeof(UNIT_UR); //строка 2 мкР
           }
           break;
 
         case 1:
           switch (unit) {
-            case 0: print(UNIT_MR_H, unit_x, unit_y); return 24; //строка 2 мР/ч
-            case 1: print(UNIT_MR, unit_x, unit_y); return 12; //строка 2 мР
+            case 0: print(UNIT_MR_H, unit_x, unit_y); return sizeof(UNIT_MR_H); //строка 2 мР/ч
+            case 1: print(UNIT_MR, unit_x, unit_y); return sizeof(UNIT_MR); //строка 2 мР
           }
           break;
       }
@@ -3423,15 +3423,15 @@ uint8_t _rads_unit(boolean set, boolean unit, uint8_t unit_x, uint8_t unit_y) //
       switch (set) {
         case 0:
           switch (unit) {
-            case 0: print(UNIT_USV_H, unit_x, unit_y); return 30; //строка 2 мкЗ/ч
-            case 1: print(UNIT_USV, unit_x, unit_y); return 18; //строка 2 мкЗ
+            case 0: print(UNIT_USV_H, unit_x, unit_y); return sizeof(UNIT_USV_H); //строка 2 мкЗ/ч
+            case 1: print(UNIT_USV, unit_x, unit_y); return sizeof(UNIT_USV); //строка 2 мкЗ
           }
           break;
 
         case 1:
           switch (unit) {
-            case 0: print(UNIT_MSV_H, unit_x, unit_y); return 24; //строка 2 мЗ/ч
-            case 1: print(UNIT_MSV, unit_x, unit_y); return 12; //строка 2 мЗ
+            case 0: print(UNIT_MSV_H, unit_x, unit_y); return sizeof(UNIT_MSV_H); //строка 2 мЗ/ч
+            case 1: print(UNIT_MSV, unit_x, unit_y); return sizeof(UNIT_MSV); //строка 2 мЗ
           }
           break;
       }
