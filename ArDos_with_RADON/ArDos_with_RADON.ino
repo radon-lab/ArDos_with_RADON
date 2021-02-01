@@ -3383,7 +3383,7 @@ void _init_rads_unit(boolean type, uint32_t num, uint8_t divisor, uint8_t char_a
 
   for (uint8_t i = 0; i < _ptr; i++) { //перебираем патерны
     if (num <= pgm_read_dword(&pattern_all[rad_mode][i][0]) * divisor) { //если есть совпадение
-      uint8_t char_unit = _rads_unit(pgm_read_dword(&pattern_all[rad_mode][i][3]), unit, unit_x, unit_y) * cfont.x_size; //устанавливаем единицы измерения
+      uint8_t char_unit = (_rads_unit(pgm_read_dword(&pattern_all[rad_mode][i][3]), unit, unit_x, unit_y) - 1) * cfont.x_size; //устанавливаем единицы измерения
       if (type) setFont(MediumNumbers); //установка шрифта
 #if (TYPE_CHAR_FILL > 44)
       printNumF(float(num) / pgm_read_dword(&pattern_all[rad_mode][i][2]), pgm_read_dword(&pattern_all[rad_mode][i][1]), (num_x == RIGHT) ? 84 - char_all * cfont.x_size - char_unit : num_x, num_y, 46, char_all, TYPE_CHAR_FILL); //строка 1
