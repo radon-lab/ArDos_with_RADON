@@ -1,6 +1,7 @@
 //Языки для локализации
 #define VERSION "3.5.6" //версия по
 
+//---------------------------------------------//
 #ifdef RUSSIAN //если выбран язык "русский"
 //Основные
 #define INTRO "-=HFLJY=-" //-=РАДОН=-
@@ -205,3 +206,209 @@
 
 #define FONT_DATA_NAME RusFont //Название шрифта
 #endif
+//---------------------------------------------//
+#ifdef ENGLISH //если выбран язык "английский"
+//Основные
+#define INTRO "-=RADON=-" //-=РАДОН=-
+
+#define PLEASE "Please" //Пожалуйста
+#define WAINT "waint..." //подождите...
+
+#define LOAD "Loading..." //загрузка...
+
+//Замер бета
+#define M_MEASUR_BETA "Measur mode" //Замер бета
+
+#define M_STOP "Stop" //Остановить
+#define M_MEASUR "measur:" //замер?
+
+#define M_MEASURS "Measur" //Замер
+#define M_COMPLET "complet!" //завершен!
+
+#define M_RESULT "RESULT" //РЕЗУЛЬТАТ
+#define M_BACK_OK "OK-NEXT BACK" //ОК-ЗАМЕР ФОНА
+#define M_BACK "MEASUR BACK" //ЗАМЕР ФОНА
+#define M_SAMP_OK "OK-NEXT SAMP" //ОК-ЗАМ.ОБРАЗЦА
+#define M_SAMP "MEASUR SAMP" //ЗАМЕР ОБРАЗЦА
+#define M_BACK_I "BACK" //ФОН
+#define M_SAMP_I "SAMP" //ОБР
+
+#define M_MIN "min" //мин
+#define M_TIME ":" //:
+
+//Тревога
+#define A_ALARM "ALARM!" //Тревога!
+#define A_WARN "WARNING!" //Опасность!
+
+#define A_BACK "Back" //Фон
+#define A_DOSE "Dose" //Доза
+
+//Батарея
+#define B_BAT "Battery" //Батарея
+#define B_LOW "low!" //разряжена!
+
+//Поиск
+#define S_SEARCH "Search" //Поиск
+
+#define S_IMP_PER_SEC "imp/s" //имп/с
+#define S_IMP_PER_MIN "imp/m" //имп/м
+
+//Параметры
+#define P_PARAM "Parametrs" //Параметры
+
+#define P_BAT "Battery:" //Батарея:
+#define P_ADC_BAT "ADC BAT:" //Знач.АЦП:
+#define P_HV_PUMP "HV PUMP:" //Накачка ВВ:
+#define P_PUMP_SPEED "Pump speed:" //Скорость:
+#define P_REFERENCE "Reference:" //Опорное:
+
+//Отладка
+#define D_DEBUG "Debug" //Отладка
+
+#define D_BAT "BAT" //БАТ
+#define D_ADC_BAT "ADC" //АЦП
+#define D_HV_PUMP "HV" //ВВ
+#define D_PUMP_SPEED "SPD" //СКР
+#define D_REFERENCE "REF" //ОПР
+#define D_PULS_LEN "IMP" //ИМП
+#define D_COEF_DIV "CDF" //КДЛ
+#define D_PUMP_ADC "ADC" //АЦП
+#define D_WDT_PER "WDT" //ПЕР
+#define D_GEIGER_TIME "GTM" //СЧТ
+
+//Настройки
+#define S_SETINGS "Settings" //Настройки
+
+#define S_ITEM_SLEEP "Sleep:" //Сон:
+#define S_ITEM_LIGHT "Light:" //Подсветка:
+#define S_ITEM_CONTRAST "Contrast:" //Контраст:
+#define S_ITEM_FLASHES "Flashes:" //Вспышки:
+#define S_ITEM_CLICKS "Clicks:" //Щелчки:
+#define S_ITEM_BUTT_SOUND "Butt sound:" //Зв.кнопок:
+#define S_ITEM_DIFF_MEASUR "Diff measur:" //Разн.зам:
+#define S_ITEM_SIGMA "Sigma:" //Сигма:
+#define S_ITEM_SEARCH "Search:" //Поиск:
+#define S_ITEM_UNITS "Units:" //Ед.измер:
+#define S_ITEM_ALARM_BACK "Alarm B:" //Тревога Ф:
+#define S_ITEM_ALARM_THRESHOLD_BACK_1 "Back 1:" //Порог Ф1:
+#define S_ITEM_ALARM_THRESHOLD_BACK_2 "Back 2:" //Порог Ф2:
+#define S_ITEM_ALARM_DOSE "Alarm D:" //Тревога Д:
+#define S_ITEM_ALARM_THRESHOLD_DOSE_1 "Dose 1:" //Порог Д1:
+#define S_ITEM_ALARM_THRESHOLD_DOSE_2 "Dose 2:" //Порог Д2:
+
+#define S_SWITCH_MANUAL "MANUAL" //РУЧН
+#define S_SWITCH_AUTO "AUTO" //АВТО
+#define S_SWITCH_MANUAL_EXCEPT_SLEEP "MES" //КР.СНА
+#define S_SWITCH_BACK_1 "BACK1" //ФОН1
+#define S_SWITCH_SOUND "SOUND" //ЗВУК
+#define S_SWITCH_VIBRO "VIBRO" //ВИБР
+#define S_SWITCH_SOUND_VIBRO "S+VIB" //З+ВБ
+
+//Меню
+#define MAIN_MENU "Menu" //Меню
+
+#define MAIN_BACK_DOSE "Back / Dose" //Фон / Доза
+#define MAIN_SEARCH "Search mode" //Режим поиска
+#define MAIN_MEASUR "Measur mode" //Замер бета
+#define MAIN_LOGBOOK "Logbook" //Журнал
+#define MAIN_SETINGS "Settings" //Настройки
+#define MAIN_PARAM "Parametrs" //Параметры
+#define MAIN_POWER_DOWN "Turn off" //Выключение
+
+//Журнал
+#define L_LOGBOOK "Logbook" //Журнал
+
+#define L_DATA_DOSE "DOSE" //ДОЗА
+#define L_DATA_BACK "BACK" //ФОН
+#define L_DATA_MINS "m" //м
+#define L_DATA_ERROR_NUM "Error #" //Ошибка #
+#define L_DATA_NULL "- null -" //- пусто -
+
+#define L_ITEM_ALARM "Alarm" //Тревога
+#define L_ITEM_WARN "Warning" //Опасность
+#define L_ITEM_MEASUR "Measuring" //Замеры бета
+#define L_ITEM_ERRORS "Errors" //Ошибки
+#define L_ITEM_SETINGS "Settings" //Настройки
+#define L_ITEM_ASTER "*" //*
+
+#define L_SETINGS_ALARM "Alarm:" //Тревога:
+#define L_SETINGS_WARN "Warning:" //Опасность:
+#define L_SETINGS_MEASUR "Measur:" //Замеры:
+#define L_SETINGS_CLEAR "Clear book" //Очистить
+
+//Ошибки
+#define E_ERROR " - ERROR - " //- ОШИБКА -
+#define E_ERROR_NULL "* null *" //* пусто *
+
+#define E_DATA_OVERLOAD "Overload" //Перегрузка
+#define E_DATA_PUMP "pump!" //преобразоват!
+
+#define E_DATA_LOW "Low" //Низкое
+#define E_DATA_VOLTAGE "voltage" //напряжение
+
+#define E_DATA_SHOT_CIRCUIT "Short circuit" //Короткое зам.
+#define E_DATA_NO_ACCOUNT "No account!" //Нет счета!
+
+#define E_DATA_SPEED "SPD:" //СКР:
+#define E_DATA_HV " HV:" //НАП:
+
+//Сброс данных
+#define R_RESET "Reset" //Сбросить
+#define R_CURRENT_DOSE "current dose?" //текущую дозу?
+#define R_ALL_DOSE "all dose?" //общую дозу?
+#define R_CLEAR "Clear" //Очистить
+#define R_ALL_LOGBOOK "all logbook?" //весь журнал?
+
+#define R_SUCC_ALL_DOSE "All dose" //Общая доза
+#define R_SUCC_CURRENT_DOSE "Current dose" //Текущая доза
+#define R_SUCC_RESET "clear!" //сброшена!
+#define R_SUCC_LOGBOOK "Logbook" //Журнал
+#define R_SUCC_CLEAR "clear!" //очищен!
+
+//Сохранение настроек
+#define W_SAVE "Seve" //Сохранить
+#define W_SETINGS "settings?" //настройки?
+
+#define W_SETINGS_SUCC "Settings" //Настройки
+#define W_SAVE_SUCC "save!"   //сохранены!
+
+//Общие символы
+#define ALL_SWITCH_OFF "OFF" //ВЫКЛ
+#define ALL_SWITCH_ON  "ON"   //ВКЛ
+
+#define ALL_YES "  YES  " //ДА
+#define ALL_NO  "  NO   " //НЕТ
+
+//Главные экраны ФОН/ДОЗА
+#define MAIN_SCREEN_BACK "Back" //Фон
+#define MAIN_SCREEN_DOSE "Dose" //Доза
+
+#define MAIN_SCREEN_BACK_MIN "MIN:" //МИН:
+#define MAIN_SCREEN_BACK_MAX "MAX:" //МАКС:
+
+#define MAIN_SCREEN_CURRENT_DOSE_ALL "ALL:" //ВСЕГО:
+
+#define MAIN_SCREEN_DOSE_DAYS "d" //д
+#define MAIN_SCREEN_DOSE_HOURSE "h" //ч
+#define MAIN_SCREEN_DOSE_MINS "m" //м
+
+#define MAIN_SCREEN_DOSE_ACCUM "accum" //накоплено
+#define MAIN_SCREEN_DOSE_JUST_OVER "just over:" //всего за:
+
+
+//Единицы измерения
+#define UNIT_COUNT_PER_SQUARE_CM "c/cm2" //ч/см2
+
+#define UNIT_UR "uR"     //мкР
+#define UNIT_UR_H "uR/h" //мкР/ч
+#define UNIT_MR "mR"      //мР
+#define UNIT_MR_H "mR/h"  //мР/ч
+
+#define UNIT_USV "uSv"    //мкЗ
+#define UNIT_USV_H "uSv/h"//мкЗ/ч
+#define UNIT_MSV "mSv"     //мЗ
+#define UNIT_MSV_H "mSv/h" //мЗ/ч
+
+#define FONT_DATA_NAME EngFont //Название шрифта
+#endif
+//---------------------------------------------//
