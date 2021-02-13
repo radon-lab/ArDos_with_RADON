@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.5.6 low_pwr final 31.01.21 специально для проекта ArDos
+  Версия программы RADON v3.5.6 low_pwr final 13.02.21 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -397,6 +397,13 @@ uint16_t time_switch = 0; //счетчик времени замера
 uint32_t first_froze = 0; //счетчик 1-го замера
 uint32_t second_froze = 0; //счетчик 2-го замера
 
+//настройки преобразователя
+uint8_t ADC_value = DEFAULT_ADC_VALUE; //значение АЦП при котором 400В
+uint16_t k_delitel = DEFAULT_DIV_FACTOR; //коефициент делителя напряжения
+uint8_t puls = DEFAULT_PULS; //длинна импульса высоковольтного транса
+float opornoe = DEFAULT_REFERENCE; //опорное напряжение
+uint8_t geiger_time = DEFAULT_GEIGER_TIME; //время измерения
+
 //технические переменные
 volatile uint16_t cnt_puls; //количество циклов для работы пищалки
 uint8_t melody_switch; //переключатель мелодии
@@ -775,7 +782,7 @@ void data_convert(void) //преобразование данных
 #endif
           for (uint8_t i = 0; i < PATTERNS_APROX; i++) { //выбор паттерна
             if (imp_per_sec <= pgm_read_word(&back_aprox[i][0])) { //если имп/с совпадают с паттерном
-              rad_back = imp_per_sec * (GEIGER_TIME + pgm_read_word(&back_aprox[i][1])) - pgm_read_word(&back_aprox[i][2]) * 10; //рассчитываем фон в мкр/ч
+              rad_back = imp_per_sec * (geiger_time + pgm_read_word(&back_aprox[i][1])) - pgm_read_word(&back_aprox[i][2]) * 10; //рассчитываем фон в мкр/ч
               break;
             }
           }
@@ -785,7 +792,7 @@ void data_convert(void) //преобразование данных
           if (tmp_buff > own_back_now) tmp_buff -= own_back_now; //убираем собственный фон счетчика
           else tmp_buff = 0; //иначе ничего кроме собственного фона нету
 #endif
-          if (geiger_time_now > 1) rad_back = tmp_buff * ((float)GEIGER_TIME / ((uint16_t)mid_time_now * BUFF_LENGTHY + back_time_now)); //расчет фона мкР/ч
+          if (geiger_time_now > 1) rad_back = tmp_buff * ((float)geiger_time / ((uint16_t)mid_time_now * BUFF_LENGTHY + back_time_now)); //расчет фона мкР/ч
 #endif
           for (uint8_t k = BUFF_LENGTHY - 1; k > 0; k--) rad_buff[k] = rad_buff[k - 1]; //перезапись массива
           break;
@@ -805,9 +812,9 @@ void data_convert(void) //преобразование данных
         case TIME_FACT_11: //расчет текущей дозы
           if ((rad_sum += rad_buff[0]) > 99999999) rad_sum = 99999999; //переполнение суммы импульсов
 #if GEIGER_OWN_BACK
-          rad_dose = ((rad_sum - time_sec * OWN_BACK) * GEIGER_TIME / 3600); //расчитаем дозу с учетом собственного фона счетчика
+          rad_dose = ((rad_sum - time_sec * OWN_BACK) * geiger_time / 3600); //расчитаем дозу с учетом собственного фона счетчика
 #else
-          rad_dose = (rad_sum * GEIGER_TIME / 3600); //расчитаем дозу
+          rad_dose = (rad_sum * geiger_time / 3600); //расчитаем дозу
 #endif
           break;
 
@@ -1331,14 +1338,14 @@ void measur_massege(void) //окончание замера
 #if  TYPE_MEASUR_LOGBOOK
           _logbook_data_update(2, pgm_read_byte(&diff_measuring[measur_pos]), (first_froze < second_froze) ? (second_froze - first_froze) : 0); //обновление журнала ч/см2
 #else
-          _logbook_data_update(2, pgm_read_byte(&diff_measuring[measur_pos]), (first_froze < second_froze) ? (second_froze - first_froze) * ((float)GEIGER_TIME / (pgm_read_byte(&diff_measuring[measur_pos]) * 60)) : 0); //обновление журнала мкР/ч
+          _logbook_data_update(2, pgm_read_byte(&diff_measuring[measur_pos]), (first_froze < second_froze) ? (second_froze - first_froze) * ((float)geiger_time / (pgm_read_byte(&diff_measuring[measur_pos]) * 60)) : 0); //обновление журнала мкР/ч
 #endif
         }
 #else
 #if  TYPE_MEASUR_LOGBOOK
         _logbook_data_update(2, pgm_read_byte(&diff_measuring[measur_pos]), (first_froze < second_froze) ? (second_froze - first_froze) : 0); //обновление журнала ч/см2
 #else
-        _logbook_data_update(2, pgm_read_byte(&diff_measuring[measur_pos]), (first_froze < second_froze) ? (second_froze - first_froze) * ((float)GEIGER_TIME / (pgm_read_byte(&diff_measuring[measur_pos]) * 60)) : 0); //обновление журнала мкР/ч
+        _logbook_data_update(2, pgm_read_byte(&diff_measuring[measur_pos]), (first_froze < second_froze) ? (second_froze - first_froze) * ((float)geiger_time / (pgm_read_byte(&diff_measuring[measur_pos]) * 60)) : 0); //обновление журнала мкР/ч
 #endif
 #endif
         break;
@@ -1384,7 +1391,7 @@ void measur_menu(void) //режим замера
                 break;
               case 1:
                 print(M_BACK_OK, CENTER, 24); //ок - замер фона
-                _init_rads_unit(1, buff * ((float)GEIGER_TIME / (pgm_read_byte(&diff_measuring[measur_pos]) * 60)), 1, 4, 1, 8, 0, 54, 16); //результат мкр/ч
+                _init_rads_unit(1, buff * ((float)geiger_time / (pgm_read_byte(&diff_measuring[measur_pos]) * 60)), 1, 4, 1, 8, 0, 54, 16); //результат мкр/ч
                 n = 0;
                 break;
             }
@@ -1839,7 +1846,7 @@ void search_update(void) //обновление данных поиска
 
     rad_imp = ((float)temp_buf / search_time_now) * ((time_to_update) ? (1000.00 / time_to_update) : 1); //персчет имп/сек.
     rad_imp_m = rad_imp * 60.0; //персчет импульсов в имп/мин.
-    rad_search = rad_imp * GEIGER_TIME; //считаем мкР/ч | мкЗ/ч
+    rad_search = rad_imp * geiger_time; //считаем мкР/ч | мкЗ/ч
 
     imp_s = search_buff[0] * (1000.00 / time_to_update); //персчет имп/сек.
     time_to_update = (search_pos != 8) ? pgm_read_word(&search_time[search_pos]) : pgm_read_word(&search_time[map(constrain(imp_s, 0, SEARCH_IND_MAX), 0, SEARCH_IND_MAX, 7, 0)]);
@@ -2086,7 +2093,7 @@ void debug(void) //отладка
       printNumI(k_delitel, 20, 32); //коэффициент делителя
       printNumI(ADC_value, RIGHT, 32); //значение АЦП для преобразователя
       printNumI(wdt_period, 20, 40); //период
-      printNumI(GEIGER_TIME, RIGHT, 40); //счёт
+      printNumI(geiger_time, RIGHT, 40); //счёт
 
       for (uint8_t i = 0; i < 6; i++) {
         if (n == i) invertText(true); //включаем инверсию
@@ -2111,7 +2118,7 @@ void debug(void) //отладка
           case 2: if (++k_delitel > 1500) k_delitel = 1500; break; //прибавляем коэффициент делителя
           case 3: if (++ADC_value > 254) ADC_value = 254; break; //прибавляем значение АЦП для преобразователя
           case 4: if (wdt_period < MAX_WDT_PERIOD) wdt_period++; break; //период
-          case 5: if (GEIGER_TIME < MAX_GEIGER_TIME) GEIGER_TIME++; break; //счет
+          case 5: if (geiger_time < MAX_GEIGER_TIME) geiger_time++; break; //счет
         }
         time_out = 0; //сбрасывает авто-выход
         scr = 0; //разрешаем обновление экрана
@@ -2124,7 +2131,7 @@ void debug(void) //отладка
           case 2: if (--k_delitel < 10) k_delitel = 10; break; //убавляем коэффициент делителя
           case 3: if (--ADC_value < 10) ADC_value = 10; break; //убавляем значение АЦП для преобразователя
           case 4: if (wdt_period > MIN_WDT_PERIOD) wdt_period--; break; //период
-          case 5: if (GEIGER_TIME > MIN_GEIGER_TIME) GEIGER_TIME--; break; //счет
+          case 5: if (geiger_time > MIN_GEIGER_TIME) geiger_time--; break; //счет
         }
         time_out = 0; //сбрасывает авто-выход
         scr = 0; //разрешаем обновление экрана
@@ -3089,7 +3096,7 @@ void statistic_update(void) //обновление статистики
 //--------------------------------Чтение настроек преобразователя-------------------------------------------
 void pump_read(void) //чтение настроек преобразователя
 {
-  GEIGER_TIME = eeprom_read_byte((uint8_t*)51);
+  geiger_time = eeprom_read_byte((uint8_t*)51);
   puls = eeprom_read_byte((uint8_t*)52);
   opornoe = eeprom_read_float((float*)53);
   ADC_value = eeprom_read_byte((uint8_t*)102);
@@ -3099,7 +3106,7 @@ void pump_read(void) //чтение настроек преобразовате�
 //-----------------------------Обновление настроек преобразователя------------------------------------------
 void pump_update(void) //обновление настроек преобразователя
 {
-  eeprom_update_byte((uint8_t*)51, GEIGER_TIME);
+  eeprom_update_byte((uint8_t*)51, geiger_time);
   eeprom_update_byte((uint8_t*)52, puls);
   eeprom_update_float((float*)53, opornoe);
   eeprom_update_byte((uint8_t*)102, ADC_value);
@@ -3255,7 +3262,7 @@ void setings_save(uint8_t sw) //сохранить настройки
 #if DEBUG_RETURN
     case 1:
       if (
-        GEIGER_TIME == eeprom_read_byte((uint8_t*)51) &&
+        geiger_time == eeprom_read_byte((uint8_t*)51) &&
         puls == eeprom_read_byte((uint8_t*)52) &&
         opornoe == eeprom_read_float((float*)53) &&
         ADC_value == eeprom_read_byte((uint8_t*)102) &&
