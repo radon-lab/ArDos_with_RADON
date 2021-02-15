@@ -3371,7 +3371,7 @@ void choice_menu(boolean n) //меню выбора
       case 0: print(ALL_NO, LEFT, 32); break; //нет
       case 1: print(ALL_YES, RIGHT, 32); break; //да
     }
-    if (n == i) invertText(false); //выключаем инверсию
+    invertText(false); //выключаем инверсию
   }
 }
 // -----------------------------Отрисовка линий точности---------------------------------------
@@ -3577,7 +3577,7 @@ void main_screen(void)
           case 1: //максимальный и средний фон
             print(MAIN_SCREEN_BACK_MIN, 0, 32); //строка 2 мин:
             _init_rads_unit(0, rad_min, 1, 4, RIGHT, 32, 0, RIGHT, 32, (accur_percent > RAD_ACCUR_START) ? 1 : 0); //строка 2 минимальный
-            
+
             print(MAIN_SCREEN_BACK_MAX, 0, 40); //строка 3 макс:
             _init_rads_unit(0, rad_max, 1, 4, RIGHT, 40, 0, RIGHT, 40); //строка 3 максимальный
             break;

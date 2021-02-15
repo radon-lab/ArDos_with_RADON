@@ -377,7 +377,7 @@
 #define ALL_SWITCH_ON  "ON"   //ВКЛ
 
 #define ALL_YES "  YES  " //ДА
-#define ALL_NO  "  NO   " //НЕТ
+#define ALL_NO  "  NO  " //НЕТ
 
 //Главные экраны ФОН/ДОЗА
 #define MAIN_SCREEN_BACK "Back" //Фон
