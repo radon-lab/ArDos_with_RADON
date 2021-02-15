@@ -250,8 +250,8 @@
 //Поиск
 #define S_SEARCH "Search" //Поиск
 
-#define S_IMP_PER_SEC "imp/s" //имп/с
-#define S_IMP_PER_MIN "imp/m" //имп/м
+#define S_IMP_PER_SEC "cps" //имп/с
+#define S_IMP_PER_MIN "cpm" //имп/м
 
 //Параметры
 #define P_PARAM "Parametrs" //Параметры

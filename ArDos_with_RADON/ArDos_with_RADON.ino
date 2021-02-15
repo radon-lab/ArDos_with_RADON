@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.5.6 low_pwr final 13.02.21 специально для проекта ArDos
+  Версия программы RADON v3.5.6 low_pwr final 15.02.21 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -417,6 +417,7 @@ float debug_coef = 0.00; //для  вывода общего коэффицие�
 int atexit(void (* /*func*/ )()) { //инициализация функций
   return 0;
 }
+void _init_rads_unit(boolean type, uint32_t num, uint8_t divisor, uint8_t char_all, uint8_t num_x, uint8_t num_y, boolean unit, uint8_t unit_x, uint8_t unit_y, boolean dash = 0);
 //--------------------------------------Инициализация---------------------------------------------------
 int main(void)  //инициализация
 {
@@ -3383,8 +3384,16 @@ void _screen_line(uint8_t up_bar, uint8_t down_bar, uint8_t rent_bar, uint8_t st
     drawBitmap(i + start_bar, pos_bar, (uint8_t*)pgm_read_word(&_scale[2]), 1, 8); //шкала готовности верхняя
   }
 }
+//----------------------------------Инициализация прочерков------------------------------------------------------
+void _init_dash_unit(boolean type, uint8_t char_all, uint8_t char_unit, uint8_t num_x, uint8_t num_y) //инициализация прочерков
+{
+  for (uint8_t i = 0; i < char_all; i++) {
+    if (type) setFont(MediumNumbers); //установка шрифта
+    print("-", (num_x == RIGHT) ? 84 - char_all * cfont.x_size - char_unit + i * cfont.x_size : num_x + i * cfont.x_size, num_y);
+  }
+}
 //----------------------------------Инициализация значений------------------------------------------------------
-void _init_rads_unit(boolean type, uint32_t num, uint8_t divisor, uint8_t char_all, uint8_t num_x, uint8_t num_y, boolean unit, uint8_t unit_x, uint8_t unit_y) //инициализация значений
+void _init_rads_unit(boolean type, uint32_t num, uint8_t divisor, uint8_t char_all, uint8_t num_x, uint8_t num_y, boolean unit, uint8_t unit_x, uint8_t unit_y, boolean dash) //инициализация значений
 {
   uint8_t _ptr = (rad_mode) ? PATTERNS_SVH : PATTERNS_RH;
 
@@ -3393,9 +3402,11 @@ void _init_rads_unit(boolean type, uint32_t num, uint8_t divisor, uint8_t char_a
       uint8_t char_unit = (_rads_unit(pgm_read_dword(&pattern_all[rad_mode][i][3]), unit, unit_x, unit_y) - 1) * cfont.x_size; //устанавливаем единицы измерения
       if (type) setFont(MediumNumbers); //установка шрифта
 #if (TYPE_CHAR_FILL > 44)
-      printNumF(float(num) / pgm_read_dword(&pattern_all[rad_mode][i][2]), pgm_read_dword(&pattern_all[rad_mode][i][1]), (num_x == RIGHT) ? 84 - char_all * cfont.x_size - char_unit : num_x, num_y, 46, char_all, TYPE_CHAR_FILL); //строка 1
+      if (dash) _init_dash_unit(type, char_all, char_unit, num_x, num_y);
+      else printNumF(float(num) / pgm_read_dword(&pattern_all[rad_mode][i][2]), pgm_read_dword(&pattern_all[rad_mode][i][1]), (num_x == RIGHT) ? 84 - char_all * cfont.x_size - char_unit : num_x, num_y, 46, char_all, TYPE_CHAR_FILL); //строка 1
 #else
-      printNumF(float(num) / pgm_read_dword(&pattern_all[rad_mode][i][2]), pgm_read_dword(&pattern_all[rad_mode][i][1]), (num_x == RIGHT) ? 84 - char_all * cfont.x_size - char_unit : num_x, num_y, 46, char_all, (type) ? TYPE_CHAR_FILL : 32); //строка 1
+      if (dash) _init_dash_unit(type, char_all, char_unit, num_x, num_y);
+      else printNumF(float(num) / pgm_read_dword(&pattern_all[rad_mode][i][2]), pgm_read_dword(&pattern_all[rad_mode][i][1]), (num_x == RIGHT) ? 84 - char_all * cfont.x_size - char_unit : num_x, num_y, 46, char_all, (type) ? TYPE_CHAR_FILL : 32); //строка 1
 #endif
       break;
     }
@@ -3565,9 +3576,9 @@ void main_screen(void)
           case 0: for (uint8_t i = 4; i < 80; i++) graf_lcd(map(rad_buff[(i >> 1) - 1], 0, maxLevel_back, 0, 15), i, 15, 2); break; //инициализируем график
           case 1: //максимальный и средний фон
             print(MAIN_SCREEN_BACK_MIN, 0, 32); //строка 2 мин:
+            _init_rads_unit(0, rad_min, 1, 4, RIGHT, 32, 0, RIGHT, 32, (accur_percent > RAD_ACCUR_START) ? 1 : 0); //строка 2 минимальный
+            
             print(MAIN_SCREEN_BACK_MAX, 0, 40); //строка 3 макс:
-            _init_rads_unit(0, rad_min, 1, 4, RIGHT, 32, 0, RIGHT, 32); //строка 2 минимальный
-            if (accur_percent > RAD_ACCUR_START) print("----", 30, 32); //если недостаточно точности
             _init_rads_unit(0, rad_max, 1, 4, RIGHT, 40, 0, RIGHT, 40); //строка 3 максимальный
             break;
         }
