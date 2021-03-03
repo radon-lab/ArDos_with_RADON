@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.5.6 low_pwr final 15.02.21 специально для проекта ArDos
+  Версия программы RADON v3.5.6 low_pwr final 03.03.21 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -896,7 +896,7 @@ void data_convert(void) //преобразование данных
           break;
 
         case TIME_FACT_14: //считаем пройденное время
-          time_sec = time_total * wdt_period / 100000; //пересчитываем в секунды
+          time_sec = (time_total * (wdt_period / 100.00)) / 1000; //пересчитываем в секунды
           break;
       }
     }
