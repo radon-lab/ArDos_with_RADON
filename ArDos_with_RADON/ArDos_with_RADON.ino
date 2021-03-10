@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.5.6 low_pwr final 09.03.21 специально для проекта ArDos
+  Версия программы RADON v3.5.7 low_pwr final 10.03.21 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -303,6 +303,8 @@ uint16_t maxLevel = 22; //максимальный уровень маштаби
 uint16_t maxLevel_back = 15; //максимальный уровень маштабирования графика
 
 boolean serch_disable = 0; //флаг запрета движения графика
+
+uint8_t cur_dose_cell = 0; //текущая ячейка хранения дозы
 
 uint32_t time_save; //время из памяти
 uint32_t rad_dose_save; //доза из памяти
@@ -3085,17 +3087,34 @@ void logbook_update(void) //обновление журнала
   eeprom_update_byte((uint8_t*)71, logbook_warn);
   eeprom_update_byte((uint8_t*)72, logbook_measur);
 }
+//---------------------------------------Стирание статистики--------------------------------------------------
+void statistic_erase(void) //стирание статистики
+{
+  cur_dose_cell = 0;
+  uint32_t dataByte_read[64]; //буфер обнуления заглавлений данных
+  for (uint8_t c = 0; c < 64; c++) dataByte_read[c] = 0; //заполняем нулями
+  eeprom_update_block((void*)&dataByte_read, (void*)511, sizeof(dataByte_read)); //стираем заглавления времени
+}
 //---------------------------------------Чтение статистики--------------------------------------------------
 void statistic_read(void) //чтение статистики
 {
-  time_save = eeprom_read_dword((uint32_t*)114);
-  rad_dose_save = eeprom_read_dword((uint32_t*)118);
+  uint32_t maxData = 0;
+  for (uint8_t c = 0; c < 64; c++) {
+    if (maxData <= eeprom_read_dword((uint32_t*)511 + (c * 4))) {
+      maxData = eeprom_read_dword((uint32_t*)511 + (c * 4));
+      cur_dose_cell = c;
+    }
+    else break;
+  }
+  time_save = eeprom_read_dword((uint32_t*)511 + (cur_dose_cell * 4));
+  rad_dose_save = eeprom_read_dword((uint32_t*)767 + (cur_dose_cell * 4));
 }
 //--------------------------------------Обновление статистики-----------------------------------------------
 void statistic_update(void) //обновление статистики
 {
-  eeprom_update_dword((uint32_t*)114, time_save);
-  eeprom_update_dword((uint32_t*)118, rad_dose_save);
+  if (cur_dose_cell < 63) cur_dose_cell++; else cur_dose_cell = 0;
+  eeprom_update_dword((uint32_t*)511 + (cur_dose_cell * 4), time_save);
+  eeprom_update_dword((uint32_t*)767 + (cur_dose_cell * 4), rad_dose_save);
 }
 //--------------------------------Чтение настроек преобразователя-------------------------------------------
 void pump_read(void) //чтение настроек преобразователя
@@ -3211,7 +3230,7 @@ void data_reset(uint8_t sw) //сброс текущей дозы
               case 1: //накопленная доза
                 time_save = 0;
                 rad_dose_save = 0;
-                statistic_update(); //обновление статистики
+                statistic_erase(); //стирание статистики
                 rad_dose_old = rad_dose;
 
                 print(R_SUCC_ALL_DOSE, CENTER, 16); //Общая доза
