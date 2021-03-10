@@ -3093,28 +3093,37 @@ void statistic_erase(void) //стирание статистики
   cur_dose_cell = 0;
   uint32_t dataByte_read[64]; //буфер обнуления заглавлений данных
   for (uint8_t c = 0; c < 64; c++) dataByte_read[c] = 0; //заполняем нулями
-  eeprom_update_block((void*)&dataByte_read, (void*)511, sizeof(dataByte_read)); //стираем заглавления времени
+  eeprom_update_block((void*)&dataByte_read, (void*)510, sizeof(dataByte_read)); //стираем заглавления времени
 }
 //---------------------------------------Чтение статистики--------------------------------------------------
 void statistic_read(void) //чтение статистики
 {
   uint32_t maxData = 0;
   for (uint8_t c = 0; c < 64; c++) {
-    if (maxData <= eeprom_read_dword((uint32_t*)511 + (c * 4))) {
-      maxData = eeprom_read_dword((uint32_t*)511 + (c * 4));
-      cur_dose_cell = c;
+    uint16_t search_data = 510 + (4 * c); //находим запрашиваемую позицию
+    if (maxData < eeprom_read_dword((uint32_t*)search_data)) {
+      maxData = eeprom_read_dword((uint32_t*)search_data);
     }
-    else break;
+    else {
+      cur_dose_cell = c;
+      break;
+    }
   }
-  time_save = eeprom_read_dword((uint32_t*)511 + (cur_dose_cell * 4));
-  rad_dose_save = eeprom_read_dword((uint32_t*)767 + (cur_dose_cell * 4));
+  if (maxData) {
+    uint16_t time_data = 510 + (4 * (cur_dose_cell - 1)); //находим запрашиваемую позицию
+    time_save = eeprom_read_dword((uint32_t*)time_data);
+    uint16_t dose_data = 766 + (4 * (cur_dose_cell - 1)); //находим запрашиваемую позицию
+    rad_dose_save = eeprom_read_dword((uint32_t*)dose_data);
+  }
 }
 //--------------------------------------Обновление статистики-----------------------------------------------
 void statistic_update(void) //обновление статистики
 {
+  uint16_t time_data = 510 + (4 * cur_dose_cell); //находим запрашиваемую позицию
+  eeprom_update_dword((uint32_t*)time_data, time_save);
+  uint16_t dose_data = 766 + (4 * cur_dose_cell); //находим запрашиваемую позицию
+  eeprom_update_dword((uint32_t*)dose_data, rad_dose_save);
   if (cur_dose_cell < 63) cur_dose_cell++; else cur_dose_cell = 0;
-  eeprom_update_dword((uint32_t*)511 + (cur_dose_cell * 4), time_save);
-  eeprom_update_dword((uint32_t*)767 + (cur_dose_cell * 4), rad_dose_save);
 }
 //--------------------------------Чтение настроек преобразователя-------------------------------------------
 void pump_read(void) //чтение настроек преобразователя
