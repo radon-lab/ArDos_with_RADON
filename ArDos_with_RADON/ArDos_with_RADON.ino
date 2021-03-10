@@ -1891,6 +1891,7 @@ void search_menu(void) //инициализация режима поиск
       clrRow(2); //очистка строки 2
 
       task_bar(S_SEARCH); //отрисовываем фон
+      if (serch_disable) drawBitmap(61, 0, scan_stop_img, 6, 8); //рисуем паузу
       drawBitmap(0, 8, scan_ind_scale_img, 51, 8); //рисуем шкалу
 
       switch (c) {
