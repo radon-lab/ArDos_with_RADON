@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.5.7 low_pwr final 10.03.21 специально для проекта ArDos
+  Версия программы RADON v3.5.7 low_pwr final 16.04.21 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -444,7 +444,7 @@ int main(void)  //инициализация
   initTimers(); //инициализация таймеров;
 
   PRR = 0b11101110; //отключаем все лишнее (I2C | TIMER2 | TIMER0 | TIMER1 | SPI | UART)
-  ACSR |= 1 << ACD; //отключаем компаратор
+  ACSR |= 0b10000000; //отключаем компаратор
 
   InitLCD(); //инициализируем дисплей
   _LIGHT_ON(); //включаем подсветку
@@ -485,6 +485,7 @@ int main(void)  //инициализация
 
   start_pump(); //первая накачка преобразователя
   WDT_enable(); //запускаем WatchDog с пределителем 2
+  ADC_enable(); //включение ADC
 
   clrRow(4); //очистка строки 4
   clrRow(5); //очистка строки 5
@@ -573,12 +574,12 @@ void WDT_disable(void) //выключение WDT
 void ADC_enable(void) //включение ADC
 {
   PRR &= ~ (1 << 0); //включаем питание АЦП
-  ADCSRA |= (1 << ADEN); //включаем ацп
+  ADCSRA = 0b10000111; //настройка АЦП
 }
 //-------------------------------Выключение ADC---------------------------------------------------
 void ADC_disable(void) //выключение ADC
 {
-  ADCSRA &= ~ (1 << ADEN); //выключаем ацп
+  ADCSRA = 0b00000111; //настройка АЦП
   PRR |= (1 << 0); //выключаем питание ацп
 }
 //-------------------------------Вывод логотипа---------------------------------------------------
@@ -1083,7 +1084,7 @@ void power_down(void) //выключение устройства
 #if PWR_ON_RETURN
   EIMSK = 0b00000010; //разрешаем внешнее прерывание INT2
 
-  while (1) {
+  while (1) { //цикл выключенного питания
     sleep_pwr(); //спим
 
     uint16_t startDellay = POWER_ON_TIME; //устанавливаем таймер
@@ -1734,26 +1735,23 @@ uint8_t Read_HV(void) //чтение напряжения преобразова
 #else //если используется промини, нано или голый камень в tqfp
   ADMUX = 0b11100110; //выбор внутреннего опорного 1,1В и А6
 #endif
-  ADCSRA = 0b11100111; //настройка АЦП
+  ADCSRA |= 0b01000000; //запускаем преобразование
 
   for (uint8_t i = 0; i < 10; i++) { //делаем 10 замеров
-    while ((ADCSRA & 0x10) == 0); //ждем флага прерывания АЦП
-    ADCSRA |= 0x10; //сбрасываем флаг прерывания
+    while (ADCSRA & 0b01000000); //ждем окончания преобразования
     result += ADCH; //прибавляем замер в буфер
+    ADCSRA |= 0b01000000; //перезапускаем преобразование
   }
-  result /= 10; //находим среднее значение
-  return result; //возвращаем результат опроса АЦП
+  return result / 10; //возвращаем результат опроса АЦП
 }
 //--------------------------------Чтение напряжения батареи-------------------------------------
 uint8_t Read_VCC(void)  //чтение напряжения батареи
 {
   ADMUX = 0b01101110; //выбор внешнего опорного+BG
-  ADCSRA = 0b11100111; //настройка АЦП
-  _delay_ms(5);
-  while ((ADCSRA & 0x10) == 0); //ждем флага прерывания АЦП
-  ADCSRA |= 0x10; //сбрасываем флаг прерывания
-  uint8_t resu = ADCH; //результат опроса АЦП
-  return resu; //возвращаем результат опроса АЦП
+  _delay_ms(5); //ждём пока опорное успокоится
+  ADCSRA |= 0b01000000; //запускаем преобразование
+  while (ADCSRA & 0b01000000); //ждем окончания преобразования
+  return ADCH; //возвращаем результат опроса АЦП
 }
 //-----------------------------------Опрос батареи-----------------------------------------------
 void bat_check(void) //опрос батареи
@@ -3091,7 +3089,7 @@ void logbook_update(void) //обновление журнала
 //---------------------------------------Стирание статистики--------------------------------------------------
 void statistic_erase(void) //стирание статистики
 {
-  cur_dose_cell = 0;
+  cur_dose_cell = 0; //сбрасываем текущую ячейку
   uint32_t dataByte_read[64]; //буфер обнуления заглавлений данных
   for (uint8_t c = 0; c < 64; c++) dataByte_read[c] = 0; //заполняем нулями
   eeprom_update_block((void*)&dataByte_read, (void*)510, sizeof(dataByte_read)); //стираем заглавления времени
@@ -3099,32 +3097,32 @@ void statistic_erase(void) //стирание статистики
 //---------------------------------------Чтение статистики--------------------------------------------------
 void statistic_read(void) //чтение статистики
 {
-  uint32_t maxData = 0;
+  uint32_t maxData = 0; //максимальное значение ячейки
   for (uint8_t c = 0; c < 64; c++) {
     uint16_t search_data = 510 + (4 * c); //находим запрашиваемую позицию
-    if (maxData < eeprom_read_dword((uint32_t*)search_data)) {
-      maxData = eeprom_read_dword((uint32_t*)search_data);
+    if (maxData < eeprom_read_dword((uint32_t*)search_data)) { //если буфер меньше ячейки
+      maxData = eeprom_read_dword((uint32_t*)search_data); //записываем в буфер значение ячейки
     }
-    else {
-      cur_dose_cell = c;
-      break;
+    else { 
+      cur_dose_cell = c; //устанавливаем последнюю ячейку
+      break; //завершаем поиск
     }
   }
-  if (maxData) {
+  if (maxData) { //если в буфере есть информация
     uint16_t time_data = 510 + (4 * (cur_dose_cell - 1)); //находим запрашиваемую позицию
-    time_save = eeprom_read_dword((uint32_t*)time_data);
+    time_save = eeprom_read_dword((uint32_t*)time_data); //считываем время
     uint16_t dose_data = 766 + (4 * (cur_dose_cell - 1)); //находим запрашиваемую позицию
-    rad_dose_save = eeprom_read_dword((uint32_t*)dose_data);
+    rad_dose_save = eeprom_read_dword((uint32_t*)dose_data); //считываем дозу
   }
 }
 //--------------------------------------Обновление статистики-----------------------------------------------
 void statistic_update(void) //обновление статистики
 {
   uint16_t time_data = 510 + (4 * cur_dose_cell); //находим запрашиваемую позицию
-  eeprom_update_dword((uint32_t*)time_data, time_save);
+  eeprom_update_dword((uint32_t*)time_data, time_save); //записываем время
   uint16_t dose_data = 766 + (4 * cur_dose_cell); //находим запрашиваемую позицию
-  eeprom_update_dword((uint32_t*)dose_data, rad_dose_save);
-  if (cur_dose_cell < 63) cur_dose_cell++; else cur_dose_cell = 0;
+  eeprom_update_dword((uint32_t*)dose_data, rad_dose_save); //записываем дозу
+  if (cur_dose_cell < 63) cur_dose_cell++; else cur_dose_cell = 0; //меняем ячейку
 }
 //--------------------------------Чтение настроек преобразователя-------------------------------------------
 void pump_read(void) //чтение настроек преобразователя
