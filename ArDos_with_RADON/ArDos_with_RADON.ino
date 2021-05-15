@@ -224,11 +224,10 @@
 */
 
 //----------------Библиотеки----------------
-#include <Arduino.h>
 #include <avr/sleep.h>
 #include <avr/power.h>
-#include <avr/delay.h>
 #include <avr/eeprom.h>
+#include <util/delay.h>
 
 //---------------Конфигурации---------------
 #include "config.h"
@@ -483,17 +482,16 @@ int main(void)  //инициализация
   statistic_read(); //считываем статистику
   initParam(); //инициализация параметров
 
+  ADC_enable(); //включение ADC
+  bat_check(); //опрос батареи
   start_pump(); //первая накачка преобразователя
   WDT_enable(); //запускаем WatchDog с пределителем 2
-  ADC_enable(); //включение ADC
 
   clrRow(4); //очистка строки 4
   clrRow(5); //очистка строки 5
 
   print(INTRO, CENTER, 32); //-=РАДОН=-
   print(VERSION, CENTER, 40); //версия по
-
-  bat_check(); //опрос батареи
 
   EICRA = 0b00001010; //настраиваем внешнее прерывание по спаду импульса на INT0 и INT1
   EIMSK = 0b00000001; //разрешаем внешнее прерывание INT0
@@ -611,8 +609,8 @@ void data_convert(void) //преобразование данных
 {
   static uint8_t time_1; //секундные замеры первого плеча
   static uint8_t time_2; //секундные замеры второго плеча
-  static uint8_t nop_imp_tmr; //таймер отсутствия импульсов
   static uint8_t mass_switch; //переключатель массива
+  static uint8_t tmr_nop_imp; //таймер отсутствия импульсов
   static uint8_t tmr_upd_bat; //таймер обновления состояния акб
   static uint8_t tmr_low_bat; //таймер вывода сообщения об разряженой акб
   static uint8_t tmr_upd_err; //таймер вывода сообщения об ошибке
@@ -625,10 +623,6 @@ void data_convert(void) //преобразование данных
   low_pwr(); //отключение дисплея и подсветки, уход в сон для экономии энергии
   pump(); //накачка по обратной связи с АЦП
   bat_massege(); //обработка сообщения разряженой батареи
-
-  float imp_per_sec; //текущее количество имп/с
-  float own_back_now; //текущее количество имп собственного фона
-  uint16_t graf_max = 0; //максимальное значение графика
 
   for (; tick_wdt > 0; tick_wdt--) { //если был тик, обрабатываем данные
 
@@ -743,29 +737,31 @@ void data_convert(void) //преобразование данных
           }
           break;
 
-        case TIME_FACT_8: //расчет текущего фона этап-6
-          if (tmp_buff > 9999999) tmp_buff = 9999999; //переполнение буфера импульсов
+        case TIME_FACT_8: { //расчет текущего фона этап-6
+            if (tmp_buff > 9999999) tmp_buff = 9999999; //переполнение буфера импульсов
 #if APPROX_BACK_SCORE
-          if (geiger_time_now > 1) imp_per_sec = (float)tmp_buff / ((uint16_t)mid_time_now * BUFF_LENGTHY + back_time_now); //расчет имп/с
+            float imp_per_sec = 0; //текущее количество имп/с
+            if (geiger_time_now > 1) imp_per_sec = (float)tmp_buff / ((uint16_t)mid_time_now * BUFF_LENGTHY + back_time_now); //расчет имп/с
 #if GEIGER_OWN_BACK
-          if (imp_per_sec > OWN_BACK) imp_per_sec -= OWN_BACK; //убираем собственный фон счетчика
-          else imp_per_sec = tmp_buff = 0; //иначе ничего кроме собственного фона нету
+            if (imp_per_sec > OWN_BACK) imp_per_sec -= OWN_BACK; //убираем собственный фон счетчика
+            else imp_per_sec = tmp_buff = 0; //иначе ничего кроме собственного фона нету
 #endif
-          for (uint8_t i = 0; i < PATTERNS_APROX; i++) { //выбор паттерна
-            if (imp_per_sec <= pgm_read_word(&back_aprox[i][0])) { //если имп/с совпадают с паттерном
-              rad_back = imp_per_sec * (geiger_time + pgm_read_word(&back_aprox[i][1])) - pgm_read_word(&back_aprox[i][2]) * 10; //рассчитываем фон в мкр/ч
-              break;
+            for (uint8_t i = 0; i < PATTERNS_APROX; i++) { //выбор паттерна
+              if (imp_per_sec <= pgm_read_word(&back_aprox[i][0])) { //если имп/с совпадают с паттерном
+                rad_back = imp_per_sec * (geiger_time + pgm_read_word(&back_aprox[i][1])) - pgm_read_word(&back_aprox[i][2]) * 10; //рассчитываем фон в мкр/ч
+                break;
+              }
             }
-          }
 #else
 #if GEIGER_OWN_BACK
-          own_back_now = ((uint16_t)mid_time_now * BUFF_LENGTHY + back_time_now) * OWN_BACK; //рассчитываем количество импульсов собственного фона
-          if (tmp_buff > own_back_now) tmp_buff -= own_back_now; //убираем собственный фон счетчика
-          else tmp_buff = 0; //иначе ничего кроме собственного фона нету
+            float own_back_now = ((uint16_t)mid_time_now * BUFF_LENGTHY + back_time_now) * OWN_BACK; //рассчитываем количество импульсов собственного фона
+            if (tmp_buff > own_back_now) tmp_buff -= own_back_now; //убираем собственный фон счетчика
+            else tmp_buff = 0; //иначе ничего кроме собственного фона нету
 #endif
-          if (geiger_time_now > 1) rad_back = tmp_buff * ((float)geiger_time / ((uint16_t)mid_time_now * BUFF_LENGTHY + back_time_now)); //расчет фона мкР/ч
+            if (geiger_time_now > 1) rad_back = tmp_buff * ((float)geiger_time / ((uint16_t)mid_time_now * BUFF_LENGTHY + back_time_now)); //расчет фона мкР/ч
 #endif
-          for (uint8_t k = BUFF_LENGTHY - 1; k > 0; k--) rad_buff[k] = rad_buff[k - 1]; //перезапись массива
+            for (uint8_t k = BUFF_LENGTHY - 1; k > 0; k--) rad_buff[k] = rad_buff[k - 1]; //перезапись массива
+          }
           break;
 
         case TIME_FACT_9: //рассчитываем точность
@@ -789,11 +785,13 @@ void data_convert(void) //преобразование данных
 #endif
           break;
 
-        case TIME_FACT_12: //расчет данных для графика
-          for (uint8_t i = 0; i > 38; i--) if (rad_buff[i] > graf_max) graf_max = rad_buff[i]; //ищем максимум
+        case TIME_FACT_12: { //расчет данных для графика
+            uint16_t graf_max = 0; //максимальное значение графика
+            for (uint8_t i = 0; i > 38; i--) if (rad_buff[i] > graf_max) graf_max = rad_buff[i]; //ищем максимум
 
-          if (graf_max > 15) maxLevel_back = graf_max * GRAF_COEF_MAX; //если текущий замер больше максимума
-          else maxLevel_back = 15; //иначе устанавливаем минимум
+            if (graf_max > 15) maxLevel_back = graf_max * GRAF_COEF_MAX; //если текущий замер больше максимума
+            else maxLevel_back = 15; //иначе устанавливаем минимум
+          }
           break;
 
         case TIME_FACT_13: //обработка тревоги
@@ -850,9 +848,9 @@ void data_convert(void) //преобразование данных
 
 #if ALARM_AUTO_DISABLE
           switch (alarm_switch) {
-            case 1: if (rad_back < (alarm_level_back * ALARM_AUTO_GISTERESIS)) alarm_switch = 0;  //иначе ждем понижения фона тревоги 2
-
+            case 1:
             case 3:
+              if (alarm_switch == 1 && rad_back < (alarm_level_back * ALARM_AUTO_GISTERESIS)) alarm_switch = 0;  //иначе ждем понижения фона тревоги 2
               if (rad_back < (warn_level_back * ALARM_AUTO_GISTERESIS)) { //иначе ждем понижения фона тревоги 1
                 _vibro_off(); //выключаем вибрацию
                 buzz_read(); //чтение состояния щелчков
@@ -902,17 +900,17 @@ void data_convert(void) //преобразование данных
         }
 
         if (!rad_buff[0]) { //если нету импульсов в обменном буфере
-          if (++nop_imp_tmr >= IMP_ERROR_TIME) { //считаем время до вывода предупреждения
+          if (++tmr_nop_imp >= IMP_ERROR_TIME) { //считаем время до вывода предупреждения
 #if LOGBOOK_RETURN
             if (error_switch < 2) _logbook_data_update(3, 5, 5); //обновление журнала устанавливаем ошибку 5 - нет импульсов
             error_switch = 2; //поднимаем флаг ошибки
 #else
             error_switch = 5; //поднимаем флаг ошибки
 #endif
-            nop_imp_tmr = 0; //сбрасываем таймер
+            tmr_nop_imp = 0; //сбрасываем таймер
           }
         }
-        else nop_imp_tmr = 0; //иначе импульсы возобновились
+        else tmr_nop_imp = 0; //иначе импульсы возобновились
 
         if (tmr_upd_err >= ERROR_LENGTHY_TIME) {
           if (error_massege) {
@@ -1266,6 +1264,7 @@ uint8_t check_keys(void) //проверка кнопок
       }
       break;
   }
+  return 0;
 }
 //-------------------------------Оостановка замера----------------------------------------------------------
 void measur_stop(void) //остановка замера
@@ -1729,12 +1728,6 @@ void pump(void) //накачка по обратной связи с АЦП
 uint8_t Read_HV(void) //чтение напряжения преобразователя
 {
   uint16_t result = 0; //результат опроса АЦП внутреннего опорного напряжения
-
-#if UNO_DIP //если при компилляции выбрана плата ArduinoUNO
-  ADMUX = 0b11100101; //выбор внутреннего опорного 1,1В и А5
-#else //если используется промини, нано или голый камень в tqfp
-  ADMUX = 0b11100110; //выбор внутреннего опорного 1,1В и А6
-#endif
   ADCSRA = (ADCSRA & 0b11111000) | 0b010000100; //запускаем преобразование и устанавливаем пределитель 16
 
   for (uint8_t i = 0; i < 10; i++) { //делаем 10 замеров
@@ -1751,6 +1744,11 @@ uint8_t Read_VCC(void)  //чтение напряжения батареи
   _delay_ms(5); //ждём пока опорное успокоится
   ADCSRA |= 0b010000111; //запускаем преобразование и устанавливаем пределитель 128
   while (ADCSRA & 0b01000000); //ждем окончания преобразования
+#if UNO_DIP //если при компилляции выбрана плата ArduinoUNO
+  ADMUX = 0b11100101; //выбор внутреннего опорного 1,1В и А5
+#else //если используется промини, нано или голый камень в tqfp
+  ADMUX = 0b11100110; //выбор внутреннего опорного 1,1В и А6
+#endif
   return ADCH; //возвращаем результат опроса АЦП
 }
 //-----------------------------------Опрос батареи-----------------------------------------------
@@ -1763,7 +1761,7 @@ void bat_check(void) //опрос батареи
     if (bat_adc < MAX_BAT) bat = 5;  //если батарея заряжена
     else { //иначе расчитывает указатель заряда батареи
       bat = map(bat_adc, MIN_BAT, MAX_BAT, 0, 5); //переводим значение в полосы акб
-      bat = constrain(bat, 0, 5); //ограничиваем
+      bat = (bat > 5) ? 5 : bat; //ограничиваем
     }
   }
   else bat = 0; //иначе акб разряжен
@@ -1853,7 +1851,7 @@ void search_update(void) //обновление данных поиска
     rad_search = rad_imp * geiger_time; //считаем мкР/ч | мкЗ/ч
 
     imp_s = search_buff[0] * (1000.00 / time_to_update); //персчет имп/сек.
-    time_to_update = (search_pos != 8) ? pgm_read_word(&search_time[search_pos]) : pgm_read_word(&search_time[map(constrain(imp_s, 0, SEARCH_IND_MAX), 0, SEARCH_IND_MAX, 7, 0)]);
+    time_to_update = (search_pos != 8) ? pgm_read_word(&search_time[search_pos]) : pgm_read_word(&search_time[map((imp_s > SEARCH_IND_MAX) ? SEARCH_IND_MAX : imp_s, 0, SEARCH_IND_MAX, 7, 0)]);
 
     now_pos = time_to_update / (wdt_period / 100.0);
 
@@ -2657,7 +2655,7 @@ void _logbook_data_switch(boolean inv, uint8_t num, uint8_t pos, uint8_t data_nu
 //------------------------------------Очистка журнала------------------------------------------------------
 void _logbook_data_clear(void) //очистка журнала
 {
-  uint8_t byte_data = 200; //устанавливаем начальную позицию
+  uint16_t byte_data = 200; //устанавливаем начальную позицию
   uint8_t dataByte_read[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; //буфер обнуления заглавлений данных
   for (uint8_t i = 0; i < 4; i++) {
     eeprom_update_block((void*)&dataByte_read, (void*)byte_data, sizeof(dataByte_read)); //стираем заглавления
@@ -2670,7 +2668,7 @@ void _logbook_data_update(uint8_t data_num, uint8_t num, uint32_t data) //обн
   uint8_t dataByte_read[10]; //временный буфер данных
   uint32_t dataDword_read[10]; //временный буфер данных
 
-  uint8_t byte_data = 200 + data_num * 10; //находим запрашиваемую позицию
+  uint16_t byte_data = 200 + data_num * 10; //находим запрашиваемую позицию
   uint16_t dword_data = 240 + data_num * 40; //находим запрашиваемую позицию
 
   eeprom_read_block((void*)&dataByte_read, (void*)byte_data, sizeof(dataByte_read)); //считываем информацию во временный буфер
@@ -2685,7 +2683,7 @@ void _logbook_data_update(uint8_t data_num, uint8_t num, uint32_t data) //обн
   eeprom_update_block((void*)&dataDword_read, (void*)dword_data, sizeof(dataDword_read)); //записываем в память временный буфер
 }
 //-----------------------------------Чтение журнала byte---------------------------------
-uint8_t _data_read_byte(uint8_t num_byte, uint8_t data_byte) //чтение журнала byte
+uint8_t _data_read_byte(uint8_t num_byte, uint16_t data_byte) //чтение журнала byte
 {
   uint8_t dataByte_read[10]; //временный буфер данных
   eeprom_read_block((void*)&dataByte_read, (void*)data_byte, sizeof(dataByte_read)); //считываем информацию во временный буфер
@@ -3103,7 +3101,7 @@ void statistic_read(void) //чтение статистики
     if (maxData < eeprom_read_dword((uint32_t*)search_data)) { //если буфер меньше ячейки
       maxData = eeprom_read_dword((uint32_t*)search_data); //записываем в буфер значение ячейки
     }
-    else { 
+    else {
       cur_dose_cell = c; //устанавливаем последнюю ячейку
       break; //завершаем поиск
     }

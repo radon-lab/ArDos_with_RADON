@@ -1,4 +1,3 @@
-#include <Arduino.h>
 #include "languages.h"
 #include "connection.h"
 #include "DefaultFonts.c"
@@ -23,26 +22,26 @@
 // *** Команды для PCD8544 ***
 
 // Основные команды
-#define PCD8544_POWERDOWN      0x04
-#define PCD8544_ENTRYMODE     0x02
+#define PCD8544_POWERDOWN           0x04
+#define PCD8544_ENTRYMODE           0x02
 #define PCD8544_EXTENDEDINSTRUCTION 0x01
-#define PCD8544_DISPLAYBLANK    0x00
-#define PCD8544_DISPLAYNORMAL   0x04
-#define PCD8544_DISPLAYALLON    0x01
-#define PCD8544_DISPLAYINVERTED   0x05
+#define PCD8544_DISPLAYBLANK        0x00
+#define PCD8544_DISPLAYNORMAL       0x04
+#define PCD8544_DISPLAYALLON        0x01
+#define PCD8544_DISPLAYINVERTED     0x05
 // Основные инструкции
-#define PCD8544_FUNCTIONSET     0x20
-#define PCD8544_DISPLAYCONTROL    0x08
-#define PCD8544_SETYADDR      0x40
-#define PCD8544_SETXADDR      0x80
+#define PCD8544_FUNCTIONSET    0x20
+#define PCD8544_DISPLAYCONTROL 0x08
+#define PCD8544_SETYADDR       0x40
+#define PCD8544_SETXADDR       0x80
 // Внешние инструкции
-#define PCD8544_SETTEMP       0x04
-#define PCD8544_SETBIAS       0x10
-#define PCD8544_SETVOP        0x80
+#define PCD8544_SETTEMP 0x04
+#define PCD8544_SETBIAS 0x10
+#define PCD8544_SETVOP  0x80
 // Установки дисплея
-#define LCD_BIAS          0x03  // Range: 0-7 (0x00-0x07)
-#define LCD_TEMP          0x02  // Range: 0-3 (0x00-0x03)
-#define LCD_CONTRAST        0x46  // Range: 0-127 (0x00-0x7F)
+#define LCD_BIAS     0x03  //0-7 (0x00-0x07)
+#define LCD_TEMP     0x02  //0-3 (0x00-0x03)
+#define LCD_CONTRAST 0x46  //0-127 (0x00-0x7F)
 
 struct _current_font
 {
@@ -62,7 +61,7 @@ void  clrScr(void);
 void  clrRow(uint8_t row, uint8_t start_x = 0, uint8_t end_x = 83);
 void  invert(bool mode);
 void  invertText(bool mode);
-void  print(const char *st, uint8_t x, uint8_t y, uint8_t length = 0, char filler = ' ');
+void  print(const char *st, uint8_t x, uint8_t y);
 void  printNumI(uint32_t num, uint8_t x, uint8_t y, uint8_t length = 0, char filler = ' ');
 void  printNumF(float num, uint8_t dec, uint8_t x, uint8_t y, char divider = '.', uint8_t length = 0, char filler = ' ');
 void  setFont(const uint8_t* font);
@@ -207,7 +206,7 @@ void invertText(bool mode) //инверсия текста
   }
 }
 //-------------------------Вывод текста----------------------------------------------------
-void print(const char *st, uint8_t x, uint8_t y, uint8_t length, char filler) //вывод текста
+void print(const char *st, uint8_t x, uint8_t y) //вывод текста
 {
   uint8_t stl, row, steps;
 
