@@ -237,17 +237,35 @@ void printNumI(uint32_t num, uint8_t x, uint8_t y, uint8_t length, char filler) 
 //-------------------------Вывод чисел с плавающей точкой----------------------------------------------------
 void printNumF(float num, uint8_t dec, uint8_t x, uint8_t y, char divider, uint8_t length, char filler) //вывод чисел с плавающей точкой
 {
-  char st[15];
+  char buf[10];
+  char st[10];
+  uint8_t c = 0, f = 0;
 
-  dtostrf(num, length, dec, st);
+  uint32_t numInt = num;
 
-  if (divider != '.') {
-    for (uint8_t i = 0; i < 14; i++) if (st[i] == '.') st[i] = divider;
+  if (numInt) {
+    while (numInt > 0) {
+      buf[c++] = 48 + (numInt % 10);
+      numInt = (numInt - (numInt % 10)) / 10;
+    }
+  }
+  else buf[c++] = 48;
+
+  if (length > c) {
+    for (f = 0; f < (length - c); f++) st[f] = filler;
   }
 
-  if (filler != ' ') {
-    for (uint8_t i = 0; i < 14; i++) if (st[i] == ' ') st[i] = filler;
+  for (uint8_t i = 0; i < c; i++) st[i + f] = buf[c - i - 1];
+
+  if (dec) {
+    st[c++ + f] = divider;
+    num -= numInt;
+    for (uint8_t i = 0; i < dec; i++) {
+      st[c++ + f] = 48 + num * 10.0;
+      num -= (uint8_t)num;
+    }
   }
+  st[c + f] = 0;
 
   print(st, x, y);
 }
