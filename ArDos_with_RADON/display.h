@@ -237,7 +237,7 @@ void printNumI(uint32_t num, uint8_t x, uint8_t y, uint8_t length, char filler) 
 //-------------------------Вывод чисел с плавающей точкой----------------------------------------------------
 void printNumF(float num, uint8_t dec, uint8_t x, uint8_t y, char divider, uint8_t length, char filler) //вывод чисел с плавающей точкой
 {
-  char st[14];
+  char st[15];
 
   dtostrf(num, length, dec, st);
 
