@@ -262,7 +262,7 @@ void printNumF(float num, uint8_t dec, uint8_t x, uint8_t y, char divider, uint8
   }
 
   if (length > c + d) {
-    for (f = 0; f < (length - (c + d)); f++) st[f] = filler;
+    while (f < (length - (c + d))) st[f++] = filler;
   }
 
   for (uint8_t i = 0; i < c; i++) st[i + f] = ct[c - i - 1];
