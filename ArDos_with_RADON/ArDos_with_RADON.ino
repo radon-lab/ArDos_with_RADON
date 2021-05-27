@@ -35,6 +35,9 @@
   - Иконка "ERR"
   Мигающая - Есть не прочитанная ошибка
 
+  - Иконка "Пауза"
+  Режим "поиск" приостановлен
+
 
   -Действия клавиш-
 
@@ -1981,7 +1984,7 @@ void debug(void) //отладка
       printNumI(k_delitel, 20, 32); //коэффициент делителя
       printNumI(ADC_value, RIGHT, 32); //значение АЦП для преобразователя
       printNumI(wdt_period, 20, 40); //период
-      printNumF(geiger_time, 1, RIGHT, 40, 46, 4, 48); //счёт
+      printNumF(geiger_time, set, RIGHT, 40, 46, 4, 48); //счёт
 
       for (uint8_t i = 0; i < 6; i++) {
         if (n == i) invertText(true); //включаем инверсию
