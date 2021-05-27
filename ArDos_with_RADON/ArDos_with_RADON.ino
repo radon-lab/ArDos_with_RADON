@@ -1983,7 +1983,7 @@ void debug(void) //отладка
       printNumI(_convert_vcc_hv(hv_adc), RIGHT, 16); //напряжение высокого
 
       printNumI(wdt_period, 20, 24); //период
-      printNumF(geiger_time, set, RIGHT, 24, 46, 4, 48); //счёт
+      printNumF(geiger_time, set, RIGHT, 24, 46, 4, 32); //счёт
       printNumF(reference, 2, 20, 32, 46, 4, 48); //опорное напряжение
       printNumI(puls, RIGHT, 32); //длинна импульса
       printNumI(k_delitel, 20, 40); //коэффициент делителя
