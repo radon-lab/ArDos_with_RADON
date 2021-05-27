@@ -1944,6 +1944,7 @@ void debug(void) //отладка
 {
   uint8_t time_out = 0;
   uint8_t n = 0; //курсор
+  boolean set = 1; //режим знака счета времени
   scr = 0; //разрешаем обновление экрана
 
   while (1) {
@@ -1998,6 +1999,11 @@ void debug(void) //отладка
 
     switch (check_keys()) {
 
+      case 1: //Down key hold
+      case 4: //Up key hold
+        if (n == 5) set = !set;
+        break;
+
       case 3: //Up key //нажатие
         switch (n) {
           case 0: if (opornoe < 1.50) opornoe += 0.01; break; //прибавляем опорное напряжение
@@ -2005,7 +2011,7 @@ void debug(void) //отладка
           case 2: if (k_delitel < 1500) k_delitel++; break; //прибавляем коэффициент делителя
           case 3: if (ADC_value < 254) ADC_value++; break; //прибавляем значение АЦП для преобразователя
           case 4: if (wdt_period < MAX_WDT_PERIOD) wdt_period++; break; //период
-          case 5: if (geiger_time < MAX_GEIGER_TIME) geiger_time += 0.1; break; //счет
+          case 5: if (geiger_time < MAX_GEIGER_TIME) geiger_time += (set) ? 0.1 : 1; break; //счет
         }
         time_out = 0; //сбрасывает авто-выход
         scr = 0; //разрешаем обновление экрана
@@ -2018,7 +2024,7 @@ void debug(void) //отладка
           case 2: if (k_delitel > 10) k_delitel--; break; //убавляем коэффициент делителя
           case 3: if (ADC_value > 10) ADC_value--; break; //убавляем значение АЦП для преобразователя
           case 4: if (wdt_period > MIN_WDT_PERIOD) wdt_period--; break; //период
-          case 5: if (geiger_time > MIN_GEIGER_TIME) geiger_time -= 0.1; break; //счет
+          case 5: if (geiger_time > MIN_GEIGER_TIME) geiger_time -= (set) ? 0.1 : 1; break; //счет
         }
         time_out = 0; //сбрасывает авто-выход
         scr = 0; //разрешаем обновление экрана
