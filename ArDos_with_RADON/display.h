@@ -237,9 +237,10 @@ void printNumI(uint32_t num, uint8_t x, uint8_t y, uint8_t length, char filler) 
 //-------------------------Вывод чисел с плавающей точкой----------------------------------------------------
 void printNumF(float num, uint8_t dec, uint8_t x, uint8_t y, char divider, uint8_t length, char filler) //вывод чисел с плавающей точкой
 {
-  char buf[10];
+  char buf[6];
+  char ft[6];
   char st[10];
-  uint8_t c = 0, f = 0;
+  uint8_t c = 0, f = 0, d = 0;
   uint32_t numInt = num;
   float decNum = num - numInt;
 
@@ -252,21 +253,22 @@ void printNumF(float num, uint8_t dec, uint8_t x, uint8_t y, char divider, uint8
   else buf[c++] = 48;
 
   if (dec) {
-    buf[c++] = divider;
+    ft[d++] = divider;
     for (uint8_t i = 0; i < dec; i++) {
       decNum *= 10.0;
-      buf[c++] = 48 + decNum;
+      ft[d++] = 48 + decNum;
       decNum -= (uint8_t)decNum;
     }
   }
 
-  buf[c++] = 0;
-
-  if (length > c) {
-    for (f = 0; f < (length - c); f++) st[f] = filler;
+  if (length > c + d) {
+    for (f = 0; f < (length - (c + d)); f++) st[f] = filler;
   }
 
-  for (uint8_t i = 0; i < c; i++) st[i + f] = buf[i];
+  for (uint8_t i = 0; i < c; i++) st[i + f] = buf[c - i - 1];
+  for (uint8_t i = 0; i < d; i++) st[i + f + c] = ft[i];
+
+  st[c + f + d] = 0;
 
   print(st, x, y);
 }
