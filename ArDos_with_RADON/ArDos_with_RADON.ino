@@ -183,7 +183,7 @@ float rad_imp_m; //импульсы в минуту
 uint32_t rad_search; //фон в режиме поиск
 
 uint16_t maxLevel = 22; //максимальный уровень маштабирования графика
-uint16_t maxLevel_back = 15; //максимальный уровень маштабирования графика
+uint16_t maxLevel_back = 15; //максимальный уровень маштабирования графика фона
 
 boolean serch_disable = 0; //флаг запрета движения графика
 
@@ -285,7 +285,7 @@ uint32_t second_froze = 0; //счетчик 2-го замера
 uint8_t ADC_value = DEFAULT_ADC_VALUE; //значение АЦП при котором 400В
 uint16_t k_delitel = DEFAULT_DIV_FACTOR; //коефициент делителя напряжения
 uint8_t puls = DEFAULT_PULS; //длинна импульса высоковольтного транса
-float opornoe = DEFAULT_REFERENCE; //опорное напряжение
+float reference = DEFAULT_REFERENCE; //опорное напряжение
 float geiger_time = DEFAULT_GEIGER_TIME; //время измерения
 
 //технические переменные
@@ -1881,12 +1881,12 @@ void graf_lcd(uint8_t r, uint8_t p, uint8_t max_g, uint8_t height) //отрис�
 //-----------------------------------Параметры-----------------------------------------
 float _convert_vcc_bat(uint8_t adc) //параметры
 {
-  return (opornoe * 255.0) / adc; //состояние батареи
+  return (reference * 255.0) / adc; //состояние батареи
 }
 //-----------------------------------Параметры-----------------------------------------
 uint16_t _convert_vcc_hv(uint8_t adc) //параметры
 {
-  return adc * opornoe * k_delitel / 255; //считем высокое перед выводом
+  return adc * reference * k_delitel / 255; //считем высокое перед выводом
 }
 //-----------------------------------Параметры-----------------------------------------
 void parameters(void) //параметры
@@ -1923,7 +1923,7 @@ void parameters(void) //параметры
       printNumI(speed_hv, RIGHT, 32);//скорость накачки
 
       print(P_REFERENCE, LEFT, 40); //Опорное:
-      printNumF(opornoe, 2, RIGHT, 40, 46, 4, 48); //опорное напряжение
+      printNumF(reference, 2, RIGHT, 40, 46, 4, 48); //опорное напряжение
     }
 
     switch (check_keys()) {
@@ -1979,7 +1979,7 @@ void debug(void) //отладка
       print(D_HV_PUMP, 46, 16); //ВВ
       printNumI(_convert_vcc_hv(hv_adc), RIGHT, 16); //напряжение высокого
 
-      printNumF(opornoe, 2, 20, 24, 46, 4, 48); //опорное напряжение
+      printNumF(reference, 2, 20, 24, 46, 4, 48); //опорное напряжение
       printNumI(puls, RIGHT, 24); //длинна импульса
       printNumI(k_delitel, 20, 32); //коэффициент делителя
       printNumI(ADC_value, RIGHT, 32); //значение АЦП для преобразователя
@@ -2009,7 +2009,7 @@ void debug(void) //отладка
 
       case 3: //Up key //нажатие
         switch (n) {
-          case 0: if (opornoe < 1.50) opornoe += 0.01; break; //прибавляем опорное напряжение
+          case 0: if (reference < 1.50) reference += 0.01; break; //прибавляем опорное напряжение
           case 1: if (puls < 30) puls++; break; //прибавляем длинну импульса
           case 2: if (k_delitel < 1500) k_delitel++; break; //прибавляем коэффициент делителя
           case 3: if (ADC_value < 254) ADC_value++; break; //прибавляем значение АЦП для преобразователя
@@ -2022,7 +2022,7 @@ void debug(void) //отладка
 
       case 2: //Down key //нажатие
         switch (n) {
-          case 0: if (opornoe > 0.50) opornoe -= 0.01; break; //убавляем опорное напряжение
+          case 0: if (reference > 0.50) reference -= 0.01; break; //убавляем опорное напряжение
           case 1: if (puls > 1) puls--; break; //убавляем длинну импульса
           case 2: if (k_delitel > 10) k_delitel--; break; //убавляем коэффициент делителя
           case 3: if (ADC_value > 10) ADC_value--; break; //убавляем значение АЦП для преобразователя
@@ -3019,7 +3019,7 @@ void statistic_update(void) //обновление статистики
 void pump_read(void) //чтение настроек преобразователя
 {
   puls = eeprom_read_byte((uint8_t*)52);
-  opornoe = eeprom_read_float((float*)53);
+  reference = eeprom_read_float((float*)53);
   ADC_value = eeprom_read_byte((uint8_t*)102);
   k_delitel = eeprom_read_word((uint16_t*)104);
   geiger_time = eeprom_read_float((float*)106);
@@ -3029,7 +3029,7 @@ void pump_read(void) //чтение настроек преобразовате�
 void pump_update(void) //обновление настроек преобразователя
 {
   eeprom_update_byte((uint8_t*)52, puls);
-  eeprom_update_float((float*)53, opornoe);
+  eeprom_update_float((float*)53, reference);
   eeprom_update_byte((uint8_t*)102, ADC_value);
   eeprom_update_word((uint16_t*)104, k_delitel);
   eeprom_update_float((float*)106, geiger_time);
@@ -3185,7 +3185,7 @@ void setings_save(uint8_t sw) //сохранить настройки
     case 1:
       if (
         puls == eeprom_read_byte((uint8_t*)52) &&
-        opornoe == eeprom_read_float((float*)53) &&
+        reference == eeprom_read_float((float*)53) &&
         ADC_value == eeprom_read_byte((uint8_t*)102) &&
         k_delitel == eeprom_read_word((uint16_t*)104) &&
         geiger_time == eeprom_read_float((float*)106) &&
