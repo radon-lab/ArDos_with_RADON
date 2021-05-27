@@ -1994,7 +1994,7 @@ void debug(void) //отладка
           case 2: print(D_COEF_DIV, LEFT, 32); break; //КДЛ
           case 3: print(D_PUMP_ADC, 46, 32); break; //АЦП
           case 4: print(D_WDT_PER, LEFT, 40); break; //ПЕР
-          case 5: print(D_GEIGER_TIME, 46, 40); break; //СЧТ
+          case 5: print(D_GEIGER_TIME, 46, 40); break; //СЧ
         }
         if (n == i) invertText(false); //выключаем инверсию
       }
@@ -2004,7 +2004,10 @@ void debug(void) //отладка
 
       case 1: //Down key hold
       case 4: //Up key hold
-        if (n == 5) set = !set;
+        if (n == 5) {
+          set = !set;
+          geiger_time = (uint8_t)geiger_time;
+        }
         break;
 
       case 3: //Up key //нажатие
@@ -2014,7 +2017,7 @@ void debug(void) //отладка
           case 2: if (k_delitel < 1500) k_delitel++; break; //прибавляем коэффициент делителя
           case 3: if (ADC_value < 254) ADC_value++; break; //прибавляем значение АЦП для преобразователя
           case 4: if (wdt_period < MAX_WDT_PERIOD) wdt_period++; break; //период
-          case 5: if (geiger_time < MAX_GEIGER_TIME) geiger_time += (set) ? 0.1 : 1; break; //счет
+          case 5: if (geiger_time < MAX_GEIGER_TIME) geiger_time += (set) ? 0.1 : 1; if ((uint8_t)geiger_time == 100) set = 0;  break; //счет
         }
         time_out = 0; //сбрасывает авто-выход
         scr = 0; //разрешаем обновление экрана
@@ -2027,7 +2030,7 @@ void debug(void) //отладка
           case 2: if (k_delitel > 10) k_delitel--; break; //убавляем коэффициент делителя
           case 3: if (ADC_value > 10) ADC_value--; break; //убавляем значение АЦП для преобразователя
           case 4: if (wdt_period > MIN_WDT_PERIOD) wdt_period--; break; //период
-          case 5: if (geiger_time > MIN_GEIGER_TIME) geiger_time -= (set) ? 0.1 : 1; break; //счет
+          case 5: if (geiger_time > MIN_GEIGER_TIME) geiger_time -= (set) ? 0.1 : 1; if ((uint8_t)geiger_time == 100) set = 1; break; //счет
         }
         time_out = 0; //сбрасывает авто-выход
         scr = 0; //разрешаем обновление экрана

@@ -69,7 +69,7 @@
 #define D_COEF_DIV "RLK" //КДЛ
 #define D_PUMP_ADC "FWG" //АЦП
 #define D_WDT_PER "GTH" //ПЕР
-#define D_GEIGER_TIME "CXN" //СЧТ
+#define D_GEIGER_TIME "CX" //СЧ
 
 //Настройки
 #define S_SETINGS "Yfcnhjqrb" //Настройки
@@ -274,7 +274,7 @@
 #define D_COEF_DIV "CDF" //КДЛ
 #define D_PUMP_ADC "ADC" //АЦП
 #define D_WDT_PER "WDT" //ПЕР
-#define D_GEIGER_TIME "GTM" //СЧТ
+#define D_GEIGER_TIME "GT" //СЧ
 
 //Настройки
 #define S_SETINGS "Settings" //Настройки
