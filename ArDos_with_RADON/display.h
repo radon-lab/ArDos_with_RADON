@@ -225,7 +225,7 @@ void print(const char *st, uint8_t x, uint8_t y) //вывод текста
     steps = 8 - y % 8;
   }
 
-  for (int cnt = 0; cnt < stl; cnt++) _print_char(*st++, x + (cnt * (cfont.x_size)), row, steps);
+  for (uint8_t cnt = 0; cnt < stl; cnt++) _print_char(*st++, x + (cnt * (cfont.x_size)), row, steps);
 
   setFont(FONT_DATA_NAME); //установка шрифта
 }
@@ -240,8 +240,8 @@ void printNumF(float num, uint8_t dec, uint8_t x, uint8_t y, char divider, uint8
   char buf[10];
   char st[10];
   uint8_t c = 0, f = 0;
-
   uint32_t numInt = num;
+  float decNum = num - numInt;
 
   if (numInt) {
     while (numInt > 0) {
@@ -251,21 +251,22 @@ void printNumF(float num, uint8_t dec, uint8_t x, uint8_t y, char divider, uint8
   }
   else buf[c++] = 48;
 
+  if (dec) {
+    buf[c++] = divider;
+    for (uint8_t i = 0; i < dec; i++) {
+      decNum *= 10.0;
+      buf[c++] = 48 + decNum;
+      decNum -= (uint8_t)decNum;
+    }
+  }
+
+  buf[c++] = 0;
+
   if (length > c) {
     for (f = 0; f < (length - c); f++) st[f] = filler;
   }
 
-  for (uint8_t i = 0; i < c; i++) st[i + f] = buf[c - i - 1];
-
-  if (dec) {
-    st[c++ + f] = divider;
-    num -= numInt;
-    for (uint8_t i = 0; i < dec; i++) {
-      st[c++ + f] = 48 + num * 10.0;
-      num -= (uint8_t)num;
-    }
-  }
-  st[c + f] = 0;
+  for (uint8_t i = 0; i < c; i++) st[i + f] = buf[i];
 
   print(st, x, y);
 }
