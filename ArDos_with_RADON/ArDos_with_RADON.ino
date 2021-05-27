@@ -1947,7 +1947,7 @@ void debug(void) //отладка
 {
   uint8_t time_out = 0;
   uint8_t n = 0; //курсор
-  boolean set = 1; //режим знака счета времени
+  boolean set = ((uint8_t)geiger_time < 100) ? 1 : 0; //режим знака счета времени
   scr = 0; //разрешаем обновление экрана
 
   while (1) {
@@ -1979,22 +1979,22 @@ void debug(void) //отладка
       print(D_HV_PUMP, 46, 16); //ВВ
       printNumI(_convert_vcc_hv(hv_adc), RIGHT, 16); //напряжение высокого
 
-      printNumF(reference, 2, 20, 24, 46, 4, 48); //опорное напряжение
-      printNumI(puls, RIGHT, 24); //длинна импульса
-      printNumI(k_delitel, 20, 32); //коэффициент делителя
-      printNumI(ADC_value, RIGHT, 32); //значение АЦП для преобразователя
-      printNumI(wdt_period, 20, 40); //период
-      printNumF(geiger_time, set, RIGHT, 40, 46, 4, 48); //счёт
+      printNumI(wdt_period, 20, 24); //период
+      printNumF(geiger_time, set, RIGHT, 24, 46, 4, 48); //счёт
+      printNumF(reference, 2, 20, 32, 46, 4, 48); //опорное напряжение
+      printNumI(puls, RIGHT, 32); //длинна импульса
+      printNumI(k_delitel, 20, 40); //коэффициент делителя
+      printNumI(ADC_value, RIGHT, 40); //значение АЦП для преобразователя
 
       for (uint8_t i = 0; i < 6; i++) {
         if (n == i) invertText(true); //включаем инверсию
         switch (i) {
-          case 0: print(D_REFERENCE, LEFT, 24); break; //ОПР
-          case 1: print(D_PULS_LEN, 46, 24 ); break; //ИМП
-          case 2: print(D_COEF_DIV, LEFT, 32); break; //КДЛ
-          case 3: print(D_PUMP_ADC, 46, 32); break; //АЦП
-          case 4: print(D_WDT_PER, LEFT, 40); break; //ПЕР
-          case 5: print(D_GEIGER_TIME, 46, 40); break; //СЧ
+          case 0: print(D_WDT_PER, LEFT, 24); break; //ПЕР
+          case 1: print(D_GEIGER_TIME, 46, 24); break; //СЧ
+          case 2: print(D_REFERENCE, LEFT, 32); break; //ОПР
+          case 3: print(D_PULS_LEN, 46, 32); break; //ИМП
+          case 4: print(D_COEF_DIV, LEFT, 40); break; //КДЛ
+          case 5: print(D_PUMP_ADC, 46, 40); break; //АЦП
         }
         if (n == i) invertText(false); //выключаем инверсию
       }
@@ -2004,7 +2004,7 @@ void debug(void) //отладка
 
       case 1: //Down key hold
       case 4: //Up key hold
-        if (n == 5) {
+        if (n == 1) {
           set = !set;
           geiger_time = (uint8_t)geiger_time;
         }
@@ -2012,12 +2012,12 @@ void debug(void) //отладка
 
       case 3: //Up key //нажатие
         switch (n) {
-          case 0: if (reference < 1.50) reference += 0.01; break; //прибавляем опорное напряжение
-          case 1: if (puls < 30) puls++; break; //прибавляем длинну импульса
-          case 2: if (k_delitel < 1500) k_delitel++; break; //прибавляем коэффициент делителя
-          case 3: if (ADC_value < 254) ADC_value++; break; //прибавляем значение АЦП для преобразователя
-          case 4: if (wdt_period < MAX_WDT_PERIOD) wdt_period++; break; //период
-          case 5: if (geiger_time < MAX_GEIGER_TIME) geiger_time += (set) ? 0.1 : 1; if ((uint8_t)geiger_time == 100) set = 0;  break; //счет
+          case 0: if (wdt_period < MAX_WDT_PERIOD) wdt_period++; break; //период
+          case 1: if (geiger_time < MAX_GEIGER_TIME) geiger_time += (set) ? 0.1 : 1; if ((uint8_t)geiger_time == 100) set = 0;  break; //счет
+          case 2: if (reference < 1.50) reference += 0.01; break; //прибавляем опорное напряжение
+          case 3: if (puls < 30) puls++; break; //прибавляем длинну импульса
+          case 4: if (k_delitel < 1500) k_delitel++; break; //прибавляем коэффициент делителя
+          case 5: if (ADC_value < 254) ADC_value++; break; //прибавляем значение АЦП для преобразователя
         }
         time_out = 0; //сбрасывает авто-выход
         scr = 0; //разрешаем обновление экрана
@@ -2025,12 +2025,12 @@ void debug(void) //отладка
 
       case 2: //Down key //нажатие
         switch (n) {
-          case 0: if (reference > 0.50) reference -= 0.01; break; //убавляем опорное напряжение
-          case 1: if (puls > 1) puls--; break; //убавляем длинну импульса
-          case 2: if (k_delitel > 10) k_delitel--; break; //убавляем коэффициент делителя
-          case 3: if (ADC_value > 10) ADC_value--; break; //убавляем значение АЦП для преобразователя
-          case 4: if (wdt_period > MIN_WDT_PERIOD) wdt_period--; break; //период
-          case 5: if (geiger_time > MIN_GEIGER_TIME) geiger_time -= (set) ? 0.1 : 1; if ((uint8_t)geiger_time == 100) set = 1; break; //счет
+          case 0: if (wdt_period > MIN_WDT_PERIOD) wdt_period--; break; //период
+          case 1: if (geiger_time > MIN_GEIGER_TIME) geiger_time -= (set) ? 0.1 : 1; if ((uint8_t)geiger_time == 100) set = 1; break; //счет
+          case 2: if (reference > 0.50) reference -= 0.01; break; //убавляем опорное напряжение
+          case 3: if (puls > 1) puls--; break; //убавляем длинну импульса
+          case 4: if (k_delitel > 10) k_delitel--; break; //убавляем коэффициент делителя
+          case 5: if (ADC_value > 10) ADC_value--; break; //убавляем значение АЦП для преобразователя
         }
         time_out = 0; //сбрасывает авто-выход
         scr = 0; //разрешаем обновление экрана
