@@ -377,10 +377,6 @@ int main(void)  //инициализация
   start_pump(); //первая накачка преобразователя
   WDT_enable(); //запускаем WatchDog с пределителем 2
 
-#if USE_UART
-  dataChannelInit(UART_BAUND); //инициализация UART
-#endif
-
   clrRow(4); //очистка строки 4
   clrRow(5); //очистка строки 5
 
@@ -2184,6 +2180,16 @@ void _setings_item_switch(boolean set, boolean inv, uint8_t num, uint8_t pos) //
         case 1: printNumI(alarm_level_dose, RIGHT, pos_row); break;
       }
       break;
+
+#if USE_UART
+    case 16:
+      switch (set) {
+        case 0: print(S_ITEM_UART_SET, LEFT, pos_row); break; //Порт:
+        case 1: if (!UCSR0B) print(ALL_SWITCH_OFF, RIGHT, pos_row); else printNumI(UART_BAUND, RIGHT, pos_row); break;
+      }
+      
+      break;
+#endif
   }
   invertText(false); //выключаем инверсию
 }
@@ -2230,6 +2236,9 @@ void _setings_data_up(uint8_t pos) //прибавление данных
     case 13: if (alarm_dose < 3) alarm_dose++; break; //Тревога Д
     case 14: if (warn_level_dose < 300) warn_level_dose += 5; else warn_level_dose = 10; break; //Порог Д1
     case 15: if (alarm_level_dose < 500) alarm_level_dose += 10; else if (alarm_level_dose < 1000) alarm_level_dose += 50; else if (alarm_level_dose < 65000) alarm_level_dose += 100; else alarm_level_dose = 300; break; //Порог Д2
+#if USE_UART
+    case 16: if (!UCSR0B) dataChannelInit(); else dataChannelEnd(); break; //uart
+#endif
   }
 }
 //------------------------------------Убавление данных------------------------------------------------------
@@ -2268,6 +2277,9 @@ void _setings_data_down(uint8_t pos) //убавление данных
     case 13: if (alarm_dose > 0) alarm_dose--; break; //Тревога Д
     case 14: if (warn_level_dose > 10) warn_level_dose -= 5; else warn_level_dose = 300; break; //Порог Д1
     case 15: if (alarm_level_dose > 1000) alarm_level_dose -= 100; else if (alarm_level_dose > 500) alarm_level_dose -= 50; else if (alarm_level_dose > 300) alarm_level_dose -= 10; else alarm_level_dose = 65000; break; //Порог Д2
+#if USE_UART
+    case 16: if (!UCSR0B) dataChannelInit(); else dataChannelEnd(); break; //uart
+#endif
   }
 }
 //------------------------------------Настройки------------------------------------------------------
@@ -2314,7 +2326,7 @@ void setings(void) //настройки
       case 2: //Down key //вниз
         switch (set) {
           case 0:
-            if (n < 15) { //изменяем позицию
+            if (n < 15 + USE_UART) { //изменяем позицию
               n++;
               if (c < 4) c++; //изменяем положение курсора
             }
@@ -2337,7 +2349,7 @@ void setings(void) //настройки
               if (c > 0) c--; //изменяем положение курсора
             }
             else { //иначе конец списка
-              n = 15;
+              n = 15 + USE_UART;
               c = 4;
             }
             break;

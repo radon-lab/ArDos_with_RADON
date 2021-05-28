@@ -1,15 +1,15 @@
 #if USE_UART
 //----------------------------------Инициализация UART----------------------------------
-void dataChannelInit(uint32_t baudrate) //инициализация UART
+void dataChannelInit(void) //инициализация UART
 {
   PRR &= ~ (0x01 << 1); //включаем питание UART
-  UBRR0 = (F_CPU / (8UL * baudrate)) - 1; //устанавливаем битрейт
+  UBRR0 = (F_CPU / (8UL * UART_BAUND)) - 1; //устанавливаем битрейт
   UCSR0A = (0x01 << U2X0); //устанавливаем удвоение скорости
   UCSR0B = ((0x01 << TXEN0)); //разрешаем передачу
   UCSR0C = ((0x01 << UCSZ01) | (0x01 << UCSZ00)); //длинна пакета 8бит
 }
 //----------------------------------Выключение UART----------------------------------
-void dataChannelEnd() //выключение UART
+void dataChannelEnd(void) //выключение UART
 {
   UCSR0B = 0; //выключаем UART
 }

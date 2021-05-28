@@ -90,6 +90,7 @@
 #define S_ITEM_ALARM_DOSE "Nhtdjuf L&" //Тревога Д:
 #define S_ITEM_ALARM_THRESHOLD_DOSE_1 "Gjhju L1&" //Порог Д1:
 #define S_ITEM_ALARM_THRESHOLD_DOSE_2 "Gjhju L2&" //Порог Д2:
+#define S_ITEM_UART_SET "Gjhn&" //Порт:
 
 #define S_SWITCH_MANUAL "HEXY" //РУЧН
 #define S_SWITCH_AUTO "FDNJ" //АВТО
@@ -295,6 +296,7 @@
 #define S_ITEM_ALARM_DOSE "Alarm D:" //Тревога Д:
 #define S_ITEM_ALARM_THRESHOLD_DOSE_1 "Dose 1:" //Порог Д1:
 #define S_ITEM_ALARM_THRESHOLD_DOSE_2 "Dose 2:" //Порог Д2:
+#define S_ITEM_UART_SET "Uart:" //Порт:
 
 #define S_SWITCH_MANUAL "MANUAL" //РУЧН
 #define S_SWITCH_AUTO "AUTO" //АВТО
