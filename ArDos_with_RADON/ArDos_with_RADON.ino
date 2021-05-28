@@ -183,6 +183,7 @@ uint8_t sigma_pos = DEFAULT_SIGMA_POS; //указатель сигмы
 
 float rad_imp; //импульсы в секунду
 float rad_imp_m; //импульсы в минуту
+uint16_t scan_ind; //шкала имп/с
 uint32_t rad_search; //фон в режиме поиск
 
 uint16_t maxLevel = 22; //максимальный уровень маштабирования графика
@@ -798,6 +799,8 @@ void data_convert(void) //преобразование данных
           }
         }
         else tmr_nop_imp = 0; //иначе импульсы возобновились
+
+        if (serch) rad_buff[0] = 0;
 
         if (tmr_upd_err >= ERROR_LENGTHY_TIME) {
           if (error_massege) {
@@ -1695,6 +1698,7 @@ void search_update(void) //обновление данных поиска
 {
   static uint8_t now_pos; //переключатель динамического изменения времени
   static uint16_t cnt; //счетчик тиков графика
+  static uint16_t scan_now; //имп/с за период
   static uint16_t time_to_update; //текущее время обновления
   static uint32_t imp_s; //имп/с для расчетов
 
@@ -1727,7 +1731,7 @@ void search_update(void) //обновление данных поиска
       else maxLevel = 22;
     }
 
-    rad_buff[0] = scan_buff; //смещаем 0-й элемент в 1-й для дальнейшей работы с ним
+    rad_buff[0] += scan_buff; //смещаем 0-й элемент в 1-й для дальнейшей работы с ним
     scan_buff = 0; //сбрасываем счетчик импульсов
 
 #if TYPE_GRAF_MOVE //слева-направо
@@ -1743,22 +1747,16 @@ void search_update(void) //обновление данных поиска
     imp_s = search_buff[0] * (1000.00 / time_to_update); //персчет имп/сек.
     time_to_update = (search_pos != 8) ? pgm_read_word(&search_time[search_pos]) : pgm_read_word(&search_time[map((imp_s > SEARCH_IND_MAX) ? SEARCH_IND_MAX : imp_s, 0, SEARCH_IND_MAX, 7, 0)]);
 
-    now_pos = time_to_update / (wdt_period / 100.0);
+    now_pos = (float)time_to_update / ((float)wdt_period / 100.0);
 
     cnt = 0; //сброс
     graf = 0; //разрешаем обновление графика
   }
 
-  static uint16_t n;
-  static uint16_t f;
-
-  n = (imp_s > SEARCH_IND_MAX) ? SEARCH_IND_MAX : imp_s; //устанавливаем точки максимумов
-  n = map(n, 0, SEARCH_IND_MAX, 2, 51); //корректируем под коэффициент
-  if (n < f) f--; //добавляем плавности при уменьшении
-  else f = n; //если увеличелось, отображаем сразу
-
-  clrRow(2, f + 1, 54); //убираем лишнее
-  drawBitmap(0, 16, scan_ind_img, f, 8); //рисуем полосу
+  scan_now = (imp_s > SEARCH_IND_MAX) ? SEARCH_IND_MAX : imp_s; //устанавливаем точки максимумов
+  scan_now = map(scan_now, 0, SEARCH_IND_MAX, 2, 51); //корректируем под коэффициент
+  if (scan_now < scan_ind) scan_ind--; //добавляем плавности при уменьшении
+  else scan_ind = scan_now; //если увеличелось, отображаем сразу
 }
 //-------------------------Инициализация режима поиск-----------------------------------------
 void search_menu(void) //инициализация режима поиск
@@ -1772,6 +1770,9 @@ void search_menu(void) //инициализация режима поиск
     bat_massege(); //обновление состояния батареи
     error_messege(); //обработка ошибок
 
+    clrRow(2, scan_ind + 1, 54); //убираем лишнее
+    drawBitmap(0, 16, scan_ind_img, scan_ind, 8); //рисуем полосу имп/с
+
     if (!graf) {
       graf = 1; //запрещаем обновление графика
 
@@ -1780,7 +1781,7 @@ void search_menu(void) //инициализация режима поиск
       clrRow(2); //очистка строки 2
 
       task_bar(S_SEARCH); //отрисовываем фон
-      if (serch_disable) drawBitmap(61, 0, scan_stop_img, 6, 8); //рисуем паузу
+      if (serch_disable) drawBitmap(59, 0, scan_stop_img, 6, 8); //рисуем паузу
       drawBitmap(0, 8, scan_ind_scale_img, 51, 8); //рисуем шкалу
 
       switch (c) {
