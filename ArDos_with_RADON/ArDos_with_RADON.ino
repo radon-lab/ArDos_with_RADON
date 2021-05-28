@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.5.9 low_pwr final 27.05.21 специально для проекта ArDos
+  Версия программы RADON v3.5.9 low_pwr final 28.05.21 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -861,7 +861,7 @@ void data_convert(void) //преобразование данных
 
       case TIME_FACT_20: //таймер обновления экрана
         if (!sleep) scr = 0; //устанавливаем флаг для обновления экрана
-        if (serch) rad_buff[0] = 0; //очищаем буфер ошибки импульсов
+        if (serch) rad_buff[0] = 0; //очищаем буфер
         break;
     }
   }
