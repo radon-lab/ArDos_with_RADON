@@ -759,7 +759,15 @@ void data_convert(void) //преобразование данных
 
 #if USE_UART
         case TIME_FACT_21: //отправляем данные в порт
+#if UART_SEND_BACK
           sendNumI(rad_back);
+#endif
+#if UART_SEND_DOSE
+          sendNumI(rad_dose);
+#endif
+#if UART_SEND_IMP
+          sendNumI(rad_buff[0]);
+#endif
           break;
 #endif
       }
@@ -2187,7 +2195,7 @@ void _setings_item_switch(boolean set, boolean inv, uint8_t num, uint8_t pos) //
         case 0: print(S_ITEM_UART_SET, LEFT, pos_row); break; //Порт:
         case 1: if (!UCSR0B) print(ALL_SWITCH_OFF, RIGHT, pos_row); else printNumI(UART_BAUND, RIGHT, pos_row); break;
       }
-      
+
       break;
 #endif
   }
