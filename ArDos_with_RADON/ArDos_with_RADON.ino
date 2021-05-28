@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.5.9 low_pwr final 28.05.21 специально для проекта ArDos
+  Версия программы RADON v3.6.0 low_pwr final 28.05.21 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -121,6 +121,7 @@
 #include "display.h"
 #include "resources.c"
 #include "connection.h"
+#include "uartSender.h"
 
 //-------------Для разработчиков-------------
 const float ALARM_AUTO_GISTERESIS = (1.00 - (ALARM_AUTO_GIST / 100.00)); //инвертируем проценты
@@ -169,6 +170,7 @@ uint8_t TIME_FACT_1; //секундные интервалы 1
 #define TIME_FACT_18 34 //секундные интервалы 18
 #define TIME_FACT_19 36 //секундные интервалы 19
 #define TIME_FACT_20 38 //секундные интервалы 20
+#define TIME_FACT_21 40 //секундные интервалы 21
 
 uint16_t stat_upd_tmr; //таймер записи статистики в память
 
@@ -374,6 +376,10 @@ int main(void)  //инициализация
   bat_check(); //опрос батареи
   start_pump(); //первая накачка преобразователя
   WDT_enable(); //запускаем WatchDog с пределителем 2
+
+#if USE_UART
+  dataChannelInit(UART_BAUND); //инициализация UART
+#endif
 
   clrRow(4); //очистка строки 4
   clrRow(5); //очистка строки 5
@@ -754,6 +760,12 @@ void data_convert(void) //преобразование данных
         case TIME_FACT_14: //считаем пройденное время
           time_sec = (time_total * (wdt_period / 100.00)) / 1000; //пересчитываем в секунды
           break;
+
+#if USE_UART
+        case TIME_FACT_21: //отправляем данные в порт
+          sendNumI(rad_back);
+          break;
+#endif
       }
     }
 
