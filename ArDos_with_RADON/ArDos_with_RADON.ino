@@ -800,8 +800,6 @@ void data_convert(void) //преобразование данных
         }
         else tmr_nop_imp = 0; //иначе импульсы возобновились
 
-        if (serch) rad_buff[0] = 0;
-
         if (tmr_upd_err >= ERROR_LENGTHY_TIME) {
           if (error_massege) {
             tmr_upd_err = 0; //сброс таймера
@@ -863,6 +861,7 @@ void data_convert(void) //преобразование данных
 
       case TIME_FACT_20: //таймер обновления экрана
         if (!sleep) scr = 0; //устанавливаем флаг для обновления экрана
+        if (serch) rad_buff[0] = 0; //очищаем буфер ошибки импульсов
         break;
     }
   }
@@ -1778,7 +1777,7 @@ void search_menu(void) //инициализация режима поиск
 
       clrRow(0); //очистка строки 0
       clrRow(1); //очистка строки 1
-      clrRow(2); //очистка строки 2
+      clrRow(2, 55, 83); //очистка строки 2
 
       task_bar(S_SEARCH); //отрисовываем фон
       if (serch_disable) drawBitmap(59, 0, scan_stop_img, 6, 8); //рисуем паузу
