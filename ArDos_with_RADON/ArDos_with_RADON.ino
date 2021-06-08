@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.6.0 low_pwr final 28.05.21 специально для проекта ArDos
+  Версия программы RADON v3.6.0 low_pwr final 08.06.21 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -2319,8 +2319,7 @@ void setings(void) //настройки
 
       for (uint8_t i = 0; i < 5; i++) { //отсчет строк
         for (uint8_t r = 0; r < 2; r++) { //отсчет позиции
-          boolean inv = 0; //инверсия
-          if (i == c) if (r == set) inv = 1; //если курсор на нужной строке
+          boolean inv = (i == c && r == set); //если курсор на нужной строке
           _setings_item_switch(r, inv, n - c + i, i); //отрисовываем пункты настроек
         }
       }
@@ -3630,8 +3629,8 @@ void main_screen(void)
       switch (alarm_switch) { //режим тревоги
         case 0:
           switch (scr_mode) { //основные экраны
-            case 0: back_mode = (back_mode) ? 0 : 1; break; //переключаем экраны фона
-            case 1: dose_mode = (dose_mode) ? 0 : 1; break; //переключаем экраны дозы
+            case 0: back_mode = !back_mode; break; //переключаем экраны фона
+            case 1: dose_mode = !dose_mode; break; //переключаем экраны дозы
           }
           break;
         case 3: warn_back_wait = 1; alarm_switch = 0; _vibro_off(); buzz_read(); break; //фон
@@ -3646,7 +3645,7 @@ void main_screen(void)
 
     case 5: //Select key //выбор режима
       switch (alarm_switch) { //режим тревоги
-        case 0: scr_mode = (scr_mode) ? 0 : 1; break; //переключение фон/доза
+        case 0: scr_mode = !scr_mode; break; //переключение фон/доза
         case 3: warn_back_wait = 1; alarm_switch = 0; _vibro_off(); buzz_read(); break; //фон
         case 4: warn_dose_wait = rad_dose; alarm_switch = 0; _vibro_off(); buzz_read(); break; //доза
       }
