@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.6.0 low_pwr final 08.06.21 специально для проекта ArDos
+  Версия программы RADON v3.6.1 low_pwr release 09.06.21 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -130,19 +130,21 @@ const float IMP_PWR_GISTERESIS = (1.00 - (IMP_PWR_GIST / 100.00)); //инвер�
 const uint8_t MASS_TIME_FACT = (MASS_TIME - 1); //фактический номер элемента массивов секунд
 const uint8_t MASS_BACK_FACT = (MASS_BACK - 1); //фактический номер элемента массивов фона
 
-const uint16_t buzz_time = (TIME_BUZZ / float(1.00 / FREQ_BUZZ * 1000)); //пересчитываем частоту и время щелчков в циклы таймера
+const uint16_t buzz_time = ((uint32_t)FREQ_BUZZ * (uint32_t)TIME_BUZZ) / 1000; //пересчитываем частоту и время щелчков в циклы таймера
 const uint16_t buzz_freq = (F_CPU / SOUND_PRESCALER) / FREQ_BUZZ; //устанавливаем частоту таймера щелчков
+uint16_t buzz_vol; //устанавливаем громкость щелчков
 
 uint8_t GEIGER_CYCLE; //минимум секунд для начала расчетов
 uint8_t GEIGER_MASS; //максимум секунд для окончания смещения коэффициентов
 
 //пищалка старт/стоп
-#define SOUND_START(x)  PRR &= ~(1 << 3); OCR1A = x; TCNT1 = 0; TIMSK1 = 0b00000010
-#define SOUND_STOP      TIMSK1 = 0b00000000; PRR |= (1 << 3)
+#define BUZZ_START(freq, vol)  PRR &= ~(1 << 3); ICR1 = freq; OCR1A = vol; TCNT1 = 0; TIMSK1 = 0b00000011
+#define SOUND_START(freq)      PRR &= ~(1 << 3); ICR1 = freq; OCR1A = ((freq / 2) / 10 * volume); TCNT1 = 0; TIMSK1 = 0b00000011
+#define SOUND_STOP             TIMSK1 = 0b00000000; PRR |= (1 << 3)
 
 //вспышки старт/стоп
-#define _RAD_FLASH_ON  PRR &= ~(1 << 5); TIMSK0 = 0b00000001; RAD_FLASH_ON
-#define _RAD_FLASH_OFF TIMSK0 = 0b00000000; PRR |= (1 << 5); RAD_FLASH_OFF
+#define _RAD_FLASH_ON  {PRR &= ~(1 << 5); TIMSK0 = 0b00000001; RAD_FLASH_ON;}
+#define _RAD_FLASH_OFF {TIMSK0 = 0b00000000; PRR |= (1 << 5); RAD_FLASH_OFF;}
 
 volatile uint16_t scan_buff; //переменная для счета импульсов от датчика
 uint16_t rad_buff[BUFF_LENGTHY]; //массив секундных замеров для расчета фона
@@ -237,6 +239,7 @@ boolean serch = 0; //флаг работы поиска
 //переменные настроек
 boolean knock_disable = DEFAULT_KNOCK_DISABLE; //флаг запрет треска кнопками
 uint8_t buzz_switch = DEFAULT_BUZ_SWITCH; //указатель на тип треска пищалкой
+uint8_t volume = DEFAULT_VOLUME; //громкость всех звуков
 
 uint8_t alarm_switch = 0; //указатель текущей тревоги
 uint8_t alarm_back = DEFAULT_ALARM_BACK; //переключатель режимов тревоги фона
@@ -408,7 +411,7 @@ void initTimers(void) //инициализация таймеров
   TIMSK0 = 0b00000000; //отключаем прерывания Таймера0
 
   TCCR1A = 0b00000000; //отключаем OC1A/OC1B
-  TCCR1B = 0b00001100; //пределитель 256 | CTC режим
+  TCCR1B = 0b00011100; //пределитель 256 | ICR режим
   TIMSK1 = 0b00000000; //отключаем прерывания Таймера1
 
   TCCR2A = 0b00000000; //отключаем OC2A/OC2B
@@ -421,6 +424,7 @@ void initTimers(void) //инициализация таймеров
 void initParam(void) //инициализация параметров
 {
   TIME_FACT_1 = 100000 / wdt_period; //расчитываем период для секунд
+  buzz_vol = (buzz_freq / 2) / 10 * volume; //устанавливаем громкость щелчков
 
   GEIGER_CYCLE = (pgm_read_byte(&time_mass[0][0]) + pgm_read_byte(&time_mass[0][1])); //минимум секунд для начала расчетов
   GEIGER_MASS = (pgm_read_byte(&time_mass[MASS_TIME_FACT][0]) + pgm_read_byte(&time_mass[MASS_TIME_FACT][1])); //максимум секунд для окончания смещения коэффициентов
@@ -481,8 +485,8 @@ ISR(INT0_vect) //внешнее прерывание на пине INT0 - счи
   if (scan_buff != 65535) scan_buff++; //нулевой элемент массива - текущий секундный замер
 
   switch (rad_flash) {
-    case 1: _RAD_FLASH_ON; break; //индикация попадания частиц
-    case 2: if (!sleep) _RAD_FLASH_ON; break; //индикация попадания частиц
+    case 1: _RAD_FLASH_ON break; //индикация попадания частиц
+    case 2: if (!sleep) _RAD_FLASH_ON break; //индикация попадания частиц
   }
   switch (buzz_switch) {
     case 1: buzz_click(); break; //щелчок пищалкой
@@ -1058,22 +1062,27 @@ ISR(TIMER2_OVF_vect) //плавная подсветка
       break;
   }
 }
-ISR(TIMER2_COMPA_vect) {
+ISR(TIMER2_COMPA_vect, ISR_NAKED) {
   LIGHT_OFF; //выключаем подсветку
+  reti(); //возврат
 }
 //---------------------------------Прерывание сигнала для пищалки---------------------------------------
-ISR(TIMER1_COMPA_vect) //прерывание сигнала для пищалки
+ISR(TIMER1_OVF_vect, ISR_NAKED) //прерывание сигнала для пищалки
 {
-  BUZZ_INV; //инвертируем бузер
+  BUZZ_ON; //включаем бузер
+  reti(); //возврат
+}
+ISR(TIMER1_COMPA_vect) {
+  BUZZ_OFF; //выключаем бузер
 
   switch (--cnt_puls) { //считаем циклы времени работы бузера
-    case 0: BUZZ_OFF; SOUND_STOP; break; //если циклы кончились, выключаем таймер
+    case 0: SOUND_STOP; break; //если циклы кончились, выключаем таймер
   }
 }
 //--------------------------------Аналог tone(), с блекджеком и ...----------------------------------
 void buzz_pulse(uint16_t freq, uint8_t time) //генерация частоты бузера (частота 10..10000, длительность мс.)
 {
-  cnt_puls = time / float(1.00 / freq * 1000); //пересчитываем частоту и время в циклы таймера
+  cnt_puls = ((uint32_t)freq * (uint32_t)time) / 1000; //пересчитываем частоту и время в циклы таймера
   SOUND_START((F_CPU / SOUND_PRESCALER) / freq); //устанавливаем частоту и запускаем таймер
 }
 //--------------------------------Щелчок пищалкой-------------------------------------------------
@@ -1081,7 +1090,7 @@ inline void buzz_click(void) //щелчок пищалкой
 {
   if (!TIMSK1) {
     cnt_puls = buzz_time; //устанавливаем длительность щелчка
-    SOUND_START(buzz_freq); //устанавливаем частоту и запускаем таймер
+    BUZZ_START(buzz_freq, buzz_vol); //устанавливаем частоту и запускаем таймер
   }
 }
 //---------------------------------Воспроизведение мелодии---------------------------------------
@@ -2104,85 +2113,92 @@ void _setings_item_switch(boolean set, boolean inv, uint8_t num, uint8_t pos) //
         case 1: if (!rad_flash) print(ALL_SWITCH_OFF, RIGHT, pos_row); else if (rad_flash == 2) print(S_SWITCH_MANUAL_EXCEPT_SLEEP, RIGHT, pos_row); else print(ALL_SWITCH_ON, RIGHT, pos_row); break;
       }
       break;
+      
+      case 4: //Громкость
+      switch (set) {
+        case 0: print(S_ITEM_VOLUME, LEFT, pos_row); break; //Громкость:
+        case 1: printNumI(volume, RIGHT, pos_row); break;
+      }
+      break;
 
-    case 4: //Щелчки
+    case 5: //Щелчки
       switch (set) {
         case 0: print(S_ITEM_CLICKS, LEFT, pos_row); break; //Щелчки:
         case 1: if (!buzz_switch) print(ALL_SWITCH_OFF, RIGHT, pos_row); else if (buzz_switch == 1) print(ALL_SWITCH_ON, RIGHT, pos_row); else print(S_SWITCH_BACK_1, RIGHT, pos_row); break;
       }
       break;
 
-    case 5: //Зв.Кнопок
+    case 6: //Зв.Кнопок
       switch (set) {
         case 0: print(S_ITEM_BUTT_SOUND, LEFT, pos_row); break; //Зв.Кнопок:
         case 1: if (knock_disable) print(ALL_SWITCH_OFF, RIGHT, pos_row); else print(ALL_SWITCH_ON, RIGHT, pos_row); break;
       }
       break;
 
-    case 6: //Разн.зам
+    case 7: //Разн.зам
       switch (set) {
         case 0: print(S_ITEM_DIFF_MEASUR, LEFT, pos_row); break; //Разн.зам:
         case 1: printNumI(pgm_read_byte(&diff_measuring[measur_pos]), RIGHT, pos_row); break;
       }
       break;
 
-    case 7: //Сигма
+    case 8: //Сигма
       switch (set) {
         case 0: print(S_ITEM_SIGMA, LEFT, pos_row); break; //Сигма:
         case 1: printNumI(sigma_pos + 1, RIGHT, pos_row); break;
       }
       break;
 
-    case 8: //Поиск
+    case 9: //Поиск
       switch (set) {
         case 0: print(S_ITEM_SEARCH, LEFT, pos_row); break; //Поиск:
         case 1: if (search_pos != 8) printNumI(pgm_read_word(&search_time[search_pos]), RIGHT, pos_row); else print(S_SWITCH_AUTO, RIGHT, pos_row); break;
       }
       break;
 
-    case 9: //Ед.измер
+    case 10: //Ед.измер
       switch (set) {
         case 0: print(S_ITEM_UNITS, LEFT, pos_row); break; //Ед.измер:
         case 1: if (!rad_mode) print(UNIT_UR, RIGHT, pos_row); else print(UNIT_USV, RIGHT, pos_row); break;
       }
       break;
 
-    case 10: //Тревога Ф
+    case 11: //Тревога Ф
       switch (set) {
         case 0: print(S_ITEM_ALARM_BACK, LEFT, pos_row); break; //Тревога Ф:
         case 1: if (!alarm_back) print(ALL_SWITCH_OFF, RIGHT, pos_row); else if (alarm_back == 1) print(S_SWITCH_SOUND, RIGHT, pos_row); else if (alarm_back == 2) print(S_SWITCH_VIBRO, RIGHT, pos_row); else print(S_SWITCH_SOUND_VIBRO, RIGHT, pos_row); break;
       }
       break;
 
-    case 11: //Порог Ф1
+    case 12: //Порог Ф1
       switch (set) {
         case 0: print(S_ITEM_ALARM_THRESHOLD_BACK_1, LEFT, pos_row); break; //Порог Ф1:
         case 1: printNumI(warn_level_back, RIGHT, pos_row); break;
       }
       break;
 
-    case 12: //Порог Ф2
+    case 13: //Порог Ф2
       switch (set) {
         case 0: print(S_ITEM_ALARM_THRESHOLD_BACK_2, LEFT, pos_row); break; //Порог Ф2:
         case 1: printNumI(alarm_level_back, RIGHT, pos_row); break;
       }
       break;
 
-    case 13: //Тревога Д
+    case 14: //Тревога Д
       switch (set) {
         case 0: print(S_ITEM_ALARM_DOSE, LEFT, pos_row); break; //Тревога Д:
         case 1: if (!alarm_dose) print(ALL_SWITCH_OFF, RIGHT, pos_row); else if (alarm_dose == 1) print(S_SWITCH_SOUND, RIGHT, pos_row); else if (alarm_dose == 2) print(S_SWITCH_VIBRO, RIGHT, pos_row); else print(S_SWITCH_SOUND_VIBRO, RIGHT, pos_row); break;
       }
       break;
 
-    case 14: //Порог Д1
+    case 15: //Порог Д1
       switch (set) {
         case 0: print(S_ITEM_ALARM_THRESHOLD_DOSE_1, LEFT, pos_row); break; //Порог Д1:
         case 1: printNumI(warn_level_dose, RIGHT, pos_row); break;
       }
       break;
 
-    case 15: //Порог Д2
+    case 16: //Порог Д2
       switch (set) {
         case 0: print(S_ITEM_ALARM_THRESHOLD_DOSE_2, LEFT, pos_row); break; //Порог Д2:
         case 1: printNumI(alarm_level_dose, RIGHT, pos_row); break;
@@ -2190,7 +2206,7 @@ void _setings_item_switch(boolean set, boolean inv, uint8_t num, uint8_t pos) //
       break;
 
 #if USE_UART
-    case 16:
+    case 17:
       switch (set) {
         case 0: print(S_ITEM_UART_SET, LEFT, pos_row); break; //Порт:
         case 1: if (!UCSR0B) print(ALL_SWITCH_OFF, RIGHT, pos_row); else printNumI(UART_BAUND, RIGHT, pos_row); break;
@@ -2226,26 +2242,27 @@ void _setings_data_up(uint8_t pos) //прибавление данных
         case 1: rad_flash = 2; break;
       }
       break;
-    case 4: switch (buzz_switch) { //Щелчки
+    case 4: if (volume < 10) volume++; break; //Громкость
+    case 5: switch (buzz_switch) { //Щелчки
         case 0: buzz_switch = 1; break;
         case 1: buzz_switch = 2; break;
       }
       break;
-    case 5: knock_disable = 0; break; //Зв.кнопок
+    case 6: knock_disable = 0; break; //Зв.кнопок
 
-    case 6: if (measur_pos < 9) measur_pos++; break; //Разн.зам
-    case 7: if (sigma_pos < 2) sigma_pos++; else sigma_pos = 0; break; //Сигма
-    case 8: if (search_pos < 8) search_pos++; else search_pos = 0; break; //Поиск
-    case 9: rad_mode = 1; break; //Ед.измер
+    case 7: if (measur_pos < 9) measur_pos++; break; //Разн.зам
+    case 8: if (sigma_pos < 2) sigma_pos++; else sigma_pos = 0; break; //Сигма
+    case 9: if (search_pos < 8) search_pos++; else search_pos = 0; break; //Поиск
+    case 10: rad_mode = 1; break; //Ед.измер
 
-    case 10: if (alarm_back < 3) alarm_back++; break; //Тревога Ф
-    case 11: if (warn_level_back < 300) warn_level_back += 5; else warn_level_back = 30; break; //Порог Ф1
-    case 12: if (alarm_level_back < 500) alarm_level_back += 10; else if (alarm_level_back < 1000) alarm_level_back += 50; else if (alarm_level_back < 65000) alarm_level_back += 100; else alarm_level_back = 300; break; //Порог Ф2
-    case 13: if (alarm_dose < 3) alarm_dose++; break; //Тревога Д
-    case 14: if (warn_level_dose < 300) warn_level_dose += 5; else warn_level_dose = 10; break; //Порог Д1
-    case 15: if (alarm_level_dose < 500) alarm_level_dose += 10; else if (alarm_level_dose < 1000) alarm_level_dose += 50; else if (alarm_level_dose < 65000) alarm_level_dose += 100; else alarm_level_dose = 300; break; //Порог Д2
+    case 11: if (alarm_back < 3) alarm_back++; break; //Тревога Ф
+    case 12: if (warn_level_back < 300) warn_level_back += 5; else warn_level_back = 30; break; //Порог Ф1
+    case 13: if (alarm_level_back < 500) alarm_level_back += 10; else if (alarm_level_back < 1000) alarm_level_back += 50; else if (alarm_level_back < 65000) alarm_level_back += 100; else alarm_level_back = 300; break; //Порог Ф2
+    case 14: if (alarm_dose < 3) alarm_dose++; break; //Тревога Д
+    case 15: if (warn_level_dose < 300) warn_level_dose += 5; else warn_level_dose = 10; break; //Порог Д1
+    case 16: if (alarm_level_dose < 500) alarm_level_dose += 10; else if (alarm_level_dose < 1000) alarm_level_dose += 50; else if (alarm_level_dose < 65000) alarm_level_dose += 100; else alarm_level_dose = 300; break; //Порог Д2
 #if USE_UART
-    case 16: if (!UCSR0B) dataChannelInit(); else dataChannelEnd(); break; //uart
+    case 17: if (!UCSR0B) dataChannelInit(); else dataChannelEnd(); break; //uart
 #endif
   }
 }
@@ -2267,26 +2284,27 @@ void _setings_data_down(uint8_t pos) //убавление данных
         case 2: rad_flash = 1; break;
       }
       break;
-    case 4: switch (buzz_switch) { //Щелчки
+    case 4: if (volume > 1) volume--; break; //Громкость
+    case 5: switch (buzz_switch) { //Щелчки
         case 1: buzz_switch = 0; break;
         case 2: buzz_switch = 1; break;
       }
       break;
-    case 5: knock_disable = 1; break; //Зв.кнопок
+    case 6: knock_disable = 1; break; //Зв.кнопок
 
-    case 6: if (measur_pos > 0) measur_pos--;  break; //Разн.зам
-    case 7: if (sigma_pos > 0) sigma_pos--; else sigma_pos = 2; break; //Сигма
-    case 8: if (search_pos > 0) search_pos--; else search_pos = 8; break; //Поиск
-    case 9: rad_mode = 0; break; //Ед.измер
+    case 7: if (measur_pos > 0) measur_pos--;  break; //Разн.зам
+    case 8: if (sigma_pos > 0) sigma_pos--; else sigma_pos = 2; break; //Сигма
+    case 9: if (search_pos > 0) search_pos--; else search_pos = 8; break; //Поиск
+    case 10: rad_mode = 0; break; //Ед.измер
 
-    case 10: if (alarm_back > 0) alarm_back--; break; //Тревога Ф
-    case 11: if (warn_level_back > 30) warn_level_back -= 5; else warn_level_back = 300; break; //Порог Ф1
-    case 12: if (alarm_level_back > 1000) alarm_level_back -= 100; else if (alarm_level_back > 500) alarm_level_back -= 50; else if (alarm_level_back > 300) alarm_level_back -= 10; else alarm_level_back = 65000; break; //Порог Ф2
-    case 13: if (alarm_dose > 0) alarm_dose--; break; //Тревога Д
-    case 14: if (warn_level_dose > 10) warn_level_dose -= 5; else warn_level_dose = 300; break; //Порог Д1
-    case 15: if (alarm_level_dose > 1000) alarm_level_dose -= 100; else if (alarm_level_dose > 500) alarm_level_dose -= 50; else if (alarm_level_dose > 300) alarm_level_dose -= 10; else alarm_level_dose = 65000; break; //Порог Д2
+    case 11: if (alarm_back > 0) alarm_back--; break; //Тревога Ф
+    case 12: if (warn_level_back > 30) warn_level_back -= 5; else warn_level_back = 300; break; //Порог Ф1
+    case 13: if (alarm_level_back > 1000) alarm_level_back -= 100; else if (alarm_level_back > 500) alarm_level_back -= 50; else if (alarm_level_back > 300) alarm_level_back -= 10; else alarm_level_back = 65000; break; //Порог Ф2
+    case 14: if (alarm_dose > 0) alarm_dose--; break; //Тревога Д
+    case 15: if (warn_level_dose > 10) warn_level_dose -= 5; else warn_level_dose = 300; break; //Порог Д1
+    case 16: if (alarm_level_dose > 1000) alarm_level_dose -= 100; else if (alarm_level_dose > 500) alarm_level_dose -= 50; else if (alarm_level_dose > 300) alarm_level_dose -= 10; else alarm_level_dose = 65000; break; //Порог Д2
 #if USE_UART
-    case 16: if (!UCSR0B) dataChannelInit(); else dataChannelEnd(); break; //uart
+    case 17: if (!UCSR0B) dataChannelInit(); else dataChannelEnd(); break; //uart
 #endif
   }
 }
@@ -2333,7 +2351,7 @@ void setings(void) //настройки
       case 2: //Down key //вниз
         switch (set) {
           case 0:
-            if (n < 15 + USE_UART) { //изменяем позицию
+            if (n < 16 + USE_UART) { //изменяем позицию
               n++;
               if (c < 4) c++; //изменяем положение курсора
             }
@@ -2356,7 +2374,7 @@ void setings(void) //настройки
               if (c > 0) c--; //изменяем положение курсора
             }
             else { //иначе конец списка
-              n = 15 + USE_UART;
+              n = 16 + USE_UART;
               c = 4;
             }
             break;
@@ -2956,6 +2974,7 @@ void setings_read(void) //чтение настроек
 {
   contrast = eeprom_read_byte((uint8_t*)41);
   setContrast(contrast);
+  volume = eeprom_read_byte((uint8_t*)42);
   alarm_back = eeprom_read_byte((uint8_t*)43);
   buzz_read();
   knock_disable = eeprom_read_byte((uint8_t*)45);
@@ -2980,6 +2999,7 @@ void setings_read(void) //чтение настроек
 void setings_update(void) //обновление настроек
 {
   eeprom_update_byte((uint8_t*)41, contrast);
+  eeprom_update_byte((uint8_t*)42, volume);
   eeprom_update_byte((uint8_t*)43, alarm_back);
   eeprom_update_byte((uint8_t*)44, buzz_switch);
   eeprom_update_byte((uint8_t*)45, knock_disable);
@@ -3200,6 +3220,7 @@ void setings_save(uint8_t sw) //сохранить настройки
     case 0:
       if (
         contrast == eeprom_read_byte((uint8_t*)41) &&
+        volume == eeprom_read_byte((uint8_t*)42) &&
         alarm_back == eeprom_read_byte((uint8_t*)43) &&
         buzz_switch == eeprom_read_byte((uint8_t*)44) &&
         knock_disable == eeprom_read_byte((uint8_t*)45) &&

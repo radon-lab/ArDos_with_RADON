@@ -78,6 +78,7 @@
 #define S_ITEM_LIGHT "Gjlcdtnrf&" //Подсветка:
 #define S_ITEM_CONTRAST "Rjynhfcn&" //Контраст:
 #define S_ITEM_FLASHES "Dcgsirb&" //Вспышки:
+#define S_ITEM_VOLUME "Uhjvrjcnm&" //Громкость:
 #define S_ITEM_CLICKS "Otkxrb&" //Щелчки:
 #define S_ITEM_BUTT_SOUND "Pd.Ryjgjr&" //Зв.кнопок:
 #define S_ITEM_DIFF_MEASUR "Hfpy.pfv&" //Разн.зам:
@@ -284,6 +285,7 @@
 #define S_ITEM_LIGHT "Light:" //Подсветка:
 #define S_ITEM_CONTRAST "Contrast:" //Контраст:
 #define S_ITEM_FLASHES "Flashes:" //Вспышки:
+#define S_ITEM_VOLUME "Volume:" //Громкость:
 #define S_ITEM_CLICKS "Clicks:" //Щелчки:
 #define S_ITEM_BUTT_SOUND "Butt sound:" //Зв.кнопок:
 #define S_ITEM_DIFF_MEASUR "Diff measur:" //Разн.зам:

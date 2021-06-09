@@ -77,7 +77,7 @@
 #define BUZZ_PORT  PORTD
 
 #define BUZZ_OFF   (bitClear(BUZZ_PORT, BUZZ_BIT))
-#define BUZZ_INV   (BUZZ_PORT ^= (1 << BUZZ_BIT))
+#define BUZZ_ON    (bitSet(BUZZ_PORT, BUZZ_BIT))
 #define BUZZ_OUT   (bitSet((DDR_REG(BUZZ_PORT)), BUZZ_BIT))
 
 #define BUZZ_INIT  BUZZ_OFF; BUZZ_OUT
