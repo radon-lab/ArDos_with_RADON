@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.12
-  Версия программы RADON v3.6.1 low_pwr release 09.06.21 специально для проекта ArDos
+  Версия программы RADON v3.6.1 low_pwr release 22.06.21 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -1656,7 +1656,7 @@ uint8_t Read_VCC(void)  //чтение напряжения батареи
 {
   ADMUX = 0b01101110; //выбор внешнего опорного+BG
   _delay_ms(5); //ждём пока опорное успокоится
-  ADCSRA |= 0b01000111; //запускаем преобразование и устанавливаем пределитель 128
+  ADCSRA |= 0b01000000; //запускаем преобразование
   while (ADCSRA & 0b01000000); //ждем окончания преобразования
 
 #if UNO_DIP //если при компилляции выбрана плата ArduinoUNO
@@ -1664,7 +1664,6 @@ uint8_t Read_VCC(void)  //чтение напряжения батареи
 #else //если используется промини, нано или голый камень в tqfp
   ADMUX = 0b11100110; //выбор внутреннего опорного 1,1В и А6
 #endif
-  ADCSRA = (ADCSRA & 0b11111000) | 0b00000100; //устанавливаем пределитель 16
 
   return ADCH; //возвращаем результат опроса АЦП
 }
