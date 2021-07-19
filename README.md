@@ -107,5 +107,5 @@
 
   
  <p align="center">
-  <img src="http://arduino.ru/sites/default/files/u52103/ardos_3.1.1_1.jpg" alt=""/>
+  <img src="http://arduino.ru/sites/default/files/u52103/3_6_1_mid.jpg" alt=""/>
 </p>
