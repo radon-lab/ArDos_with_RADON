@@ -2,7 +2,7 @@
 #include "connection.h"
 #include "DefaultFonts.c"
 
-// *** Переменные для управления дисплеем ***
+// *** Дерективы для управления дисплеем ***
 #define pulseClock bitClear(SCK_PORT, SCK_BIT); asm ("nop"); bitSet(SCK_PORT, SCK_BIT)
 #define resetLCD bitSet(DC_PORT, DC_BIT); bitSet(MOSI_PORT, MOSI_BIT); bitSet(SCK_PORT, SCK_BIT); bitClear(RST_PORT, RST_BIT); _delay_ms(10); bitSet(RST_PORT, RST_BIT)
 
@@ -72,7 +72,7 @@ void  _print_char(unsigned char c, uint8_t x, uint8_t row, uint8_t steps);
 
 _current_font cfont;
 
-void _LCD_Write(unsigned char data, unsigned char mode)
+inline void _LCD_Write(uint8_t data, uint8_t mode)
 {
 #if ROTATE_DISP
   switch (mode) {
@@ -190,7 +190,7 @@ void clrRow(uint8_t row, uint8_t start_x, uint8_t end_x) //очистка стр
 #endif
 }
 //-------------------------Инверсия экрана----------------------------------------------------
-void invert(bool mode) //инверсия экрана
+void invert(boolean mode) //инверсия экрана
 {
   switch (mode) {
     case 0: _LCD_Write(PCD8544_DISPLAYCONTROL | PCD8544_DISPLAYNORMAL, LCD_COMMAND); break;
@@ -198,7 +198,7 @@ void invert(bool mode) //инверсия экрана
   }
 }
 //-------------------------Инверсия текста----------------------------------------------------
-void invertText(bool mode) //инверсия текста
+void invertText(boolean mode) //инверсия текста
 {
   switch (mode) {
     case 0: cfont.inverted = 0; break;
@@ -273,7 +273,7 @@ void printNumF(float num, uint8_t dec, uint8_t x, uint8_t y, char divider, uint8
   print(st, x, y);
 }
 //-------------------------Отрисовка символа----------------------------------------------------
-void _print_char(unsigned char c, uint8_t x, uint8_t row, uint8_t steps) //отрисовка символа
+void _print_char(uint8_t c, uint8_t x, uint8_t row, uint8_t steps) //отрисовка символа
 {
 #if ROTATE_DISP
   x = 84 - x - cfont.x_size;
