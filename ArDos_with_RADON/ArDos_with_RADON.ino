@@ -1,11 +1,11 @@
 /*Arduino IDE 1.8.13
-  Версия программы RADON v3.6.2 low_pwr release 10.12.21 специально для проекта ArDos
+  Версия программы RADON v3.6.2 low_pwr release 11.12.21 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
   Внимание!!! При выключении пункта "СОН" в меню настроек влечет увеличением энергопотребления, но тем самым увеличивается производительность устройства.
 
-  Для сброса настроек необходимо зажать клавишу "ОК" и включить питание(если нужно сбросить ещё и настройки преобразователя то "ОК" + "ВВЕРХ"), появится сообщение об успешном сбросе.
+  Для полного сброса настроек(в том числе данных журнала и статистики накопленной дозы) необходимо зажать клавишу "ОК" и включить питание.
   Если что-то идет или работает не так, в первую очередь пробуйте сброс настроек хот-кеем как описано выше!!!
 
   Не забудьте установить свои настройки DEFAULT_ADC_VALUE и DEFAULT_DIV_FACTOR в файле "config"!!! Этот файл также можно сохранить отдельно и вставлять в новые версии программы.
@@ -225,7 +225,7 @@ uint32_t rad_search; //фон в режиме поиск
 uint16_t maxLevel = 22; //максимальный уровень маштабирования графика
 uint16_t maxLevel_back = 15; //максимальный уровень маштабирования графика фона
 
-boolean serch_disable = 0; //флаг запрета движения графика
+boolean search_disable = 0; //флаг запрета движения графика
 
 uint8_t cur_dose_cell = 0; //текущая ячейка хранения дозы
 
@@ -265,7 +265,7 @@ boolean error_massege = 0; //флаг разрешения вывода сооб
 //флаги обновления информации
 boolean scr = 0; //флаг обновления экрана
 boolean graf = 0; //флаг обновления графика
-boolean serch = 0; //флаг работы поиска
+boolean search = 0; //флаг поиска
 
 //переменные настроек
 uint8_t alarm_switch = 0; //указатель текущей тревоги
@@ -343,35 +343,53 @@ int main(void)  //инициализация
 
   InitLCD(); //инициализируем дисплей
   _LIGHT_ON(); //включаем подсветку
-  _init_logo(); //вывод логотипа
 
-  if (checkData(sizeof(mainSettings), EEPROM_BLOCK_SETTINGS_MAIN, EEPROM_BLOCK_CRC_MAIN) || !OK_OUT) {
+  if (!OK_OUT) { //если зажата кнопка "ОК"
+    print(RESET, CENTER, 16); //Сброс
+    print(DATA, CENTER, 24); //данных...
+
     updateData((uint8_t*)&mainSettings, sizeof(mainSettings), EEPROM_BLOCK_SETTINGS_MAIN, EEPROM_BLOCK_CRC_MAIN); //сбрасываем основные настройки
-    updateData((uint8_t*)&bookSettings, sizeof(bookSettings), EEPROM_BLOCK_SETTINGS_BOOK, EEPROM_BLOCK_CRC_MAIN); //сбрасываем основные настройки
-    PWScreen(); //экран ожидания
+    updateData((uint8_t*)&bookSettings, sizeof(bookSettings), EEPROM_BLOCK_SETTINGS_BOOK, EEPROM_BLOCK_CRC_BOOK); //сбрасываем настройки журнала
+    updateData((uint8_t*)&pumpSettings, sizeof(pumpSettings), EEPROM_BLOCK_SETTINGS_PUMP, EEPROM_BLOCK_CRC_PUMP); //сбрасываем настройки преобразователя
+
+    statistic_erase(); //стирание статистики 
+    _logbook_data_clear(); //очистка журнала
+
+    _delay_ms(START_TIME); //ждем
   }
-  else {
-    EEPROM_ReadBlock((uint16_t)&mainSettings, EEPROM_BLOCK_SETTINGS_MAIN, sizeof(mainSettings));
-    EEPROM_ReadBlock((uint16_t)&bookSettings, EEPROM_BLOCK_SETTINGS_BOOK, sizeof(bookSettings));
-  }
+  else { //иначе проверяем целостность данных
+    if (checkData(sizeof(mainSettings), EEPROM_BLOCK_SETTINGS_MAIN, EEPROM_BLOCK_CRC_MAIN)) { //проверяем контрольную сумму основных настроек
+      updateData((uint8_t*)&mainSettings, sizeof(mainSettings), EEPROM_BLOCK_SETTINGS_MAIN, EEPROM_BLOCK_CRC_MAIN); //сбрасываем основные настройки
+      PWScreen(); //экран ожидания
+    }
+    else EEPROM_ReadBlock((uint16_t)&mainSettings, EEPROM_BLOCK_SETTINGS_MAIN, sizeof(mainSettings));
+
+    if (checkData(sizeof(bookSettings), EEPROM_BLOCK_SETTINGS_BOOK, EEPROM_BLOCK_CRC_BOOK)) { //проверяем контрольную сумму настроек журнала
+      updateData((uint8_t*)&bookSettings, sizeof(bookSettings), EEPROM_BLOCK_SETTINGS_BOOK, EEPROM_BLOCK_CRC_BOOK); //сбрасываем настройки журнала
+      PWScreen(); //экран ожидания
+    }
+    else EEPROM_ReadBlock((uint16_t)&bookSettings, EEPROM_BLOCK_SETTINGS_BOOK, sizeof(bookSettings));
 
 #if DEBUG_RETURN
-  if (checkData(sizeof(pumpSettings), EEPROM_BLOCK_SETTINGS_PUMP, EEPROM_BLOCK_CRC_PUMP) || !UP_OUT) { //если зажата кнопка вверх при запуске
-    updateData((uint8_t*)&pumpSettings, sizeof(pumpSettings), EEPROM_BLOCK_SETTINGS_PUMP, EEPROM_BLOCK_CRC_PUMP); //сбрасываем настройки преобразователя
-    PWScreen(); //экран ожидания
-  }
-  else EEPROM_ReadBlock((uint16_t)&pumpSettings, EEPROM_BLOCK_SETTINGS_PUMP, sizeof(pumpSettings));
+    if (checkData(sizeof(pumpSettings), EEPROM_BLOCK_SETTINGS_PUMP, EEPROM_BLOCK_CRC_PUMP)) { //проверяем контрольную сумму настроек преобразователя
+      updateData((uint8_t*)&pumpSettings, sizeof(pumpSettings), EEPROM_BLOCK_SETTINGS_PUMP, EEPROM_BLOCK_CRC_PUMP); //сбрасываем настройки преобразователя
+      PWScreen(); //экран ожидания
+    }
+    else EEPROM_ReadBlock((uint16_t)&pumpSettings, EEPROM_BLOCK_SETTINGS_PUMP, sizeof(pumpSettings));
 #elif PUMP_READ_MEM
-  EEPROM_ReadBlock((uint16_t)&pumpSettings, EEPROM_BLOCK_SETTINGS_PUMP, sizeof(pumpSettings));
+    EEPROM_ReadBlock((uint16_t)&pumpSettings, EEPROM_BLOCK_SETTINGS_PUMP, sizeof(pumpSettings));
 #endif
 
-  statistic_read(); //считываем статистику
+    statistic_read(); //считываем статистику
+  }
+
+  _init_logo(); //вывод логотипа
   initParam(); //инициализация параметров
 
   ADC_enable(); //включение ADC
   bat_check(); //опрос батареи
   start_pump(); //первая накачка преобразователя
-  WDT_enable(); //запускаем WatchDog с пределителем 2
+  WDT_enable(); //запускаем WatchDog
 
   clrRow(4); //очистка строки 4
   clrRow(5); //очистка строки 5
@@ -382,7 +400,7 @@ int main(void)  //инициализация
   EICRA = 0b00001010; //настраиваем внешнее прерывание по спаду импульса на INT0 и INT1
   EIMSK = 0b00000001; //разрешаем внешнее прерывание INT0
 
-  for (timer_millis = FONT_TIME; timer_millis && !check_keys();) data_convert(); // ждем, преобразование данных
+  _waint(FONT_TIME); //ждем
 
   clrScr(); //очистка экрана
 
@@ -413,14 +431,17 @@ void initTimers(void) //инициализация таймеров
 
   sei(); //разрешаем прерывания глобально
 }
+//------------------------Инициализация таймеров--------------------------------------------------
+void _waint(uint32_t timer) //инициализация таймеров
+{
+  for (timer_millis = timer; timer_millis && !check_keys();) data_convert(); // ждем, преобразование данных
+}
 //------------------------Сравнение данных в памяти--------------------------------------------------
 void PWScreen(void) //сравнение данных в памяти
 {
-  print(PLEASE, CENTER, 32); //Пожалуйста
-  print(WAINT, CENTER, 40); //подождите...
+  print(RECOVERY, CENTER, 16); //Восстановление
+  print(DATA, CENTER, 24); //данных...
   _delay_ms(START_TIME); //ждем
-  clrRow(4); //очистка строки 4
-  clrRow(5); //очистка строки 5
 }
 //------------------------Сравнение данных в памяти--------------------------------------------------
 boolean checkDataMemory(uint8_t* str, uint8_t size, uint8_t cellCRC) //сравнение данных в памяти
@@ -481,20 +502,18 @@ void _LIGHT_STOP(void) { //подсветка стоп
 //-------------------------------Включение WDT----------------------------------------------------
 void WDT_enable(void) //включение WDT
 {
-  uint8_t sregCopy = SREG; //Сохраняем глобальные прерывания
-  cli(); //Запрещаем глобальные прерывания
-  WDTCSR = ((1 << WDCE) | (1 << WDE)); //Сбрасываем собаку
-  WDTCSR = 0x40; //Устанавливаем пределитель 2(режим прерываний)
-  SREG = sregCopy; //Восстанавливаем глобальные прерывания
+  cli(); //запрещаем глобальные прерывания
+  WDTCSR = ((0x01 << WDCE) | (0x01 << WDE)); //сбрасываем собаку
+  WDTCSR = 0x40; //устанавливаем пределитель 2(режим прерываний)
+  sei(); //восстанавливаем глобальные прерывания
 }
 //-------------------------------Выключение WDT---------------------------------------------------
 void WDT_disable(void) //выключение WDT
 {
-  uint8_t sregCopy = SREG; //Сохраняем глобальные прерывания
-  cli(); //Запрещаем глобальные прерывания
-  WDTCSR = ((1 << WDCE) | (1 << WDE)); //Сбрасываем собаку
-  WDTCSR = 0x00; //Выключаем собаку
-  SREG = sregCopy; //Восстанавливаем глобальные прерывания
+  cli(); //запрещаем глобальные прерывания
+  WDTCSR = ((0x01 << WDCE) | (0x01 << WDE)); //сбрасываем собаку
+  WDTCSR = 0x00; //выключаем собаку
+  sei(); //восстанавливаем глобальные прерывания
 }
 //-------------------------------Включение ADC----------------------------------------------------
 void ADC_enable(void) //включение ADC
@@ -561,7 +580,7 @@ void data_convert(void) //преобразование данных
       case 1: if (btn_tmr > 0) btn_tmr--; break; //убираем дребезг
     }
 
-    if (serch) search_update(); //обновляем график
+    if (search) search_update(); //обновляем график
 
     if (timer_millis > 17) timer_millis -= 17; //если таймер больше 17мс
     else if (timer_millis) timer_millis = 0; //иначе сбрасываем таймер
@@ -569,7 +588,7 @@ void data_convert(void) //преобразование данных
     if (timer_melody > 17) timer_melody -= 17; //если таймер больше 17мс
     else if (timer_melody) timer_melody = 0; //иначе сбрасываем таймер
 
-    if (!measur && !serch) {
+    if (!measur && !search) {
       time_total++; //микросекунды * 10
 
       switch (time_wdt) {
@@ -915,7 +934,7 @@ void data_convert(void) //преобразование данных
 
       case TIME_FACT_20: //таймер обновления экрана
         if (!sleep) scr = 0; //устанавливаем флаг для обновления экрана
-        if (serch) rad_buff[0] = 0; //очищаем буфер
+        if (search) rad_buff[0] = 0; //очищаем буфер
         break;
     }
   }
@@ -1768,7 +1787,7 @@ void search_update(void) //обновление данных поиска
     uint16_t graf_max = 0; //максимум графика
     uint32_t temp_buf = 0; //временный буфер расчета имп
 
-    if (!serch_disable) {
+    if (!search_disable) {
       if (search_time_now < SEARCH_BUF_SCORE) search_time_now++;
 
 #if TYPE_GRAF_MOVE //слева-направо
@@ -1824,7 +1843,7 @@ void search_update(void) //обновление данных поиска
 void search_menu(void) //инициализация режима поиск
 {
   uint8_t c = 0; //переключатель единиц графика
-  serch = 1; //устанавливаем флаг поиска
+  search = 1; //устанавливаем флаг поиска
   graf = 0; //разрешаем обновление экрана
 
   while (1) {
@@ -1843,7 +1862,7 @@ void search_menu(void) //инициализация режима поиск
       clrRow(2, 55, 83); //очистка строки 2
 
       task_bar(S_SEARCH); //отрисовываем фон
-      if (serch_disable) drawBitmap(59, 0, scan_stop_img, 6, 8); //рисуем паузу
+      if (search_disable) drawBitmap(59, 0, scan_stop_img, 6, 8); //рисуем паузу
       drawBitmap(0, 8, scan_ind_scale_img, 51, 8); //рисуем шкалу
 
       switch (c) {
@@ -1893,7 +1912,7 @@ void search_menu(void) //инициализация режима поиск
         search_time_now = 0; //сбрасываем время счета графика
         scan_buff = 0; //сбрасываем буфер
         rad_buff[0] = 0; //сбрасываем буфер
-        serch_disable = 0; //разрешаем обновление графика
+        search_disable = 0; //разрешаем обновление графика
         for (uint8_t i = 0; i < 76; i++) search_buff[i] = 0; //очищаем буфер графика
         graf = 0; //разрешаем обновления экрана
         break;
@@ -1903,7 +1922,7 @@ void search_menu(void) //инициализация режима поиск
         break;
 
       case 3: //Up key //доп.действие
-        serch_disable = (serch_disable) ? 0 : 1; //запрещаем обновление графика
+        search_disable = (search_disable) ? 0 : 1; //запрещаем обновление графика
         graf = 0; //разрешаем обновления экрана
         break;
 
@@ -1915,7 +1934,7 @@ void search_menu(void) //инициализация режима поиск
       case 6: //hold select key //настройки
         scan_buff = 0; //сбрасываем счетчик импульсов
         rad_buff[0] = 0; //сбрасываем счетчик импульсов
-        serch = 0; //сбрасываем флаг поиска
+        search = 0; //сбрасываем флаг поиска
         scr = 0; //разрешаем обновления экрана
         return;
     }
@@ -3012,7 +3031,7 @@ void statistic_erase(void) //стирание статистики
 void statistic_read(void) //чтение статистики
 {
   uint32_t maxData = 0; //максимальное значение ячейки
-      uint32_t tempData = 0;
+  uint32_t tempData = 0;
   for (uint8_t c = 0; c < 64; c++) {
     uint16_t search_cell = 510 + (4 * c); //находим запрашиваемую позицию
     EEPROM_ReadBlock((uint16_t)&tempData, search_cell, sizeof(tempData));
@@ -3151,7 +3170,7 @@ void data_reset(uint8_t sw) //сброс текущей дозы
                 print(R_SUCC_CLEAR, CENTER, 24); //очищен!
                 break;
             }
-            for (timer_millis = MASSEGE_TIME; timer_millis && !check_keys();) data_convert(); // ждем, преобразование данных
+            _waint(MASSEGE_TIME); //ждем
             sleep_disable = 0; //разрешаем сон
             return;
 
@@ -3180,7 +3199,7 @@ void setings_save(uint8_t sw) //сохранить настройки
 #endif
 #if LOGBOOK_RETURN
     case 2:
-      if (!(checkDataMemory((uint8_t*)&bookSettings, sizeof(bookSettings), EEPROM_BLOCK_CRC_MAIN))) return;
+      if (!(checkDataMemory((uint8_t*)&bookSettings, sizeof(bookSettings), EEPROM_BLOCK_CRC_BOOK))) return;
       break;
 #endif
   }
@@ -3238,10 +3257,10 @@ void setings_save(uint8_t sw) //сохранить настройки
               case 1: updateData((uint8_t*)&pumpSettings, sizeof(pumpSettings), EEPROM_BLOCK_SETTINGS_PUMP, EEPROM_BLOCK_CRC_PUMP); break; //обновляем настройки
 #endif
 #if LOGBOOK_RETURN
-              case 2: updateData((uint8_t*)&bookSettings, sizeof(bookSettings), EEPROM_BLOCK_SETTINGS_PUMP, EEPROM_BLOCK_CRC_MAIN); break; //обновляем настройки
+              case 2: updateData((uint8_t*)&bookSettings, sizeof(bookSettings), EEPROM_BLOCK_SETTINGS_PUMP, EEPROM_BLOCK_CRC_BOOK); break; //обновляем настройки
 #endif
             }
-            for (timer_millis = MASSEGE_TIME; timer_millis && !check_keys();) data_convert(); // ждем, преобразование данных
+            _waint(MASSEGE_TIME); //ждем
             scr = 0; //разрешаем обновления экрана
             return;
 

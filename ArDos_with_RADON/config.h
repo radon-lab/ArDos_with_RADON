@@ -141,7 +141,8 @@
 #define SOUND_PRESCALER  64 //пределитель частоты для пищалки
 
 #define EEPROM_BLOCK_NULL 0       //начальная ячейка еепром
-#define EEPROM_BLOCK_CRC_MAIN 254 //ячейка контрольной суммы основных настроек
+#define EEPROM_BLOCK_CRC_MAIN 253 //ячейка контрольной суммы основных настроек
+#define EEPROM_BLOCK_CRC_BOOK 254 //ячейка контрольной суммы настроек журнала
 #define EEPROM_BLOCK_CRC_PUMP 255 //ячейка контрольной суммы настроек преобразователя
 
 

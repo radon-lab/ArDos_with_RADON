@@ -1,13 +1,14 @@
 //Языки для локализации
-#define VERSION "3.6.1" //версия по
+#define VERSION "3.6.2" //версия по
 
 //---------------------------------------------//
 #ifdef RUSSIAN //если выбран язык "русский"
 //Основные
 #define INTRO "-=HFLJY=-" //-=РАДОН=-
 
-#define PLEASE "Gj;fkeqcnf" //Пожалуйста
-#define WAINT "gjlj;lbnt..." //подождите...
+#define RECOVERY "Djccnfyjdktybt" //Восстановление
+#define RESET "C,hjc" //Сброс
+#define DATA "lfyys[..." //данных...
 
 #define LOAD "pfuheprf..." //загрузка...
 
@@ -213,8 +214,9 @@
 //Основные
 #define INTRO "-=RADON=-" //-=РАДОН=-
 
-#define PLEASE "Please" //Пожалуйста
-#define WAINT "waint..." //подождите...
+#define RECOVERY "Recovery" //Восстановление
+#define RESET "Reset" //Сброс
+#define DATA "data..." //данных...
 
 #define LOAD "Loading..." //загрузка...
 
