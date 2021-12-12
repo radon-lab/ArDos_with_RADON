@@ -1,16 +1,26 @@
 //Языки для локализации
-#define VERSION "3.6.2" //версия по
+#define VERSION "3.6.3" //версия по
 
 //---------------------------------------------//
 #ifdef RUSSIAN //если выбран язык "русский"
 //Основные
 #define INTRO "-=HFLJY=-" //-=РАДОН=-
 
-#define RECOVERY "Djccnfyjdktybt" //Восстановление
-#define RESET "C,hjc" //Сброс
-#define DATA "lfyys[..." //данных...
+#define SETTINGS "Yfcnhjqrb" //Настройки
+#define DAMAGED "gjdht;ltys," //повреждены,
+#define RESTORE "djccnfyjdbnm?" //восстановить?
 
 #define LOAD "pfuheprf..." //загрузка...
+#define READ "xntybt..." //чтение...
+
+//Сброс
+#define RES_RESET "C,hjcbnm" //Сбросить
+#define RES_MAIN "jcyjdyst" //основные
+#define RES_SETTINGS_M "yfcnhjqrb?" //настройки?
+#define RES_SETTINGS_P "yfcnhjqrb" //настройки
+#define RES_PUMP "rjydthnthf?" //конвертера?
+#define RES_DATA "lfyyst" //данные
+#define RES_USER "gjkmpjdfntkz?" //пользователя?
 
 //Замер бета
 #define M_MEASUR_BETA "Pfvth ,tnf" //Замер бета
@@ -139,7 +149,7 @@
 #define E_ERROR_NULL "* gecnj *" //* пусто *
 
 #define E_DATA_OVERLOAD "Gthtuheprf" //Перегрузка
-#define E_DATA_PUMP "ghtj,hfpjdfn!" //преобразоват!
+#define E_DATA_PUMP "rjydthnthf!" //конвертера!
 
 #define E_DATA_LOW "Ybprjt" //Низкое
 #define E_DATA_VOLTAGE "yfghz;tybt" //напряжение
@@ -214,11 +224,21 @@
 //Основные
 #define INTRO "-=RADON=-" //-=РАДОН=-
 
-#define RECOVERY "Recovery" //Восстановление
-#define RESET "Reset" //Сброс
-#define DATA "data..." //данных...
+#define SETTINGS "Settings" //Настройки
+#define DAMAGED "damaged," //повреждены,
+#define RESTORE "restore?" //восстановить?
 
-#define LOAD "Loading..." //загрузка...
+#define LOAD "load..." //загрузка...
+#define READ "read..." //чтение...
+
+//Сброс
+#define RES_RESET "Clear" //Сбросить
+#define RES_MAIN "main" //основные
+#define RES_SETTINGS_M "settings?" //настройки?
+#define RES_SETTINGS_P "converter" //настройки
+#define RES_PUMP "settings?" //конвертера?
+#define RES_DATA "user" //данные
+#define RES_USER "data?" //пользователя?
 
 //Замер бета
 #define M_MEASUR_BETA "Measur mode" //Замер бета
@@ -346,8 +366,8 @@
 #define E_ERROR " - ERROR - " //- ОШИБКА -
 #define E_ERROR_NULL "* null *" //* пусто *
 
-#define E_DATA_OVERLOAD "Overload" //Перегрузка
-#define E_DATA_PUMP "pump!" //преобразоват!
+#define E_DATA_OVERLOAD "Converter" //Перегрузка
+#define E_DATA_PUMP "overload!" //конвертера!
 
 #define E_DATA_LOW "Low" //Низкое
 #define E_DATA_VOLTAGE "voltage" //напряжение

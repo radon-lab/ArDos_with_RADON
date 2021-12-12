@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.13
-  Версия программы RADON v3.6.2 low_pwr release 11.12.21 специально для проекта ArDos
+  Версия программы RADON v3.6.3 low_pwr release 12.12.21 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/delaem-dozimetr и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -313,6 +313,10 @@ float debug_coef = 0.00; //для  вывода общего коэффицие�
 #define EEPROM_BLOCK_SETTINGS_MAIN (EEPROM_BLOCK_NULL)
 #define EEPROM_BLOCK_SETTINGS_BOOK (EEPROM_BLOCK_SETTINGS_MAIN + sizeof(mainSettings))
 #define EEPROM_BLOCK_SETTINGS_PUMP (EEPROM_BLOCK_SETTINGS_BOOK + sizeof(bookSettings))
+#define EEPROM_BLOCK_CRC_MAIN (EEPROM_BLOCK_SETTINGS_PUMP + sizeof(pumpSettings)) //ячейка контрольной суммы основных настроек
+#define EEPROM_BLOCK_CRC_BOOK (EEPROM_BLOCK_CRC_MAIN + 1) //ячейка контрольной суммы настроек журнала
+#define EEPROM_BLOCK_CRC_PUMP (EEPROM_BLOCK_CRC_BOOK + 1) //ячейка контрольной суммы настроек преобразователя
+#define EEPROM_BLOCK_CRC_STRUCT (EEPROM_BLOCK_CRC_PUMP + 1) //ячейка контрольной суммы структур данных
 
 void _init_rads_unit(boolean type, uint32_t num, uint8_t divisor, uint8_t char_all, uint8_t num_x, uint8_t num_y, boolean unit, uint8_t unit_x, uint8_t unit_y, boolean dash = 0);
 //--------------------------------------Инициализация---------------------------------------------------
@@ -343,57 +347,80 @@ int main(void)  //инициализация
 
   InitLCD(); //инициализируем дисплей
   _LIGHT_ON(); //включаем подсветку
+  WDT_enable(); //запускаем WatchDog
 
-  if (!OK_OUT) { //если зажата кнопка "ОК"
-    print(RESET, CENTER, 16); //Сброс
-    print(DATA, CENTER, 24); //данных...
-
-    updateData((uint8_t*)&mainSettings, sizeof(mainSettings), EEPROM_BLOCK_SETTINGS_MAIN, EEPROM_BLOCK_CRC_MAIN); //сбрасываем основные настройки
-    updateData((uint8_t*)&bookSettings, sizeof(bookSettings), EEPROM_BLOCK_SETTINGS_BOOK, EEPROM_BLOCK_CRC_BOOK); //сбрасываем настройки журнала
-    updateData((uint8_t*)&pumpSettings, sizeof(pumpSettings), EEPROM_BLOCK_SETTINGS_PUMP, EEPROM_BLOCK_CRC_PUMP); //сбрасываем настройки преобразователя
-
-    statistic_erase(); //стирание статистики 
-    _logbook_data_clear(); //очистка журнала
-
-    _delay_ms(START_TIME); //ждем
+  uint8_t dataReg = 0; //регистр очистки данных
+  if (!OK_OUT || checkStructData()) { //если зажата кнопка "ОК" или данные структур изменились
+    print(RES_RESET, CENTER, 0); //Сбросить
+    print(RES_MAIN, CENTER, 8); //основные
+    print(RES_SETTINGS_M, CENTER, 16); //настройки?
+    if (dialogSwitch()) dataReg |= 0x03; //диалог выбора
+    clrScr(); //очистка экрана
+#if DEBUG_RETURN
+    print(RES_RESET, CENTER, 0); //Сбросить
+    print(RES_SETTINGS_P, CENTER, 8); //настройки
+    print(RES_PUMP, CENTER, 16); //конвертера?
+    if (dialogSwitch()) dataReg |= 0x04; //диалог выбора
+    clrScr(); //очистка экрана
+#endif
+    print(RES_RESET, CENTER, 0); //Сбросить
+    print(RES_DATA, CENTER, 8); //данные
+    print(RES_USER, CENTER, 16); //пользователя?
+    if (dialogSwitch()) dataReg |= 0x18; //диалог выбора
   }
   else { //иначе проверяем целостность данных
-    if (checkData(sizeof(mainSettings), EEPROM_BLOCK_SETTINGS_MAIN, EEPROM_BLOCK_CRC_MAIN)) { //проверяем контрольную сумму основных настроек
-      updateData((uint8_t*)&mainSettings, sizeof(mainSettings), EEPROM_BLOCK_SETTINGS_MAIN, EEPROM_BLOCK_CRC_MAIN); //сбрасываем основные настройки
-      PWScreen(); //экран ожидания
-    }
-    else EEPROM_ReadBlock((uint16_t)&mainSettings, EEPROM_BLOCK_SETTINGS_MAIN, sizeof(mainSettings));
-
-    if (checkData(sizeof(bookSettings), EEPROM_BLOCK_SETTINGS_BOOK, EEPROM_BLOCK_CRC_BOOK)) { //проверяем контрольную сумму настроек журнала
-      updateData((uint8_t*)&bookSettings, sizeof(bookSettings), EEPROM_BLOCK_SETTINGS_BOOK, EEPROM_BLOCK_CRC_BOOK); //сбрасываем настройки журнала
-      PWScreen(); //экран ожидания
-    }
-    else EEPROM_ReadBlock((uint16_t)&bookSettings, EEPROM_BLOCK_SETTINGS_BOOK, sizeof(bookSettings));
-
+    if (checkData(sizeof(mainSettings), EEPROM_BLOCK_SETTINGS_MAIN, EEPROM_BLOCK_CRC_MAIN)) dataReg |= 0x01; //проверяем контрольную сумму основных настроек
+    if (checkData(sizeof(bookSettings), EEPROM_BLOCK_SETTINGS_BOOK, EEPROM_BLOCK_CRC_BOOK)) dataReg |= 0x02; //проверяем контрольную сумму настроек журнала
 #if DEBUG_RETURN
-    if (checkData(sizeof(pumpSettings), EEPROM_BLOCK_SETTINGS_PUMP, EEPROM_BLOCK_CRC_PUMP)) { //проверяем контрольную сумму настроек преобразователя
-      updateData((uint8_t*)&pumpSettings, sizeof(pumpSettings), EEPROM_BLOCK_SETTINGS_PUMP, EEPROM_BLOCK_CRC_PUMP); //сбрасываем настройки преобразователя
-      PWScreen(); //экран ожидания
-    }
-    else EEPROM_ReadBlock((uint16_t)&pumpSettings, EEPROM_BLOCK_SETTINGS_PUMP, sizeof(pumpSettings));
-#elif PUMP_READ_MEM
-    EEPROM_ReadBlock((uint16_t)&pumpSettings, EEPROM_BLOCK_SETTINGS_PUMP, sizeof(pumpSettings));
+    if (checkData(sizeof(pumpSettings), EEPROM_BLOCK_SETTINGS_PUMP, EEPROM_BLOCK_CRC_PUMP)) dataReg |= 0x04; //проверяем контрольную сумму настроек преобразователя
 #endif
 
-    statistic_read(); //считываем статистику
+    if (dataReg) { //если какие-то данные были повреждены
+      print(SETTINGS, CENTER, 0); //Настройки
+      print(DAMAGED, CENTER, 8); //повреждены,
+      print(RESTORE, CENTER, 16); //восстановить?
+      if (!dialogSwitch()) dataReg = 0; //диалог выбора
+    }
   }
 
+  clrScr(); //очистка экрана
   _init_logo(); //вывод логотипа
+
+  print(READ, CENTER, 32); //чтение...
+  for (uint8_t i = 0; i < 5; i++) {
+    if (dataReg & (0x01 << i)) { //если установлен флаг очистки
+      switch (i) {
+        case 0: updateData((uint8_t*)&mainSettings, sizeof(mainSettings), EEPROM_BLOCK_SETTINGS_MAIN, EEPROM_BLOCK_CRC_MAIN); break; //сбрасываем основные настройки
+        case 1: updateData((uint8_t*)&bookSettings, sizeof(bookSettings), EEPROM_BLOCK_SETTINGS_BOOK, EEPROM_BLOCK_CRC_BOOK); break; //сбрасываем настройки журнала
+#if DEBUG_RETURN
+        case 2: updateData((uint8_t*)&pumpSettings, sizeof(pumpSettings), EEPROM_BLOCK_SETTINGS_PUMP, EEPROM_BLOCK_CRC_PUMP); break; //сбрасываем настройки преобразователя
+#endif
+        case 3: _statistic_erase(); break; //стирание статистики
+        case 4: _logbook_data_clear(); break; //очистка журнала
+      }
+    }
+    else {
+      switch (i) { //иначе загружаем данные
+        case 0: EEPROM_ReadBlock((uint16_t)&mainSettings, EEPROM_BLOCK_SETTINGS_MAIN, sizeof(mainSettings)); break; //загружаем основные настройки
+        case 1: EEPROM_ReadBlock((uint16_t)&bookSettings, EEPROM_BLOCK_SETTINGS_BOOK, sizeof(bookSettings)); break; //загружаем настройки журнала
+#if DEBUG_RETURN || PUMP_READ_MEM
+        case 2: EEPROM_ReadBlock((uint16_t)&pumpSettings, EEPROM_BLOCK_SETTINGS_PUMP, sizeof(pumpSettings)); break; //загружаем настройки преобразователя
+#endif
+        case 3: statistic_read(); break; //считываем статистику
+      }
+    }
+    _screen_line(0, map(i, 0, 4, 0, 64), 0, 10, 40); //прогресс бар загрузки данных
+    _delay_ms(LOAD_TIME); //ждем
+  }
+
+  PWClear(); //очистка строк
   initParam(); //инициализация параметров
 
   ADC_enable(); //включение ADC
   bat_check(); //опрос батареи
   start_pump(); //первая накачка преобразователя
-  WDT_enable(); //запускаем WatchDog
 
-  clrRow(4); //очистка строки 4
-  clrRow(5); //очистка строки 5
-
+  PWClear(); //очистка строк
   print(INTRO, CENTER, 32); //-=РАДОН=-
   print(VERSION, CENTER, 40); //версия по
 
@@ -436,12 +463,24 @@ void _waint(uint32_t timer) //инициализация таймеров
 {
   for (timer_millis = timer; timer_millis && !check_keys();) data_convert(); // ждем, преобразование данных
 }
-//------------------------Сравнение данных в памяти--------------------------------------------------
-void PWScreen(void) //сравнение данных в памяти
+//------------------------Очистка строк загрузки--------------------------------------------------
+void PWClear(void) //очистка строк загрузки
 {
-  print(RECOVERY, CENTER, 16); //Восстановление
-  print(DATA, CENTER, 24); //данных...
-  _delay_ms(START_TIME); //ждем
+  clrRow(4); //очистка строки 4
+  clrRow(5); //очистка строки 5
+}
+//------------------------Проверка контрольной суммы структур--------------------------------------
+boolean checkStructData(void) //проверка контрольной суммы структур
+{
+  uint8_t crc = 0;
+  for (uint8_t n = 0; n < sizeof(mainSettings); n++) checkCRC(&crc, *((uint8_t*)(&mainSettings) + n));
+  for (uint8_t n = 0; n < sizeof(bookSettings); n++) checkCRC(&crc, *((uint8_t*)(&bookSettings) + n));
+  for (uint8_t n = 0; n < sizeof(pumpSettings); n++) checkCRC(&crc, *((uint8_t*)(&pumpSettings) + n));
+  if (crc != EEPROM_ReadByte(EEPROM_BLOCK_CRC_STRUCT)) {
+    EEPROM_UpdateByte(EEPROM_BLOCK_CRC_STRUCT, crc);
+    return 1;
+  }
+  return 0;
 }
 //------------------------Сравнение данных в памяти--------------------------------------------------
 boolean checkDataMemory(uint8_t* str, uint8_t size, uint8_t cellCRC) //сравнение данных в памяти
@@ -475,9 +514,45 @@ void checkCRC(uint8_t* crc, uint8_t data) //сверка контрольной 
     data >>= 0x01; //сдвигаем буфер
   }
 }
+//--------------------------------Диалог выбора-----------------------------------------------------
+boolean dialogSwitch(void) //диалог выбора
+{
+  boolean updScreen = 0;
+  boolean state = 0;
+  while (1) {
+    for (; tick_wdt > 0; tick_wdt--) { //если был тик, обрабатываем данные
+
+      switch (btn_state) { //таймер опроса кнопок
+        case 0: if (btn_check) btn_tmr++; break; //считаем циклы
+        case 1: if (btn_tmr > 0) btn_tmr--; break; //убираем дребезг
+      }
+
+      if (!updScreen) {
+        updScreen = 1;
+        choice_menu(state); //меню выбора
+      }
+
+      switch (check_keys()) {
+        case 2: //Down key //сброс
+          state = 0;
+          updScreen = 0; //разрешаем обновления экрана
+          break;
+
+        case 3: //Up key //доп.действие
+          state = 1;
+          updScreen = 0; //разрешаем обновления экрана
+          break;
+
+        case 5: return state; //Select key //выбор режима
+      }
+    }
+  }
+  return 0;
+}
 //------------------------Инициализация параметров--------------------------------------------------
 void initParam(void) //инициализация параметров
 {
+  tick_wdt = 0; //сбрасываем тики собаки
   TIME_FACT = 100000 / pumpSettings.wdt_period; //расчитываем период для секунд
   buzz_vol = (buzz_freq / 2) / 10 * mainSettings.volume; //устанавливаем громкость щелчков
 
@@ -3022,7 +3097,7 @@ void error_messege(void) //сообщение об ошибке
   }
 }
 //---------------------------------------Стирание статистики--------------------------------------------------
-void statistic_erase(void) //стирание статистики
+void _statistic_erase(void) //стирание статистики
 {
   cur_dose_cell = 0; //сбрасываем текущую ячейку
   for (uint16_t cell = 510; cell < 1024; cell++) EEPROM_UpdateByte(cell, 0); //стираем заглавления времени
@@ -3076,7 +3151,7 @@ void buzz_save(void) //чтение состояния щелчков
 void data_reset(uint8_t sw) //сброс текущей дозы
 {
   uint8_t time_out = 0; //счетчик тайм-аута
-  uint8_t n = 0; //курсор
+  uint8_t state = 0; //курсор
 
   sleep_disable = 1; //запрещаем сон
 
@@ -3113,23 +3188,23 @@ void data_reset(uint8_t sw) //сброс текущей дозы
     }
 #endif
 
-    choice_menu(n); //меню выбора
+    choice_menu(state); //меню выбора
 
     switch (check_keys()) {
 
       case 2: //Down key
-        if (n > 0) n--;
+        state = 0;
         time_out = 0; //сбрасывает авто-выход
         scr = 0; //разрешаем обновления экрана
         break;
       case 3: //Up key
-        if (n < 1) n++;
+        state = 1;
         time_out = 0; //сбрасывает авто-выход
         scr = 0; //разрешаем обновления экрана
         break;
 
       case 5: //select key
-        switch (n) {
+        switch (state) {
           case 1:
             clrScr(); //очистка экрана
             switch (sw) {
@@ -3156,7 +3231,7 @@ void data_reset(uint8_t sw) //сброс текущей дозы
               case 1: //накопленная доза
                 time_save = 0;
                 rad_dose_save = 0;
-                statistic_erase(); //стирание статистики
+                _statistic_erase(); //стирание статистики
                 rad_dose_old = rad_dose;
 
                 print(R_SUCC_ALL_DOSE, CENTER, 16); //Общая доза
@@ -3185,7 +3260,7 @@ void data_reset(uint8_t sw) //сброс текущей дозы
 //---------------------------------------Сохранить настройки--------------------------------------------
 void setings_save(uint8_t sw) //сохранить настройки
 {
-  uint8_t n = 0; //курсор
+  boolean state = 0; //курсор
   uint8_t time_out = 0; //таймер автовыхода
 
   switch (sw) {
@@ -3230,23 +3305,22 @@ void setings_save(uint8_t sw) //сохранить настройки
     }
 #endif
 
-    choice_menu(n); //меню выбора
+    choice_menu(state); //меню выбора
 
     switch (check_keys()) {
-
       case 2: //Down key
-        if (n > 0) n--;
+        state = 0;
         time_out = 0; //сбрасывает авто-выход
         scr = 0; //разрешаем обновления экрана
         break;
       case 3: //Up key
-        if (n < 1) n++;
+        state = 1;
         time_out = 0; //сбрасывает авто-выход
         scr = 0; //разрешаем обновления экрана
         break;
 
       case 5: //select key
-        switch (n) {
+        switch (state) {
           case 1:
             clrScr(); //очистка экрана
             print(W_SETINGS_SUCC, CENTER, 16); //Настройки
