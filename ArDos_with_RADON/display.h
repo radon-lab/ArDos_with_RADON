@@ -59,7 +59,7 @@ void  clrScr(void);
 void  clrRow(uint8_t row, uint8_t start_x = 0, uint8_t end_x = 83);
 void  invert(bool mode);
 void  invertText(bool mode);
-void  print(const char *st, uint8_t x, uint8_t y);
+void  print(const char *st, uint8_t x, uint8_t y, boolean mem = 0);
 void  printNumI(uint32_t num, uint8_t x, uint8_t y, uint8_t length = 0, char filler = ' ');
 void  printNumF(float num, uint8_t dec, uint8_t x, uint8_t y, char divider = '.', uint8_t length = 0, char filler = ' ');
 void  setFont(const uint8_t* font);
@@ -204,11 +204,16 @@ void invertText(boolean mode) //инверсия текста
   }
 }
 //-------------------------Вывод текста----------------------------------------------------
-void print(const char *st, uint8_t x, uint8_t y) //вывод текста
+void print(const char *st, uint8_t x, uint8_t y, boolean mem) //вывод текста
 {
   uint8_t stl, row, steps;
 
-  stl = strlen(st);
+  for (uint8_t i = 0; i < 15; i++) {
+    if (!((mem) ? (*(st + i)) : pgm_read_byte(st + i))) {
+      stl = i;
+      break;
+    }
+  }
 
   switch (x) {
     case RIGHT: x = 84 - (stl * cfont.x_size); break;
@@ -223,7 +228,7 @@ void print(const char *st, uint8_t x, uint8_t y) //вывод текста
     steps = 8 - y % 8;
   }
 
-  for (uint8_t cnt = 0; cnt < stl; cnt++) _print_char(*st++, x + (cnt * (cfont.x_size)), row, steps);
+  for (uint8_t cnt = 0; cnt < stl; cnt++) _print_char((mem) ? (*st++) : pgm_read_byte(st++), x + (cnt * (cfont.x_size)), row, steps);
 
   setFont(FONT_DATA_NAME); //установка шрифта
 }
@@ -268,7 +273,7 @@ void printNumF(float num, uint8_t dec, uint8_t x, uint8_t y, char divider, uint8
 
   st[c + f + d] = 0;
 
-  print(st, x, y);
+  print(st, x, y, 1);
 }
 //-------------------------Отрисовка символа----------------------------------------------------
 void _print_char(uint8_t c, uint8_t x, uint8_t row, uint8_t steps) //отрисовка символа

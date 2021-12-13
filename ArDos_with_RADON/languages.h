@@ -1,439 +1,439 @@
 //Языки для локализации
-#define VERSION "3.6.3" //версия по
+const char VERSION[] PROGMEM = "3.6.3"; //версия по
 
 //---------------------------------------------//
 #ifdef RUSSIAN //если выбран язык "русский"
 //Основные
-#define INTRO "-=HFLJY=-" //-=РАДОН=-
+const char INTRO[] PROGMEM = "-=HFLJY=-"; //-=РАДОН=-
 
-#define SETTINGS "Yfcnhjqrb" //Настройки
-#define DAMAGED "gjdht;ltys," //повреждены,
-#define RESTORE "djccnfyjdbnm?" //восстановить?
+const char SETTINGS[] PROGMEM = "Yfcnhjqrb"; //Настройки
+const char DAMAGED[] PROGMEM = "gjdht;ltys,"; //повреждены,
+const char RESTORE[] PROGMEM = "djccnfyjdbnm?"; //восстановить?
 
-#define LOAD "pfuheprf..." //загрузка...
-#define READ "xntybt..." //чтение...
+const char LOAD[] PROGMEM = "pfuheprf..."; //загрузка...
+const char READ[] PROGMEM = "xntybt..."; //чтение...
 
 //Сброс
-#define RES_RESET "C,hjcbnm" //Сбросить
-#define RES_MAIN "jcyjdyst" //основные
-#define RES_SETTINGS_M "yfcnhjqrb?" //настройки?
-#define RES_SETTINGS_P "yfcnhjqrb" //настройки
-#define RES_PUMP "rjydthnthf?" //конвертера?
-#define RES_DATA "lfyyst" //данные
-#define RES_USER "gjkmpjdfntkz?" //пользователя?
+const char RES_RESET[] PROGMEM = "C,hjcbnm"; //Сбросить
+const char RES_MAIN[] PROGMEM = "jcyjdyst"; //основные
+const char RES_SETTINGS_M[] PROGMEM = "yfcnhjqrb?"; //настройки?
+const char RES_SETTINGS_P[] PROGMEM = "yfcnhjqrb"; //настройки
+const char RES_PUMP[] PROGMEM = "rjydthnthf?"; //конвертера?
+const char RES_DATA[] PROGMEM = "lfyyst"; //данные
+const char RES_USER[] PROGMEM = "gjkmpjdfntkz?"; //пользователя?
 
 //Замер бета
-#define M_MEASUR_BETA "Pfvth ,tnf" //Замер бета
+const char M_MEASUR_BETA[] PROGMEM = "Pfvth ,tnf"; //Замер бета
 
-#define M_STOP "Jcnfyjdbnm" //Остановить
-#define M_MEASUR "pfvth&" //замер?
+const char M_STOP[] PROGMEM = "Jcnfyjdbnm"; //Остановить
+const char M_MEASUR[] PROGMEM = "pfvth&"; //замер?
 
-#define M_MEASURS "Pfvth" //Замер
-#define M_COMPLET "pfdthity!" //завершен!
+const char M_MEASURS[] PROGMEM = "Pfvth"; //Замер
+const char M_COMPLET[] PROGMEM = "pfdthity!"; //завершен!
 
-#define M_RESULT "HTPEKMNFN" //РЕЗУЛЬТАТ
-#define M_BACK_OK "JR-PFVTH AJYF" //ОК-ЗАМЕР ФОНА
-#define M_BACK "PFVTH AJYF" //ЗАМЕР ФОНА
-#define M_SAMP_OK "JR-PFV.J<HFPWF" //ОК-ЗАМ.ОБРАЗЦА
-#define M_SAMP "PFVTH J<HFPWF" //ЗАМЕР ОБРАЗЦА
-#define M_BACK_I "AJY" //ФОН
-#define M_SAMP_I "J<H" //ОБР
+const char M_RESULT[] PROGMEM = "HTPEKMNFN"; //РЕЗУЛЬТАТ
+const char M_BACK_OK[] PROGMEM = "JR-PFVTH AJYF"; //ОК-ЗАМЕР ФОНА
+const char M_BACK[] PROGMEM = "PFVTH AJYF"; //ЗАМЕР ФОНА
+const char M_SAMP_OK[] PROGMEM = "JR-PFV.J<HFPWF"; //ОК-ЗАМ.ОБРАЗЦА
+const char M_SAMP[] PROGMEM = "PFVTH J<HFPWF"; //ЗАМЕР ОБРАЗЦА
+const char M_BACK_I[] PROGMEM = "AJY"; //ФОН
+const char M_SAMP_I[] PROGMEM = "J<H"; //ОБР
 
-#define M_MIN "vby" //мин
-#define M_TIME "&" //:
+const char M_MIN[] PROGMEM = "vby"; //мин
+const char M_TIME[] PROGMEM = "&"; //:
 
 //Тревога
-#define A_ALARM "NHTDJUF!" //Тревога!
-#define A_WARN "JGFCYJCNM!" //Опасность!
+const char A_ALARM[] PROGMEM = "NHTDJUF!"; //Тревога!
+const char A_WARN[] PROGMEM = "JGFCYJCNM!"; //Опасность!
 
-#define A_BACK "Ajy" //Фон
-#define A_DOSE "Ljpf" //Доза
+const char A_BACK[] PROGMEM = "Ajy"; //Фон
+const char A_DOSE[] PROGMEM = "Ljpf"; //Доза
 
 //Батарея
-#define B_BAT "<fnfhtz" //Батарея
-#define B_LOW "hfphz;tyf!" //разряжена!
+const char B_BAT[] PROGMEM = "<fnfhtz"; //Батарея
+const char B_LOW[] PROGMEM = "hfphz;tyf!"; //разряжена!
 
 //Поиск
-#define S_SEARCH "Gjbcr" //Поиск
+const char S_SEARCH[] PROGMEM = "Gjbcr"; //Поиск
 
-#define S_IMP_PER_SEC "bvg|c" //имп/с
-#define S_IMP_PER_MIN "bvg|v" //имп/м
+const char S_IMP_PER_SEC[] PROGMEM = "bvg|c"; //имп/с
+const char S_IMP_PER_MIN[] PROGMEM = "bvg|v"; //имп/м
 
 //Параметры
-#define P_PARAM "Gfhfvtnhs" //Параметры
+const char P_PARAM[] PROGMEM = "Gfhfvtnhs"; //Параметры
 
-#define P_BAT "<fnfhtz&" //Батарея:
-#define P_ADC_BAT "Pyfx.FWG&" //Знач.АЦП:
-#define P_HV_PUMP "Yfrfxrf DD&" //Накачка ВВ:
-#define P_PUMP_SPEED "Crjhjcnm&" //Скорость:
-#define P_REFERENCE "Jgjhyjt&" //Опорное:
+const char P_BAT[] PROGMEM = "<fnfhtz&"; //Батарея:
+const char P_ADC_BAT[] PROGMEM = "Pyfx.FWG&"; //Знач.АЦП:
+const char P_HV_PUMP[] PROGMEM = "Yfrfxrf DD&"; //Накачка ВВ:
+const char P_PUMP_SPEED[] PROGMEM = "Crjhjcnm&"; //Скорость:
+const char P_REFERENCE[] PROGMEM = "Jgjhyjt&"; //Опорное:
 
 //Отладка
-#define D_DEBUG "Jnkflrf" //Отладка
+const char D_DEBUG[] PROGMEM = "Jnkflrf"; //Отладка
 
-#define D_BAT "<FN" //БАТ
-#define D_ADC_BAT "FWG" //АЦП
-#define D_HV_PUMP "DD" //ВВ
-#define D_PUMP_SPEED "CRH" //СКР
-#define D_REFERENCE "JGH" //ОПР
-#define D_PULS_LEN "BVG" //ИМП
-#define D_COEF_DIV "RLK" //КДЛ
-#define D_PUMP_ADC "FWG" //АЦП
-#define D_WDT_PER "GTH" //ПЕР
-#define D_GEIGER_TIME "CX" //СЧ
+const char D_BAT[] PROGMEM = "<FN"; //БАТ
+const char D_ADC_BAT[] PROGMEM = "FWG"; //АЦП
+const char D_HV_PUMP[] PROGMEM = "DD"; //ВВ
+const char D_PUMP_SPEED[] PROGMEM = "CRH"; //СКР
+const char D_REFERENCE[] PROGMEM = "JGH"; //ОПР
+const char D_PULS_LEN[] PROGMEM = "BVG"; //ИМП
+const char D_COEF_DIV[] PROGMEM = "RLK"; //КДЛ
+const char D_PUMP_ADC[] PROGMEM = "FWG"; //АЦП
+const char D_WDT_PER[] PROGMEM = "GTH"; //ПЕР
+const char D_GEIGER_TIME[] PROGMEM = "CX"; //СЧ
 
 //Настройки
-#define S_SETINGS "Yfcnhjqrb" //Настройки
+const char S_SETINGS[] PROGMEM = "Yfcnhjqrb"; //Настройки
 
-#define S_ITEM_SLEEP "Cjy&" //Сон:
-#define S_ITEM_LIGHT "Gjlcdtnrf&" //Подсветка:
-#define S_ITEM_CONTRAST "Rjynhfcn&" //Контраст:
-#define S_ITEM_FLASHES "Dcgsirb&" //Вспышки:
-#define S_ITEM_VOLUME "Uhjvrjcnm&" //Громкость:
-#define S_ITEM_CLICKS "Otkxrb&" //Щелчки:
-#define S_ITEM_BUTT_SOUND "Pd.Ryjgjr&" //Зв.кнопок:
-#define S_ITEM_DIFF_MEASUR "Hfpy.pfv&" //Разн.зам:
-#define S_ITEM_SIGMA "Cbuvf&" //Сигма:
-#define S_ITEM_SEARCH "Gjbcr&" //Поиск:
-#define S_ITEM_UNITS "Tl.bpvth&" //Ед.измер:
-#define S_ITEM_ALARM_BACK "Nhtdjuf A&" //Тревога Ф:
-#define S_ITEM_ALARM_THRESHOLD_BACK_1 "Gjhju A1&" //Порог Ф1:
-#define S_ITEM_ALARM_THRESHOLD_BACK_2 "Gjhju A2&" //Порог Ф2:
-#define S_ITEM_ALARM_DOSE "Nhtdjuf L&" //Тревога Д:
-#define S_ITEM_ALARM_THRESHOLD_DOSE_1 "Gjhju L1&" //Порог Д1:
-#define S_ITEM_ALARM_THRESHOLD_DOSE_2 "Gjhju L2&" //Порог Д2:
-#define S_ITEM_UART_SET "Gjhn&" //Порт:
+const char S_ITEM_SLEEP[] PROGMEM = "Cjy&"; //Сон:
+const char S_ITEM_LIGHT[] PROGMEM = "Gjlcdtnrf&"; //Подсветка:
+const char S_ITEM_CONTRAST[] PROGMEM = "Rjynhfcn&"; //Контраст:
+const char S_ITEM_FLASHES[] PROGMEM = "Dcgsirb&"; //Вспышки:
+const char S_ITEM_VOLUME[] PROGMEM = "Uhjvrjcnm&"; //Громкость:
+const char S_ITEM_CLICKS[] PROGMEM = "Otkxrb&"; //Щелчки:
+const char S_ITEM_BUTT_SOUND[] PROGMEM = "Pd.Ryjgjr&"; //Зв.кнопок:
+const char S_ITEM_DIFF_MEASUR[] PROGMEM = "Hfpy.pfv&"; //Разн.зам:
+const char S_ITEM_SIGMA[] PROGMEM = "Cbuvf&"; //Сигма:
+const char S_ITEM_SEARCH[] PROGMEM = "Gjbcr&"; //Поиск:
+const char S_ITEM_UNITS[] PROGMEM = "Tl.bpvth&"; //Ед.измер:
+const char S_ITEM_ALARM_BACK[] PROGMEM = "Nhtdjuf A&"; //Тревога Ф:
+const char S_ITEM_ALARM_THRESHOLD_BACK_1[] PROGMEM = "Gjhju A1&"; //Порог Ф1:
+const char S_ITEM_ALARM_THRESHOLD_BACK_2[] PROGMEM = "Gjhju A2&"; //Порог Ф2:
+const char S_ITEM_ALARM_DOSE[] PROGMEM = "Nhtdjuf L&"; //Тревога Д:
+const char S_ITEM_ALARM_THRESHOLD_DOSE_1[] PROGMEM = "Gjhju L1&"; //Порог Д1:
+const char S_ITEM_ALARM_THRESHOLD_DOSE_2[] PROGMEM = "Gjhju L2&"; //Порог Д2:
+const char S_ITEM_UART_SET[] PROGMEM = "Gjhn&"; //Порт:
 
-#define S_SWITCH_MANUAL "HEXY" //РУЧН
-#define S_SWITCH_AUTO "FDNJ" //АВТО
-#define S_SWITCH_MANUAL_EXCEPT_SLEEP "RH.CYF" //КР.СНА
-#define S_SWITCH_BACK_1 "AJY1" //ФОН1
-#define S_SWITCH_SOUND "PDER" //ЗВУК
-#define S_SWITCH_VIBRO "DB<H" //ВИБР
-#define S_SWITCH_SOUND_VIBRO "D+PD" //З+ВБ
+const char S_SWITCH_MANUAL[] PROGMEM = "HEXY"; //РУЧН
+const char S_SWITCH_AUTO[] PROGMEM = "FDNJ"; //АВТО
+const char S_SWITCH_MANUAL_EXCEPT_SLEEP[] PROGMEM = "RH.CYF"; //КР.СНА
+const char S_SWITCH_BACK_1[] PROGMEM = "AJY1"; //ФОН1
+const char S_SWITCH_SOUND[] PROGMEM = "PDER"; //ЗВУК
+const char S_SWITCH_VIBRO[] PROGMEM = "DB<H"; //ВИБР
+const char S_SWITCH_SOUND_VIBRO[] PROGMEM = "D+PD"; //З+ВБ
 
 //Меню
-#define MAIN_MENU "Vty/" //Меню
+const char MAIN_MENU[] PROGMEM = "Vty/"; //Меню
 
-#define MAIN_BACK_DOSE "Ajy | Ljpf" //Фон / Доза
-#define MAIN_SEARCH "Ht;bv gjbcrf" //Режим поиска
-#define MAIN_MEASUR "Pfvth ,tnf" //Замер бета
-#define MAIN_LOGBOOK ":ehyfk" //Журнал
-#define MAIN_SETINGS "Yfcnhjqrb" //Настройки
-#define MAIN_PARAM "Gfhfvtnhs" //Параметры
-#define MAIN_POWER_DOWN "Dsrk/xtybt" //Выключение
+const char MAIN_BACK_DOSE[] PROGMEM = "Ajy | Ljpf"; //Фон / Доза
+const char MAIN_SEARCH[] PROGMEM = "Ht;bv gjbcrf"; //Режим поиска
+const char MAIN_MEASUR[] PROGMEM = "Pfvth ,tnf"; //Замер бета
+const char MAIN_LOGBOOK[] PROGMEM = ":ehyfk"; //Журнал
+const char MAIN_SETINGS[] PROGMEM = "Yfcnhjqrb"; //Настройки
+const char MAIN_PARAM[] PROGMEM = "Gfhfvtnhs"; //Параметры
+const char MAIN_POWER_DOWN[] PROGMEM = "Dsrk/xtybt"; //Выключение
 
 //Журнал
-#define L_LOGBOOK ":ehyfk" //Журнал
+const char L_LOGBOOK[] PROGMEM = ":ehyfk"; //Журнал
 
-#define L_DATA_DOSE "LJPF" //ДОЗА
-#define L_DATA_BACK "AJY" //ФОН
-#define L_DATA_MINS "v" //м
-#define L_DATA_ERROR_NUM "Jib,rf #" //Ошибка #
-#define L_DATA_NULL "- gecnj -" //- пусто -
+const char L_DATA_DOSE[] PROGMEM = "LJPF"; //ДОЗА
+const char L_DATA_BACK[] PROGMEM = "AJY"; //ФОН
+const char L_DATA_MINS[] PROGMEM = "v"; //м
+const char L_DATA_ERROR_NUM[] PROGMEM = "Jib,rf #"; //Ошибка #
+const char L_DATA_NULL[] PROGMEM = "- gecnj -"; //- пусто -
 
-#define L_ITEM_ALARM "Nhtdjuf" //Тревога
-#define L_ITEM_WARN "Jgfcyjcnm" //Опасность
-#define L_ITEM_MEASUR "Pfvths ,tnf" //Замеры бета
-#define L_ITEM_ERRORS "Jib,rb" //Ошибки
-#define L_ITEM_SETINGS "Yfcnhjqrb" //Настройки
-#define L_ITEM_ASTER "*" //*
+const char L_ITEM_ALARM[] PROGMEM = "Nhtdjuf"; //Тревога
+const char L_ITEM_WARN[] PROGMEM = "Jgfcyjcnm"; //Опасность
+const char L_ITEM_MEASUR[] PROGMEM = "Pfvths ,tnf"; //Замеры бета
+const char L_ITEM_ERRORS[] PROGMEM = "Jib,rb"; //Ошибки
+const char L_ITEM_SETINGS[] PROGMEM = "Yfcnhjqrb"; //Настройки
+const char L_ITEM_ASTER[] PROGMEM = "*"; //*
 
-#define L_SETINGS_ALARM "Nhtdjuf&" //Тревога:
-#define L_SETINGS_WARN "Jgfcyjcnm&" //Опасность:
-#define L_SETINGS_MEASUR "Pfvths&" //Замеры:
-#define L_SETINGS_CLEAR "Jxbcnbnm" //Очистить
+const char L_SETINGS_ALARM[] PROGMEM = "Nhtdjuf&"; //Тревога:
+const char L_SETINGS_WARN[] PROGMEM = "Jgfcyjcnm&"; //Опасность:
+const char L_SETINGS_MEASUR[] PROGMEM = "Pfvths&"; //Замеры:
+const char L_SETINGS_CLEAR[] PROGMEM = "Jxbcnbnm"; //Очистить
 
 //Ошибки
-#define E_ERROR " - JIB<RF - " //- ОШИБКА -
-#define E_ERROR_NULL "* gecnj *" //* пусто *
+const char E_ERROR[] PROGMEM = " - JIB<RF - "; //- ОШИБКА -
+const char E_ERROR_NULL[] PROGMEM = "* gecnj *"; //* пусто *
 
-#define E_DATA_OVERLOAD "Gthtuheprf" //Перегрузка
-#define E_DATA_PUMP "rjydthnthf!" //конвертера!
+const char E_DATA_OVERLOAD[] PROGMEM = "Gthtuheprf"; //Перегрузка
+const char E_DATA_PUMP[] PROGMEM = "rjydthnthf!"; //конвертера!
 
-#define E_DATA_LOW "Ybprjt" //Низкое
-#define E_DATA_VOLTAGE "yfghz;tybt" //напряжение
+const char E_DATA_LOW[] PROGMEM = "Ybprjt"; //Низкое
+const char E_DATA_VOLTAGE[] PROGMEM = "yfghz;tybt"; //напряжение
 
-#define E_DATA_SHOT_CIRCUIT "Rjhjnrjt pfv." //Короткое зам.
-#define E_DATA_NO_ACCOUNT "Ytn cxtnf!" //Нет счета!
+const char E_DATA_SHOT_CIRCUIT[] PROGMEM = "Rjhjnrjt pfv."; //Короткое зам.
+const char E_DATA_NO_ACCOUNT[] PROGMEM = "Ytn cxtnf!"; //Нет счета!
 
-#define E_DATA_SPEED "CRH&" //СКР:
-#define E_DATA_HV "YFG&" //НАП:
+const char E_DATA_SPEED[] PROGMEM = "CRH&"; //СКР:
+const char E_DATA_HV[] PROGMEM = "YFG&"; //НАП:
 
 //Сброс данных
-#define R_RESET "C,hjcbnm" //Сбросить
-#define R_CURRENT_DOSE "ntreoe/ ljpe?" //текущую дозу?
-#define R_ALL_DOSE "j,oe/ ljpe?" //общую дозу?
-#define R_CLEAR "Jxbcnbnm" //Очистить
-#define R_ALL_LOGBOOK "dtcm ;ehyfk?" //весь журнал?
+const char R_RESET[] PROGMEM = "C,hjcbnm"; //Сбросить
+const char R_CURRENT_DOSE[] PROGMEM = "ntreoe/ ljpe?"; //текущую дозу?
+const char R_ALL_DOSE[] PROGMEM = "j,oe/ ljpe?"; //общую дозу?
+const char R_CLEAR[] PROGMEM = "Jxbcnbnm"; //Очистить
+const char R_ALL_LOGBOOK[] PROGMEM = "dtcm ;ehyfk?"; //весь журнал?
 
-#define R_SUCC_ALL_DOSE "J,ofz ljpf" //Общая доза
-#define R_SUCC_CURRENT_DOSE "Ntreofz ljpf" //Текущая доза
-#define R_SUCC_RESET "c,hjityf!" //сброшена!
-#define R_SUCC_LOGBOOK ":ehyfk" //Журнал
-#define R_SUCC_CLEAR "jxboty!" //очищен!
+const char R_SUCC_ALL_DOSE[] PROGMEM = "J,ofz ljpf"; //Общая доза
+const char R_SUCC_CURRENT_DOSE[] PROGMEM = "Ntreofz ljpf"; //Текущая доза
+const char R_SUCC_RESET[] PROGMEM = "c,hjityf!"; //сброшена!
+const char R_SUCC_LOGBOOK[] PROGMEM = ":ehyfk"; //Журнал
+const char R_SUCC_CLEAR[] PROGMEM = "jxboty!"; //очищен!
 
 //Сохранение настроек
-#define W_SAVE "Cj[hfybnm"     //Сохранить
-#define W_SETINGS "yfcnhjqrb?" //настройки?
+const char W_SAVE[] PROGMEM = "Cj[hfybnm";     //Сохранить
+const char W_SETINGS[] PROGMEM = "yfcnhjqrb?"; //настройки?
 
-#define W_SETINGS_SUCC "Yfcnhjqrb" //Настройки
-#define W_SAVE_SUCC "Cj[hfytys!"   //сохранены!
+const char W_SETINGS_SUCC[] PROGMEM = "Yfcnhjqrb"; //Настройки
+const char W_SAVE_SUCC[] PROGMEM = "Cj[hfytys!";   //сохранены!
 
 //Общие символы
-#define ALL_SWITCH_OFF "DSRK" //ВЫКЛ
-#define ALL_SWITCH_ON "DRK"   //ВКЛ
+const char ALL_SWITCH_OFF[] PROGMEM = "DSRK"; //ВЫКЛ
+const char ALL_SWITCH_ON[] PROGMEM = "DRK";   //ВКЛ
 
-#define ALL_YES "  LF  " //ДА
-#define ALL_NO "  YTN  " //НЕТ
+const char ALL_YES[] PROGMEM = "  LF  "; //ДА
+const char ALL_NO[] PROGMEM = "  YTN  "; //НЕТ
 
 //Главные экраны ФОН/ДОЗА
-#define MAIN_SCREEN_BACK "Ajy" //Фон
-#define MAIN_SCREEN_DOSE "Ljpf" //Доза
+const char MAIN_SCREEN_BACK[] PROGMEM = "Ajy"; //Фон
+const char MAIN_SCREEN_DOSE[] PROGMEM = "Ljpf"; //Доза
 
-#define MAIN_SCREEN_BACK_MIN "VBY&" //МИН:
-#define MAIN_SCREEN_BACK_MAX "VFRC&" //МАКС:
+const char MAIN_SCREEN_BACK_MIN[] PROGMEM = "VBY&"; //МИН:
+const char MAIN_SCREEN_BACK_MAX[] PROGMEM = "VFRC&"; //МАКС:
 
-#define MAIN_SCREEN_CURRENT_DOSE_ALL "DCTUJ&" //ВСЕГО:
+const char MAIN_SCREEN_CURRENT_DOSE_ALL[] PROGMEM = "DCTUJ&"; //ВСЕГО:
 
-#define MAIN_SCREEN_DOSE_DAYS "l" //д
-#define MAIN_SCREEN_DOSE_HOURSE "x" //ч
-#define MAIN_SCREEN_DOSE_MINS "v" //м
+const char MAIN_SCREEN_DOSE_DAYS[] PROGMEM = "l"; //д
+const char MAIN_SCREEN_DOSE_HOURSE[] PROGMEM = "x"; //ч
+const char MAIN_SCREEN_DOSE_MINS[] PROGMEM = "v"; //м
 
-#define MAIN_SCREEN_DOSE_ACCUM "yfrjgktyj" //накоплено
-#define MAIN_SCREEN_DOSE_JUST_OVER "dctuj pf&" //всего за:
+const char MAIN_SCREEN_DOSE_ACCUM[] PROGMEM = "yfrjgktyj"; //накоплено
+const char MAIN_SCREEN_DOSE_JUST_OVER[] PROGMEM = "dctuj pf&"; //всего за:
 
 
 //Единицы измерения
-#define UNIT_COUNT_PER_SQUARE_CM "x|cv2" //ч/см2
+const char UNIT_COUNT_PER_SQUARE_CM[] PROGMEM = "x|cv2"; //ч/см2
 
-#define UNIT_UR "vrH"     //мкР
-#define UNIT_UR_H "vrH|x" //мкР/ч
-#define UNIT_MR "vH"      //мР
-#define UNIT_MR_H "vH|x"  //мР/ч
+const char UNIT_UR[] PROGMEM = "vrH";     //мкР
+const char UNIT_UR_H[] PROGMEM = "vrH|x"; //мкР/ч
+const char UNIT_MR[] PROGMEM = "vH";      //мР
+const char UNIT_MR_H[] PROGMEM = "vH|x";  //мР/ч
 
-#define UNIT_USV "vrP"    //мкЗ
-#define UNIT_USV_H "vrP|x"//мкЗ/ч
-#define UNIT_MSV "vP"     //мЗ
-#define UNIT_MSV_H "vP|x" //мЗ/ч
+const char UNIT_USV[] PROGMEM = "vrP";    //мкЗ
+const char UNIT_USV_H[] PROGMEM = "vrP|x"; //мкЗ/ч
+const char UNIT_MSV[] PROGMEM = "vP";     //мЗ
+const char UNIT_MSV_H[] PROGMEM = "vP|x"; //мЗ/ч
 
 #define FONT_DATA_NAME RusFont //Название шрифта
 #endif
 //---------------------------------------------//
 #ifdef ENGLISH //если выбран язык "английский"
 //Основные
-#define INTRO "-=RADON=-" //-=РАДОН=-
+const char INTRO[] PROGMEM = "-=RADON=-"; //-=РАДОН=-
 
-#define SETTINGS "Settings" //Настройки
-#define DAMAGED "damaged," //повреждены,
-#define RESTORE "restore?" //восстановить?
+const char SETTINGS[] PROGMEM = "Settings"; //Настройки
+const char DAMAGED[] PROGMEM = "damaged,"; //повреждены,
+const char RESTORE[] PROGMEM = "restore?"; //восстановить?
 
-#define LOAD "load..." //загрузка...
-#define READ "read..." //чтение...
+const char LOAD[] PROGMEM = "load..."; //загрузка...
+const char READ[] PROGMEM = "read..."; //чтение...
 
 //Сброс
-#define RES_RESET "Clear" //Сбросить
-#define RES_MAIN "main" //основные
-#define RES_SETTINGS_M "settings?" //настройки?
-#define RES_SETTINGS_P "converter" //настройки
-#define RES_PUMP "settings?" //конвертера?
-#define RES_DATA "user" //данные
-#define RES_USER "data?" //пользователя?
+const char RES_RESET[] PROGMEM = "Clear"; //Сбросить
+const char RES_MAIN[] PROGMEM = "main"; //основные
+const char RES_SETTINGS_M[] PROGMEM = "settings?"; //настройки?
+const char RES_SETTINGS_P[] PROGMEM = "converter"; //настройки
+const char RES_PUMP[] PROGMEM = "settings?"; //конвертера?
+const char RES_DATA[] PROGMEM = "user"; //данные
+const char RES_USER[] PROGMEM = "data?"; //пользователя?
 
 //Замер бета
-#define M_MEASUR_BETA "Measur mode" //Замер бета
+const char M_MEASUR_BETA[] PROGMEM = "Measur mode"; //Замер бета
 
-#define M_STOP "Stop" //Остановить
-#define M_MEASUR "measur:" //замер?
+const char M_STOP[] PROGMEM = "Stop"; //Остановить
+const char M_MEASUR[] PROGMEM = "measur:"; //замер?
 
-#define M_MEASURS "Measur" //Замер
-#define M_COMPLET "complet!" //завершен!
+const char M_MEASURS[] PROGMEM = "Measur"; //Замер
+const char M_COMPLET[] PROGMEM = "complet!"; //завершен!
 
-#define M_RESULT "RESULT" //РЕЗУЛЬТАТ
-#define M_BACK_OK "OK-NEXT BACK" //ОК-ЗАМЕР ФОНА
-#define M_BACK "MEASUR BACK" //ЗАМЕР ФОНА
-#define M_SAMP_OK "OK-NEXT SAMP" //ОК-ЗАМ.ОБРАЗЦА
-#define M_SAMP "MEASUR SAMP" //ЗАМЕР ОБРАЗЦА
-#define M_BACK_I "BACK" //ФОН
-#define M_SAMP_I "SAMP" //ОБР
+const char M_RESULT[] PROGMEM = "RESULT"; //РЕЗУЛЬТАТ
+const char M_BACK_OK[] PROGMEM = "OK-NEXT BACK"; //ОК-ЗАМЕР ФОНА
+const char M_BACK[] PROGMEM = "MEASUR BACK"; //ЗАМЕР ФОНА
+const char M_SAMP_OK[] PROGMEM = "OK-NEXT SAMP"; //ОК-ЗАМ.ОБРАЗЦА
+const char M_SAMP[] PROGMEM = "MEASUR SAMP"; //ЗАМЕР ОБРАЗЦА
+const char M_BACK_I[] PROGMEM = "BACK"; //ФОН
+const char M_SAMP_I[] PROGMEM = "SAMP"; //ОБР
 
-#define M_MIN "min" //мин
-#define M_TIME ":" //:
+const char M_MIN[] PROGMEM = "min"; //мин
+const char M_TIME[] PROGMEM = ":"; //:
 
 //Тревога
-#define A_ALARM "ALARM!" //Тревога!
-#define A_WARN "WARNING!" //Опасность!
+const char A_ALARM[] PROGMEM = "ALARM!"; //Тревога!
+const char A_WARN[] PROGMEM = "WARNING!"; //Опасность!
 
-#define A_BACK "Back" //Фон
-#define A_DOSE "Dose" //Доза
+const char A_BACK[] PROGMEM = "Back"; //Фон
+const char A_DOSE[] PROGMEM = "Dose"; //Доза
 
 //Батарея
-#define B_BAT "Battery" //Батарея
-#define B_LOW "low!" //разряжена!
+const char B_BAT[] PROGMEM = "Battery"; //Батарея
+const char B_LOW[] PROGMEM = "low!"; //разряжена!
 
 //Поиск
-#define S_SEARCH "Search" //Поиск
+const char S_SEARCH[] PROGMEM = "Search"; //Поиск
 
-#define S_IMP_PER_SEC "cps" //имп/с
-#define S_IMP_PER_MIN "cpm" //имп/м
+const char S_IMP_PER_SEC[] PROGMEM = "cps"; //имп/с
+const char S_IMP_PER_MIN[] PROGMEM = "cpm"; //имп/м
 
 //Параметры
-#define P_PARAM "Parametrs" //Параметры
+const char P_PARAM[] PROGMEM = "Parametrs"; //Параметры
 
-#define P_BAT "Battery:" //Батарея:
-#define P_ADC_BAT "ADC BAT:" //Знач.АЦП:
-#define P_HV_PUMP "HV PUMP:" //Накачка ВВ:
-#define P_PUMP_SPEED "Pump speed:" //Скорость:
-#define P_REFERENCE "Reference:" //Опорное:
+const char P_BAT[] PROGMEM = "Battery:"; //Батарея:
+const char P_ADC_BAT[] PROGMEM = "ADC BAT:"; //Знач.АЦП:
+const char P_HV_PUMP[] PROGMEM = "HV PUMP:"; //Накачка ВВ:
+const char P_PUMP_SPEED[] PROGMEM = "Pump speed:"; //Скорость:
+const char P_REFERENCE[] PROGMEM = "Reference:"; //Опорное:
 
 //Отладка
-#define D_DEBUG "Debug" //Отладка
+const char D_DEBUG[] PROGMEM = "Debug"; //Отладка
 
-#define D_BAT "BAT" //БАТ
-#define D_ADC_BAT "ADC" //АЦП
-#define D_HV_PUMP "HV" //ВВ
-#define D_PUMP_SPEED "SPD" //СКР
-#define D_REFERENCE "REF" //ОПР
-#define D_PULS_LEN "IMP" //ИМП
-#define D_COEF_DIV "CDF" //КДЛ
-#define D_PUMP_ADC "ADC" //АЦП
-#define D_WDT_PER "WDT" //ПЕР
-#define D_GEIGER_TIME "GT" //СЧ
+const char D_BAT[] PROGMEM = "BAT"; //БАТ
+const char D_ADC_BAT[] PROGMEM = "ADC"; //АЦП
+const char D_HV_PUMP[] PROGMEM = "HV"; //ВВ
+const char D_PUMP_SPEED[] PROGMEM = "SPD"; //СКР
+const char D_REFERENCE[] PROGMEM = "REF"; //ОПР
+const char D_PULS_LEN[] PROGMEM = "IMP"; //ИМП
+const char D_COEF_DIV[] PROGMEM = "CDF"; //КДЛ
+const char D_PUMP_ADC[] PROGMEM = "ADC"; //АЦП
+const char D_WDT_PER[] PROGMEM = "WDT"; //ПЕР
+const char D_GEIGER_TIME[] PROGMEM = "GT"; //СЧ
 
 //Настройки
-#define S_SETINGS "Settings" //Настройки
+const char S_SETINGS[] PROGMEM = "Settings"; //Настройки
 
-#define S_ITEM_SLEEP "Sleep:" //Сон:
-#define S_ITEM_LIGHT "Light:" //Подсветка:
-#define S_ITEM_CONTRAST "Contrast:" //Контраст:
-#define S_ITEM_FLASHES "Flashes:" //Вспышки:
-#define S_ITEM_VOLUME "Volume:" //Громкость:
-#define S_ITEM_CLICKS "Clicks:" //Щелчки:
-#define S_ITEM_BUTT_SOUND "Butt sound:" //Зв.кнопок:
-#define S_ITEM_DIFF_MEASUR "Diff measur:" //Разн.зам:
-#define S_ITEM_SIGMA "Sigma:" //Сигма:
-#define S_ITEM_SEARCH "Search:" //Поиск:
-#define S_ITEM_UNITS "Units:" //Ед.измер:
-#define S_ITEM_ALARM_BACK "Alarm B:" //Тревога Ф:
-#define S_ITEM_ALARM_THRESHOLD_BACK_1 "Back 1:" //Порог Ф1:
-#define S_ITEM_ALARM_THRESHOLD_BACK_2 "Back 2:" //Порог Ф2:
-#define S_ITEM_ALARM_DOSE "Alarm D:" //Тревога Д:
-#define S_ITEM_ALARM_THRESHOLD_DOSE_1 "Dose 1:" //Порог Д1:
-#define S_ITEM_ALARM_THRESHOLD_DOSE_2 "Dose 2:" //Порог Д2:
-#define S_ITEM_UART_SET "Uart:" //Порт:
+const char S_ITEM_SLEEP[] PROGMEM = "Sleep:"; //Сон:
+const char S_ITEM_LIGHT[] PROGMEM = "Light:"; //Подсветка:
+const char S_ITEM_CONTRAST[] PROGMEM = "Contrast:"; //Контраст:
+const char S_ITEM_FLASHES[] PROGMEM = "Flashes:"; //Вспышки:
+const char S_ITEM_VOLUME[] PROGMEM = "Volume:"; //Громкость:
+const char S_ITEM_CLICKS[] PROGMEM = "Clicks:"; //Щелчки:
+const char S_ITEM_BUTT_SOUND[] PROGMEM = "Butt sound:"; //Зв.кнопок:
+const char S_ITEM_DIFF_MEASUR[] PROGMEM = "Diff measur:"; //Разн.зам:
+const char S_ITEM_SIGMA[] PROGMEM = "Sigma:"; //Сигма:
+const char S_ITEM_SEARCH[] PROGMEM = "Search:"; //Поиск:
+const char S_ITEM_UNITS[] PROGMEM = "Units:"; //Ед.измер:
+const char S_ITEM_ALARM_BACK[] PROGMEM = "Alarm B:"; //Тревога Ф:
+const char S_ITEM_ALARM_THRESHOLD_BACK_1[] PROGMEM = "Back 1:"; //Порог Ф1:
+const char S_ITEM_ALARM_THRESHOLD_BACK_2[] PROGMEM = "Back 2:"; //Порог Ф2:
+const char S_ITEM_ALARM_DOSE[] PROGMEM = "Alarm D:"; //Тревога Д:
+const char S_ITEM_ALARM_THRESHOLD_DOSE_1[] PROGMEM = "Dose 1:"; //Порог Д1:
+const char S_ITEM_ALARM_THRESHOLD_DOSE_2[] PROGMEM = "Dose 2:"; //Порог Д2:
+const char S_ITEM_UART_SET[] PROGMEM = "Uart:"; //Порт:
 
-#define S_SWITCH_MANUAL "MANUAL" //РУЧН
-#define S_SWITCH_AUTO "AUTO" //АВТО
-#define S_SWITCH_MANUAL_EXCEPT_SLEEP "MES" //КР.СНА
-#define S_SWITCH_BACK_1 "BACK1" //ФОН1
-#define S_SWITCH_SOUND "SOUND" //ЗВУК
-#define S_SWITCH_VIBRO "VIBRO" //ВИБР
-#define S_SWITCH_SOUND_VIBRO "S+VIB" //З+ВБ
+const char S_SWITCH_MANUAL[] PROGMEM = "MANUAL"; //РУЧН
+const char S_SWITCH_AUTO[] PROGMEM = "AUTO"; //АВТО
+const char S_SWITCH_MANUAL_EXCEPT_SLEEP[] PROGMEM = "MES"; //КР.СНА
+const char S_SWITCH_BACK_1[] PROGMEM = "BACK1"; //ФОН1
+const char S_SWITCH_SOUND[] PROGMEM = "SOUND"; //ЗВУК
+const char S_SWITCH_VIBRO[] PROGMEM = "VIBRO"; //ВИБР
+const char S_SWITCH_SOUND_VIBRO[] PROGMEM = "S+VIB"; //З+ВБ
 
 //Меню
-#define MAIN_MENU "Menu" //Меню
+const char MAIN_MENU[] PROGMEM = "Menu"; //Меню
 
-#define MAIN_BACK_DOSE "Back / Dose" //Фон / Доза
-#define MAIN_SEARCH "Search mode" //Режим поиска
-#define MAIN_MEASUR "Measur mode" //Замер бета
-#define MAIN_LOGBOOK "Logbook" //Журнал
-#define MAIN_SETINGS "Settings" //Настройки
-#define MAIN_PARAM "Parametrs" //Параметры
-#define MAIN_POWER_DOWN "Turn off" //Выключение
+const char MAIN_BACK_DOSE[] PROGMEM = "Back / Dose"; //Фон / Доза
+const char MAIN_SEARCH[] PROGMEM = "Search mode"; //Режим поиска
+const char MAIN_MEASUR[] PROGMEM = "Measur mode"; //Замер бета
+const char MAIN_LOGBOOK[] PROGMEM = "Logbook"; //Журнал
+const char MAIN_SETINGS[] PROGMEM = "Settings"; //Настройки
+const char MAIN_PARAM[] PROGMEM = "Parametrs"; //Параметры
+const char MAIN_POWER_DOWN[] PROGMEM = "Turn off"; //Выключение
 
 //Журнал
-#define L_LOGBOOK "Logbook" //Журнал
+const char L_LOGBOOK[] PROGMEM = "Logbook"; //Журнал
 
-#define L_DATA_DOSE "DOSE" //ДОЗА
-#define L_DATA_BACK "BACK" //ФОН
-#define L_DATA_MINS "m" //м
-#define L_DATA_ERROR_NUM "Error #" //Ошибка #
-#define L_DATA_NULL "- null -" //- пусто -
+const char L_DATA_DOSE[] PROGMEM = "DOSE"; //ДОЗА
+const char L_DATA_BACK[] PROGMEM = "BACK"; //ФОН
+const char L_DATA_MINS[] PROGMEM = "m"; //м
+const char L_DATA_ERROR_NUM[] PROGMEM = "Error #"; //Ошибка #
+const char L_DATA_NULL[] PROGMEM = "- null -"; //- пусто -
 
-#define L_ITEM_ALARM "Alarm" //Тревога
-#define L_ITEM_WARN "Warning" //Опасность
-#define L_ITEM_MEASUR "Measuring" //Замеры бета
-#define L_ITEM_ERRORS "Errors" //Ошибки
-#define L_ITEM_SETINGS "Settings" //Настройки
-#define L_ITEM_ASTER "*" //*
+const char L_ITEM_ALARM[] PROGMEM = "Alarm"; //Тревога
+const char L_ITEM_WARN[] PROGMEM = "Warning"; //Опасность
+const char L_ITEM_MEASUR[] PROGMEM = "Measuring"; //Замеры бета
+const char L_ITEM_ERRORS[] PROGMEM = "Errors"; //Ошибки
+const char L_ITEM_SETINGS[] PROGMEM = "Settings"; //Настройки
+const char L_ITEM_ASTER[] PROGMEM = "*"; //*
 
-#define L_SETINGS_ALARM "Alarm:" //Тревога:
-#define L_SETINGS_WARN "Warning:" //Опасность:
-#define L_SETINGS_MEASUR "Measur:" //Замеры:
-#define L_SETINGS_CLEAR "Clear book" //Очистить
+const char L_SETINGS_ALARM[] PROGMEM = "Alarm:"; //Тревога:
+const char L_SETINGS_WARN[] PROGMEM = "Warning:"; //Опасность:
+const char L_SETINGS_MEASUR[] PROGMEM = "Measur:"; //Замеры:
+const char L_SETINGS_CLEAR[] PROGMEM = "Clear book"; //Очистить
 
 //Ошибки
-#define E_ERROR " - ERROR - " //- ОШИБКА -
-#define E_ERROR_NULL "* null *" //* пусто *
+const char E_ERROR[] PROGMEM = " - ERROR - "; //- ОШИБКА -
+const char E_ERROR_NULL[] PROGMEM = "* null *"; //* пусто *
 
-#define E_DATA_OVERLOAD "Converter" //Перегрузка
-#define E_DATA_PUMP "overload!" //конвертера!
+const char E_DATA_OVERLOAD[] PROGMEM = "Converter"; //Перегрузка
+const char E_DATA_PUMP[] PROGMEM = "overload!"; //конвертера!
 
-#define E_DATA_LOW "Low" //Низкое
-#define E_DATA_VOLTAGE "voltage" //напряжение
+const char E_DATA_LOW[] PROGMEM = "Low"; //Низкое
+const char E_DATA_VOLTAGE[] PROGMEM = "voltage"; //напряжение
 
-#define E_DATA_SHOT_CIRCUIT "Short circuit" //Короткое зам.
-#define E_DATA_NO_ACCOUNT "No account!" //Нет счета!
+const char E_DATA_SHOT_CIRCUIT[] PROGMEM = "Short circuit"; //Короткое зам.
+const char E_DATA_NO_ACCOUNT[] PROGMEM = "No account!"; //Нет счета!
 
-#define E_DATA_SPEED "SPD:" //СКР:
-#define E_DATA_HV " HV:" //НАП:
+const char E_DATA_SPEED[] PROGMEM = "SPD:"; //СКР:
+const char E_DATA_HV[] PROGMEM = " HV:"; //НАП:
 
 //Сброс данных
-#define R_RESET "Reset" //Сбросить
-#define R_CURRENT_DOSE "current dose?" //текущую дозу?
-#define R_ALL_DOSE "all dose?" //общую дозу?
-#define R_CLEAR "Clear" //Очистить
-#define R_ALL_LOGBOOK "all logbook?" //весь журнал?
+const char R_RESET[] PROGMEM = "Reset"; //Сбросить
+const char R_CURRENT_DOSE[] PROGMEM = "current dose?"; //текущую дозу?
+const char R_ALL_DOSE[] PROGMEM = "all dose?"; //общую дозу?
+const char R_CLEAR[] PROGMEM = "Clear"; //Очистить
+const char R_ALL_LOGBOOK[] PROGMEM = "all logbook?"; //весь журнал?
 
-#define R_SUCC_ALL_DOSE "All dose" //Общая доза
-#define R_SUCC_CURRENT_DOSE "Current dose" //Текущая доза
-#define R_SUCC_RESET "clear!" //сброшена!
-#define R_SUCC_LOGBOOK "Logbook" //Журнал
-#define R_SUCC_CLEAR "clear!" //очищен!
+const char R_SUCC_ALL_DOSE[] PROGMEM = "All dose"; //Общая доза
+const char R_SUCC_CURRENT_DOSE[] PROGMEM = "Current dose"; //Текущая доза
+const char R_SUCC_RESET[] PROGMEM = "clear!"; //сброшена!
+const char R_SUCC_LOGBOOK[] PROGMEM = "Logbook"; //Журнал
+const char R_SUCC_CLEAR[] PROGMEM = "clear!"; //очищен!
 
 //Сохранение настроек
-#define W_SAVE "Seve" //Сохранить
-#define W_SETINGS "settings?" //настройки?
+const char W_SAVE[] PROGMEM = "Seve"; //Сохранить
+const char W_SETINGS[] PROGMEM = "settings?"; //настройки?
 
-#define W_SETINGS_SUCC "Settings" //Настройки
-#define W_SAVE_SUCC "save!"   //сохранены!
+const char W_SETINGS_SUCC[] PROGMEM = "Settings"; //Настройки
+const char W_SAVE_SUCC[] PROGMEM = "save!";   //сохранены!
 
 //Общие символы
-#define ALL_SWITCH_OFF "OFF" //ВЫКЛ
-#define ALL_SWITCH_ON  "ON"   //ВКЛ
+const char ALL_SWITCH_OFF[] PROGMEM = "OFF"; //ВЫКЛ
+const char ALL_SWITCH_ON [] PROGMEM = "ON";   //ВКЛ
 
-#define ALL_YES "  YES  " //ДА
-#define ALL_NO  "  NO  " //НЕТ
+const char ALL_YES[] PROGMEM = "  YES  "; //ДА
+const char ALL_NO [] PROGMEM = "  NO  "; //НЕТ
 
 //Главные экраны ФОН/ДОЗА
-#define MAIN_SCREEN_BACK "Back" //Фон
-#define MAIN_SCREEN_DOSE "Dose" //Доза
+const char MAIN_SCREEN_BACK[] PROGMEM = "Back"; //Фон
+const char MAIN_SCREEN_DOSE[] PROGMEM = "Dose"; //Доза
 
-#define MAIN_SCREEN_BACK_MIN "MIN:" //МИН:
-#define MAIN_SCREEN_BACK_MAX "MAX:" //МАКС:
+const char MAIN_SCREEN_BACK_MIN[] PROGMEM = "MIN:"; //МИН:
+const char MAIN_SCREEN_BACK_MAX[] PROGMEM = "MAX:"; //МАКС:
 
-#define MAIN_SCREEN_CURRENT_DOSE_ALL "ALL:" //ВСЕГО:
+const char MAIN_SCREEN_CURRENT_DOSE_ALL[] PROGMEM = "ALL:"; //ВСЕГО:
 
-#define MAIN_SCREEN_DOSE_DAYS "d" //д
-#define MAIN_SCREEN_DOSE_HOURSE "h" //ч
-#define MAIN_SCREEN_DOSE_MINS "m" //м
+const char MAIN_SCREEN_DOSE_DAYS[] PROGMEM = "d"; //д
+const char MAIN_SCREEN_DOSE_HOURSE[] PROGMEM = "h"; //ч
+const char MAIN_SCREEN_DOSE_MINS[] PROGMEM = "m"; //м
 
-#define MAIN_SCREEN_DOSE_ACCUM "accum" //накоплено
-#define MAIN_SCREEN_DOSE_JUST_OVER "just over:" //всего за:
+const char MAIN_SCREEN_DOSE_ACCUM[] PROGMEM = "accum"; //накоплено
+const char MAIN_SCREEN_DOSE_JUST_OVER[] PROGMEM = "just over:"; //всего за:
 
 
 //Единицы измерения
-#define UNIT_COUNT_PER_SQUARE_CM "c/cm2" //ч/см2
+const char UNIT_COUNT_PER_SQUARE_CM[] PROGMEM = "c/cm2"; //ч/см2
 
-#define UNIT_UR "uR"     //мкР
-#define UNIT_UR_H "uR/h" //мкР/ч
-#define UNIT_MR "mR"      //мР
-#define UNIT_MR_H "mR/h"  //мР/ч
+const char UNIT_UR[] PROGMEM = "uR";      //мкР
+const char UNIT_UR_H[] PROGMEM = "uR/h";  //мкР/ч
+const char UNIT_MR[] PROGMEM = "mR";      //мР
+const char UNIT_MR_H[] PROGMEM = "mR/h";  //мР/ч
 
-#define UNIT_USV "uSv"    //мкЗ
-#define UNIT_USV_H "uSv/h"//мкЗ/ч
-#define UNIT_MSV "mSv"     //мЗ
-#define UNIT_MSV_H "mSv/h" //мЗ/ч
+const char UNIT_USV[] PROGMEM = "uSv";     //мкЗ
+const char UNIT_USV_H[] PROGMEM = "uSv/h"; //мкЗ/ч
+const char UNIT_MSV[] PROGMEM = "mSv";     //мЗ
+const char UNIT_MSV_H[] PROGMEM = "mSv/h"; //мЗ/ч
 
 #define FONT_DATA_NAME EngFont //Название шрифта
 #endif
