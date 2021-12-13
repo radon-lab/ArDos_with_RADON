@@ -74,34 +74,6 @@ _current_font cfont;
 
 inline void _LCD_Write(uint8_t data, uint8_t mode)
 {
-#if ROTATE_DISP
-  switch (mode) {
-    case LCD_COMMAND:
-      BIT_CLEAR(DC_PORT, DC_BIT);
-      for (uint8_t c = 0; c < 8; c++)
-      {
-        if (data & 0x80)
-          BIT_SET(MOSI_PORT, MOSI_BIT);
-        else
-          BIT_CLEAR(MOSI_PORT, MOSI_BIT);
-        data = data << 1;
-        pulseClock;
-      }
-      break;
-    case LCD_DATA:
-      BIT_SET(DC_PORT, DC_BIT);
-      for (uint8_t c = 0; c < 8; c++)
-      {
-        if (data & 0x01)
-          BIT_SET(MOSI_PORT, MOSI_BIT);
-        else
-          BIT_CLEAR(MOSI_PORT, MOSI_BIT);
-        data = data >> 1;
-        pulseClock;
-      }
-      break;
-  }
-#else
   switch (mode) {
     case LCD_COMMAND: BIT_CLEAR(DC_PORT, DC_BIT); break;
     case LCD_DATA: BIT_SET(DC_PORT, DC_BIT); break;
@@ -116,7 +88,6 @@ inline void _LCD_Write(uint8_t data, uint8_t mode)
     data = data << 1;
     pulseClock;
   }
-#endif
 }
 //-------------------------Инициализация дисплея----------------------------------------------------
 void InitLCD(void) //инициализация дисплея
