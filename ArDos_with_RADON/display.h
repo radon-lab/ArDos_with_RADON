@@ -9,8 +9,6 @@
 #define fontbyte(x) pgm_read_byte(&cfont.font[x])
 #define bitmapbyte(x) pgm_read_byte(&bitmap[x])
 
-#define bitmapdatatype const uint8_t*
-
 //------------------
 #define LEFT 0
 #define RIGHT 255
@@ -20,38 +18,37 @@
 #define LCD_DATA 1
 
 //основные команды
-#define PCD8544_POWERDOWN           0x04
-#define PCD8544_ENTRYMODE           0x02
+#define PCD8544_POWERDOWN 0x04
+#define PCD8544_ENTRYMODE 0x02
 #define PCD8544_EXTENDEDINSTRUCTION 0x01
-#define PCD8544_DISPLAYBLANK        0x00
-#define PCD8544_DISPLAYNORMAL       0x04
-#define PCD8544_DISPLAYALLON        0x01
-#define PCD8544_DISPLAYINVERTED     0x05
+#define PCD8544_DISPLAYBLANK 0x00
+#define PCD8544_DISPLAYNORMAL 0x04
+#define PCD8544_DISPLAYALLON 0x01
+#define PCD8544_DISPLAYINVERTED 0x05
 //основные инструкции
-#define PCD8544_FUNCTIONSET    0x20
+#define PCD8544_FUNCTIONSET 0x20
 #define PCD8544_DISPLAYCONTROL 0x08
-#define PCD8544_SETYADDR       0x40
-#define PCD8544_SETXADDR       0x80
+#define PCD8544_SETYADDR 0x40
+#define PCD8544_SETXADDR 0x80
 //внешние инструкции
 #define PCD8544_SETTEMP 0x04
 #define PCD8544_SETBIAS 0x10
-#define PCD8544_SETVOP  0x80
+#define PCD8544_SETVOP 0x80
 //установки дисплея
-#define LCD_BIAS     0x03  //0-7 (0x00-0x07)
-#define LCD_TEMP     0x02  //0-3 (0x00-0x03)
+#define LCD_BIAS 0x03  //0-7 (0x00-0x07)
+#define LCD_TEMP 0x02  //0-3 (0x00-0x03)
 #define LCD_CONTRAST 0x46  //0-127 (0x00-0x7F)
 
-uint8_t _lcd_buffer[504];
+uint8_t _lcd_buffer[504]; //буфер дисплея
 
-struct _current_font
-{
+struct _current_font {
   const uint8_t* font;
   uint8_t x_size;
   uint8_t y_size;
   uint8_t offset;
   uint8_t numchars;
   uint8_t inverted;
-};
+} cfont;
 
 void  initLcd(void);
 void  setContrast(uint8_t contrast);
@@ -65,29 +62,48 @@ void  print(const char *st, uint8_t x, uint8_t y, boolean mem = 0);
 void  printNumI(uint32_t num, uint8_t x, uint8_t y, uint8_t length = 0, char filler = ' ');
 void  printNumF(float num, uint8_t dec, uint8_t x, uint8_t y, char divider = '.', uint8_t length = 0, char filler = ' ');
 void  setFont(const uint8_t* font);
-void  drawBitmap(uint8_t x, uint8_t y, bitmapdatatype bitmap, uint8_t sx, uint8_t sy,  boolean inv = 0);
+void  drawBitmap(uint8_t x, uint8_t y, const uint8_t* bitmap, uint8_t sx, uint8_t sy,  boolean inv = 0);
 
 void  _LCD_Write(unsigned char data, unsigned char mode);
 void  _print_char(unsigned char c, uint8_t x, uint8_t row, uint8_t steps);
 
-_current_font cfont;
-
 inline void _LCD_Write(uint8_t data, uint8_t mode)
 {
+#if ROTATE_DISP
+  switch (mode) {
+    case LCD_COMMAND:
+      BIT_CLEAR(DC_PORT, DC_BIT);
+      for (uint8_t c = 0; c < 8; c++) {
+        if (data & 0x80) BIT_SET(MOSI_PORT, MOSI_BIT);
+        else BIT_CLEAR(MOSI_PORT, MOSI_BIT);
+        data <<= 0x01;
+        pulseClock;
+      }
+      break;
+
+    case LCD_DATA:
+      BIT_SET(DC_PORT, DC_BIT);
+      for (uint8_t c = 0; c < 8; c++) {
+        if (data & 0x01) BIT_SET(MOSI_PORT, MOSI_BIT);
+        else BIT_CLEAR(MOSI_PORT, MOSI_BIT);
+        data >>= 0x01;
+        pulseClock;
+      }
+      break;
+  }
+#else
   switch (mode) {
     case LCD_COMMAND: BIT_CLEAR(DC_PORT, DC_BIT); break;
     case LCD_DATA: BIT_SET(DC_PORT, DC_BIT); break;
   }
 
-  for (uint8_t c = 0; c < 8; c++)
-  {
-    if (data & 0x80)
-      BIT_SET(MOSI_PORT, MOSI_BIT);
-    else
-      BIT_CLEAR(MOSI_PORT, MOSI_BIT);
-    data = data << 1;
+  for (uint8_t c = 0; c < 8; c++) {
+    if (data & 0x80) BIT_SET(MOSI_PORT, MOSI_BIT);
+    else BIT_CLEAR(MOSI_PORT, MOSI_BIT);
+    data <<= 0x01;
     pulseClock;
   }
+#endif
 }
 //-------------------------Инициализация дисплея----------------------------------------------------
 void initLcd(void) //инициализация дисплея
@@ -161,6 +177,15 @@ void invertText(boolean mode) //инверсия текста
     case 1: cfont.inverted = 1; break;
   }
 }
+//-------------------------Установка шрифта----------------------------------------------------
+void setFont(const uint8_t* font) //установка шрифта
+{
+  cfont.font = font;
+  cfont.x_size = fontbyte(0);
+  cfont.y_size = fontbyte(1);
+  cfont.offset = fontbyte(2);
+  cfont.numchars = fontbyte(3);
+}
 //-------------------------Вывод текста----------------------------------------------------
 void print(const char *st, uint8_t x, uint8_t y, boolean mem) //вывод текста
 {
@@ -177,6 +202,7 @@ void print(const char *st, uint8_t x, uint8_t y, boolean mem) //вывод те�
     case RIGHT: x = 84 - (stl * cfont.x_size); break;
     case CENTER: x = (84 - (stl * cfont.x_size)) / 2; break;
   }
+  
   if (y % 8 == 0) {
     row = y / 8;
     steps = 0;
@@ -250,26 +276,15 @@ void _print_char(uint8_t c, uint8_t x, uint8_t row, uint8_t steps) //отрис�
     }
   }
 }
-//-------------------------Установка шрифта----------------------------------------------------
-void setFont(const uint8_t* font) //установка шрифта
-{
-  cfont.font = font;
-  cfont.x_size = fontbyte(0);
-  cfont.y_size = fontbyte(1);
-  cfont.offset = fontbyte(2);
-  cfont.numchars = fontbyte(3);
-}
 //-------------------------Отрисовка изображений----------------------------------------------------
-void drawBitmap(uint8_t x, uint8_t y, bitmapdatatype bitmap, uint8_t sx, uint8_t sy, boolean inv) //отрисовка изображений
+void drawBitmap(uint8_t x, uint8_t y, const uint8_t* bitmap, uint8_t sx, uint8_t sy, boolean inv) //отрисовка изображений
 {
   uint8_t starty, rows;
 
   starty = y / 8;
 
-  if (sy % 8 == 0)
-    rows = sy / 8;
-  else
-    rows = (sy / 8) + 1;
+  if (sy % 8 == 0) rows = sy / 8;
+  else rows = (sy / 8) + 1;
 
   for (uint8_t cy = 0; cy < rows; cy++) {
     uint16_t cell = (starty + cy) * 84 + x;

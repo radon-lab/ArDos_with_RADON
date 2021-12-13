@@ -1,3 +1,5 @@
+#include <avr/pgmspace.h>
+
 //Языки для локализации
 const char VERSION[] PROGMEM = "3.7.0"; //версия по
 
