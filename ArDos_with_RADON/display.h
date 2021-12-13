@@ -53,7 +53,7 @@ struct _current_font
   uint8_t inverted;
 };
 
-void  InitLCD(void);
+void  initLcd(void);
 void  setContrast(uint8_t contrast);
 void  enableSleep(void);
 void  disableSleep(uint8_t contrast);
@@ -90,7 +90,7 @@ inline void _LCD_Write(uint8_t data, uint8_t mode)
   }
 }
 //-------------------------Инициализация дисплея----------------------------------------------------
-void InitLCD(void) //инициализация дисплея
+void initLcd(void) //инициализация дисплея
 {
   resetLCD; //отправка команды ресет
   disableSleep(DEFAULT_CONTRAST); //инициализация дисплея
@@ -164,7 +164,7 @@ void invertText(boolean mode) //инверсия текста
 //-------------------------Вывод текста----------------------------------------------------
 void print(const char *st, uint8_t x, uint8_t y, boolean mem) //вывод текста
 {
-  uint8_t stl, row, steps;
+  uint8_t stl = 0, row = 0, steps = 0;
 
   for (uint8_t i = 0; i < 15; i++) {
     if (!((mem) ? (*(st + i)) : pgm_read_byte(st + i))) {
