@@ -346,13 +346,12 @@ int main(void)  //инициализация
   _WDT_enable(); //запускаем WatchDog
 
   _read_memory(); //проверка и чтение данных из памяти
-
   _rows_clear(); //очистка строк
-  _init_param(); //инициализация параметров
 
   ADC_enable(); //включение ADC
   _bat_check(); //опрос батареи
   _start_pump(); //первая накачка преобразователя
+  _init_param(); //инициализация параметров
 
   _rows_clear(); //очистка строк
   print(INTRO, CENTER, 32); //-=РАДОН=-
