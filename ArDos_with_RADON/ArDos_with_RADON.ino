@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.13
-  Версия программы RADON v3.7.1 low_pwr release 16.12.21 специально для проекта ArDos
+  Версия программы RADON v3.7.1 low_pwr release 17.12.21 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/ardos-dozimetr-prodolzhenie-temy-chast-%E2%84%962 и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -169,6 +169,16 @@ uint8_t TIME_FACT; //секундные интервалы 1
 #define TIME_FACT_20 38 //секундные интервалы 20
 #define TIME_FACT_21 40 //секундные интервалы 21
 
+enum {
+  KEY_NULL,        //кнопка не нажата
+  UP_KEY_PRESS,    //клик кнопкой вверх
+  UP_KEY_HOLD,     //удержание кнопки вверх
+  DOWN_KEY_PRESS,  //клик кнопкой вниз
+  DOWN_KEY_HOLD,   //удержание кнопки вниз
+  SEL_KEY_PRESS,   //клик кнопкой ок
+  SEL_KEY_HOLD     //удержание кнопки ок
+};
+
 //настройки основные
 struct Settings_1 {
   uint8_t contrast = DEFAULT_CONTRAST; //контрастность дисплея
@@ -307,6 +317,8 @@ float now = 0.00; //текущее соотношение ячеек сравн�
 float debug_coef = 0.00; //для  вывода общего коэффициента в дебаг
 #endif
 
+#define SAMPLS_SIZE(x) (sizeof(x) / 6) //количество семплов
+
 #define EEPROM_BLOCK_SETTINGS_MAIN (EEPROM_BLOCK_NULL)
 #define EEPROM_BLOCK_SETTINGS_BOOK (EEPROM_BLOCK_SETTINGS_MAIN + sizeof(mainSettings))
 #define EEPROM_BLOCK_SETTINGS_PUMP (EEPROM_BLOCK_SETTINGS_BOOK + sizeof(bookSettings))
@@ -332,7 +344,7 @@ int main(void)  //инициализация
   PWR_LCD_ON; //включаем питание дисплея
   LCD_ON; //разрешаем работу с диплеем
 
-  OK_INIT; //инициализация кнопки "ок"
+  SEL_INIT; //инициализация кнопки "ок"
   DOWN_INIT; //инициализация кнопки "вниз"
   UP_INIT; //инициализация кнопки "вверх"
 
@@ -362,7 +374,7 @@ int main(void)  //инициализация
   EICRA = 0b00001010; //настраиваем внешнее прерывание по спаду импульса на INT0 и INT1
   EIMSK = 0b00000001; //разрешаем внешнее прерывание INT0
 
-  _waint(FONT_TIME); //ждем
+  _wait(FONT_TIME); //ждем
 
   clrScr(); //очистка экрана
 
@@ -394,7 +406,7 @@ void _init_timers(void) //инициализация таймеров
   sei(); //разрешаем прерывания глобально
 }
 //------------------------Инициализация таймеров--------------------------------------------------
-void _waint(uint32_t timer) //инициализация таймеров
+void _wait(uint32_t timer) //инициализация таймеров
 {
   for (timer_millis = timer; timer_millis && !check_keys();) data_convert(); // ждем, преобразование данных
 }
@@ -414,7 +426,7 @@ void _read_memory(void) //проверка и чтение данных из п�
   for (uint8_t n = 0; n < sizeof(bookSettings); n++) checkCRC(&crc, *((uint8_t*)(&bookSettings) + n)); //рассчитываем контрольную сумму для настроек журнала
   for (uint8_t n = 0; n < sizeof(pumpSettings); n++) checkCRC(&crc, *((uint8_t*)(&pumpSettings) + n)); //рассчитываем контрольную сумму для настроек преобразователя
 
-  if (!OK_OUT || crc != EEPROM_ReadByte(EEPROM_BLOCK_CRC_STRUCT)) { //если зажата кнопка "ОК" или данные структур изменились
+  if (!SEL_OUT || crc != EEPROM_ReadByte(EEPROM_BLOCK_CRC_STRUCT)) { //если зажата кнопка "ОК" или данные структур изменились
     print(RES_RESET, CENTER, 0); //Сбросить
     print(RES_MAIN, CENTER, 8); //основные
     print(RES_SETTINGS_M, CENTER, 16); //настройки?
@@ -538,17 +550,17 @@ boolean dialogSwitch(void) //диалог выбора
       }
 
       switch (check_keys()) {
-        case 2: //Down key //сброс
+        case DOWN_KEY_PRESS: //Down key
           state = 0;
           updScreen = 0; //разрешаем обновления экрана
           break;
 
-        case 3: //Up key //доп.действие
+        case UP_KEY_PRESS: //Up key
           state = 1;
           updScreen = 0; //разрешаем обновления экрана
           break;
 
-        case 5: return state; //Select key //выбор режима
+        case SEL_KEY_PRESS: return state; //Select key
       }
     }
   }
@@ -1028,11 +1040,11 @@ uint8_t _init_accur(uint32_t num) //расчет точности замера
 void low_pwr(void) //режим пониженного энергопотребления
 {
   if (mainSettings.sleep_switch == 2 && power_manager) { //если сон разрешен и разрешено энергосбережение
-    if (TIMSK1 || TIMSK2 || TIMSK0) waint_pwr(); //если включен бузер или шим подсветки или индикация частиц - режим ожидания
+    if (TIMSK1 || TIMSK2 || TIMSK0) wait_pwr(); //если включен бузер или шим подсветки или индикация частиц - режим ожидания
     else if (sleep && power_manager == 2) _sleep_pwr(); //если спим и разрешено глубокое энергосбережение
     else save_pwr(); //иначе - режим энергосбережения
   }
-  else waint_pwr(); //иначе - режим ожидания
+  else wait_pwr(); //иначе - режим ожидания
 
   if (rad_back > RAD_SLEEP_OUT) cnt_pwr = 0; //если фон выше установленного предела - просыпаемся
 
@@ -1067,7 +1079,7 @@ void sleep_out(void) //выход из сна
   }
 }
 //-------------------------------------Ожидание--------------------------------------------------------
-void waint_pwr(void) //ожидание
+void wait_pwr(void) //ожидание
 {
   SMCR = (0x0 << 1) | (1 << SE);  //устанавливаем режим сна idle
 
@@ -1129,7 +1141,7 @@ void power_down(void) //выключение устройства
     _sleep_pwr(); //спим
 
     uint16_t startDellay = POWER_ON_TIME; //устанавливаем таймер
-    while (!OK_OUT) { //если кнопка не отжата
+    while (!SEL_OUT) { //если кнопка не отжата
       if (startDellay) { //если время не истекло
         _delay_ms(1); //ждем 1мс
         startDellay--; //отнимаем от таймера 1 мс
@@ -1143,7 +1155,7 @@ void power_down(void) //выключение устройства
           _init_logo(); //вывод логотипа
           _start_pump(); //первая накачка преобразователя
 
-          while (!OK_OUT); //ждем пока отпустят кнопу
+          while (!SEL_OUT); //ждем пока отпустят кнопу
 
           _wdt_enable(); //запускаем WatchDog с пределителем 2
           EIMSK = 0b00000001; //разрешаем внешнее прерывание INT0
@@ -1244,7 +1256,7 @@ uint8_t check_keys(void) //проверка кнопок
 
   switch (btn_switch) { //переключаемся в зависимости от состояния мультиопроса
     case 0:
-      if (!OK_OUT) { //если нажата кл. ок
+      if (!SEL_OUT) { //если нажата кл. ок
         btn_switch = 1; //выбираем клавишу опроса
         btn_state = 0; //обновляем текущее состояние кнопки
       }
@@ -1258,7 +1270,7 @@ uint8_t check_keys(void) //проверка кнопок
       }
       else btn_state = 1; //обновляем текущее состояние кнопки
       break;
-    case 1: btn_state = OK_OUT; break; //опрашиваем клавишу ок
+    case 1: btn_state = SEL_OUT; break; //опрашиваем клавишу ок
     case 2: btn_state = DOWN_OUT; break; //опрашиваем клавишу вниз
     case 3: btn_state = UP_OUT; break; //опрашиваем клавишу вверх
   }
@@ -1293,22 +1305,22 @@ uint8_t check_keys(void) //проверка кнопок
   }
 
   switch (btn_set) { //переключаемся в зависимости от признака нажатия
-    case 0: return 0; //клавиша не нажата, возвращаем 0
+    case 0: return KEY_NULL; //клавиша не нажата, возвращаем 0
     case 1:
       btn_set = 0; //сбрасываем признак нажатия
       switch (btn_switch) { //переключаемся в зависимости от состояния мультиопроса
-        case 1: return 5; //ok press, возвращаем 5
-        case 2: return 2; //down press, возвращаем 2
-        case 3: return 3; //up press, возвращаем 3
+        case 1: return SEL_KEY_PRESS; //клик кнопкой ок
+        case 2: return DOWN_KEY_PRESS; //клик кнопкой вниз
+        case 3: return UP_KEY_PRESS; //клик кнопкой вверх
       }
       break;
 
     case 2:
       btn_set = 0; //сбрасываем признак нажатия
       switch (btn_switch) { //переключаемся в зависимости от состояния мультиопроса
-        case 1: return 6; //ok hold, возвращаем 6
-        case 2: return 1; //down hold, возвращаем 1
-        case 3: return 4; //up hold, возвращаем 4
+        case 1: return SEL_KEY_HOLD; //удержание кнопки ок
+        case 2: return DOWN_KEY_HOLD; //удержание кнопки вниз
+        case 3: return UP_KEY_HOLD; //удержание кнопки вверх
       }
       break;
   }
@@ -1333,17 +1345,16 @@ void measur_stop(void) //остановка замера
     }
 
     switch (check_keys()) {
-
-      case 2: //Down key
+      case DOWN_KEY_PRESS: //Down key
         n = 0;
         scr = 0; //разрешаем обновление экрана
         break;
-      case 3: //Up key
+      case UP_KEY_PRESS: //Up key
         n = 1;
         scr = 0; //разрешаем обновление экрана
         break;
 
-      case 5: //select key
+      case SEL_KEY_PRESS: //select key
         switch (n) {
           case 1:
             measur = 0; //выключаем замер
@@ -1383,7 +1394,7 @@ void measur_massege(void) //окончание замера
       data_convert(); //преобразование данных
       //==================================================================
 #if MEASUR_SOUND
-      _melody_chart(measur_sound, SAMPLS_MEASUR); //играем волшебную мелодию
+      _melody_chart(measur_sound, SAMPLS_SIZE(measur_sound)); //играем волшебную мелодию
 #endif
       //==================================================================
     }
@@ -1508,11 +1519,11 @@ void measur_menu(void) //режим замера
     //+++++++++++++++++++++  опрос кнопок  +++++++++++++++++++++++++++
     switch (check_keys())
     {
-      case 1: //Down key hold
+      case DOWN_KEY_HOLD: //Down key hold
         fast_light(); //быстрое включение подсветки
         break;
 
-      case 2: //Down key
+      case DOWN_KEY_PRESS: //Down key
         if (measur) measur_stop(); //если идет замер, спрашиваем нужно ли остановить замер
         else {
           measur = 0; //выключаем замер
@@ -1526,16 +1537,16 @@ void measur_menu(void) //режим замера
         scr = 0; //разрешаем обновления экрана
         break;
 
-      case 3: //Up key
+      case UP_KEY_PRESS: //Up key
         if (measur) measur_stop(); //если идет замер, спрашиваем нужно ли остановить замер
         scr = 0; //разрешаем обновления экрана
         break;
 
-      case 4: //Up key hold
+      case UP_KEY_HOLD: //Up key hold
         FLASH_SWITCH; //быстрое включение фонарика
         break;
 
-      case 5: //select key
+      case SEL_KEY_PRESS: //select key
         if (!measur) {
           measur = 1; //включаем замер
           next_measur = 0; //сбрасываем флаг следующего замера
@@ -1555,7 +1566,7 @@ void measur_menu(void) //режим замера
         scr = 0; //разрешаем обновления экрана
         break;
 
-      case 6: //hold select key
+      case SEL_KEY_HOLD: //hold select key
         if (measur) measur_stop(); //если идет замер, спрашиваем нужно ли остановить замер
         switch (measur) {
           case 0: return; //выходим в меню
@@ -1620,9 +1631,9 @@ void warn_messege(boolean set, uint8_t sound) //предупреждение
   }
   //==================================================================
   switch (sound) {
-    case 1: _melody_chart(warn_sound, SAMPLS_WARN); break; //играем волшебную мелодию
+    case 1: _melody_chart(warn_sound, SAMPLS_SIZE(warn_sound)); break; //играем волшебную мелодию
     case 2: _vibro_on(); break; //включаем вибрацию
-    case 3: _melody_chart(warn_sound, SAMPLS_WARN); _vibro_on(); break; //играем волшебную мелодию и включаем вибрацию
+    case 3: _melody_chart(warn_sound, SAMPLS_SIZE(warn_sound)); _vibro_on(); break; //играем волшебную мелодию и включаем вибрацию
   }
   //==================================================================
 }
@@ -1662,9 +1673,9 @@ void alarm_messege(boolean set, uint8_t sound, const char *mode) //тревог�
 
     //==================================================================
     switch (sound) {
-      case 1: _melody_chart(alarm_sound, SAMPLS_ALARM); break; //играем волшебную мелодию
+      case 1: _melody_chart(alarm_sound, SAMPLS_SIZE(alarm_sound)); break; //играем волшебную мелодию
       case 2: _vibro_on(); break; //включаем вибрацию
-      case 3: _melody_chart(alarm_sound, SAMPLS_ALARM); _vibro_on(); break; //играем волшебную мелодию и включаем вибрацию
+      case 3: _melody_chart(alarm_sound, SAMPLS_SIZE(alarm_sound)); _vibro_on(); break; //играем волшебную мелодию и включаем вибрацию
     }
     //==================================================================
 
@@ -1857,7 +1868,7 @@ void bat_massege(void) //сообщение об разряженной бата
       data_convert(); //преобразование данных
       //--------------------------------------------------------------------------------------
 #if BAT_LOW_SOUND
-      _melody_chart(bat_low_sound, SAMPLS_BAT_LOW); //играем волшебную мелодию
+      _melody_chart(bat_low_sound, SAMPLS_SIZE(bat_low_sound)); //играем волшебную мелодию
 #endif
       //--------------------------------------------------------------------------------------
     }
@@ -1962,7 +1973,7 @@ void search_menu(void) //инициализация режима поиск
         case 0:
           print(S_IMP_PER_SEC, RIGHT, 8); //имп/с
 #if (TYPE_CHAR_FILL > 44)
-          printNumF(rad_imp, (rad_imp < 100) ? 0 : 0, 54, 16, 46, 5, TYPE_CHAR_FILL); //строка 1
+          printNumF(rad_imp, (rad_imp < 100) ? 2 : 0, 54, 16, 46, 5, TYPE_CHAR_FILL); //строка 1
 #else
           printNumF(rad_imp, (rad_imp < 100) ? 2 : 0, 54, 16, 46, 5, 32); //строка 1
 #endif
@@ -1995,11 +2006,11 @@ void search_menu(void) //инициализация режима поиск
     }
     //+++++++++++++++++++++  опрос кнопок  +++++++++++++++++++++++++++
     switch (check_keys()) {
-      case 1: //Down key hold //вкл/выкл посветки
+      case DOWN_KEY_HOLD: //Down key hold //вкл/выкл посветки
         fast_light(); //быстрое включение посветки
         break;
 
-      case 2: //Down key //сброс
+      case DOWN_KEY_PRESS: //Down key //сброс
         rad_imp = 0; //сбрасываем имп/с
         rad_imp_m = 0; //сбрасываем имп/м
         rad_search = 0; //сбрасываем счет импульсов
@@ -2011,21 +2022,21 @@ void search_menu(void) //инициализация режима поиск
         graf = 0; //разрешаем обновления экрана
         break;
 
-      case 4: //Up key hold //вкл/выкл фонарика
+      case UP_KEY_HOLD: //Up key hold //вкл/выкл фонарика
         FLASH_SWITCH; //быстрое включение фонарика
         break;
 
-      case 3: //Up key //доп.действие
+      case UP_KEY_PRESS: //Up key //доп.действие
         search_disable = (search_disable) ? 0 : 1; //запрещаем обновление графика
         graf = 0; //разрешаем обновления экрана
         break;
 
-      case 5: //Select key //выбор режима
+      case SEL_KEY_PRESS: //Select key //выбор режима
         if (c < 2) c++; else c = 0;
         graf = 0; //разрешаем обновления экрана
         break;
 
-      case 6: //hold select key //настройки
+      case SEL_KEY_HOLD: //hold select key //настройки
         scan_buff = 0; //сбрасываем счетчик импульсов
         rad_buff[0] = 0; //сбрасываем счетчик импульсов
         search = 0; //сбрасываем флаг поиска
@@ -2109,15 +2120,15 @@ void parameters(void) //параметры
 
     switch (check_keys()) {
 #if DEBUG_RETURN
-      case 1: //Down key hold
-      case 4: //Up key hold
+      case DOWN_KEY_HOLD: //Down key hold
+      case UP_KEY_HOLD: //Up key hold
         debug(); //отладка
         time_out = 0; //сбрасывает авто-выход
         scr = 0; //разрешаем обновление экрана
         break;
 #endif
 
-      case 6: //hold select key //выход
+      case SEL_KEY_HOLD: //hold select key //выход
         scr = 0; //разрешаем обновление экрана
         return; //выход
     }
@@ -2139,7 +2150,7 @@ void debug(void) //отладка
 
 #if TIME_OUT_DEBUG
       if (++time_out > TIME_OUT_DEBUG) {
-        setings_save(1); //сохраняем настройки преобразователя
+        settings_save(1); //сохраняем настройки преобразователя
         error_switch = 0; //сбрасываем указатель ошибки
         scr = 0; //разрешаем обновления экрана
         return;
@@ -2184,15 +2195,15 @@ void debug(void) //отладка
 
     switch (check_keys()) {
 
-      case 1: //Down key hold
-      case 4: //Up key hold
+      case DOWN_KEY_HOLD: //Down key hold
+      case UP_KEY_HOLD: //Up key hold
         if (n == 1) {
           set = !set;
           pumpSettings.geiger_time = (uint8_t)pumpSettings.geiger_time;
         }
         break;
 
-      case 3: //Up key //нажатие
+      case UP_KEY_PRESS: //Up key //нажатие
         switch (n) {
           case 0: if (pumpSettings.wdt_period < MAX_WDT_PERIOD) pumpSettings.wdt_period++; break; //период
           case 1: if (pumpSettings.geiger_time < MAX_GEIGER_TIME) pumpSettings.geiger_time += (set) ? 0.1 : 1; if ((uint8_t)pumpSettings.geiger_time == 100) set = 0;  break; //счет
@@ -2205,7 +2216,7 @@ void debug(void) //отладка
         scr = 0; //разрешаем обновление экрана
         break;
 
-      case 2: //Down key //нажатие
+      case DOWN_KEY_PRESS: //Down key //нажатие
         switch (n) {
           case 0: if (pumpSettings.wdt_period > MIN_WDT_PERIOD) pumpSettings.wdt_period--; break; //период
           case 1: if (pumpSettings.geiger_time > MIN_GEIGER_TIME) pumpSettings.geiger_time -= (set) ? 0.1 : 1; if ((uint8_t)pumpSettings.geiger_time == 100) set = 1; break; //счет
@@ -2218,14 +2229,14 @@ void debug(void) //отладка
         scr = 0; //разрешаем обновление экрана
         break;
 
-      case 5: //select key //нажатие
+      case SEL_KEY_PRESS: //select key //нажатие
         if (++n > 5) n = 0;
         time_out = 0; //сбрасывает авто-выход
         scr = 0; //разрешаем обновление экрана
         break;
 
-      case 6: //hold select key ///выход в настройки
-        setings_save(1); //сохраняем настройки преобразователя
+      case SEL_KEY_HOLD: //hold select key ///выход в настройки
+        settings_save(1); //сохраняем настройки преобразователя
         error_switch = 0; //сбрасываем указатель ошибки
         scr = 0; //разрешаем обновление экрана
         return;
@@ -2233,7 +2244,7 @@ void debug(void) //отладка
   }
 }
 //------------------------------------Отрисовка пунктов------------------------------------------------------
-void _setings_item_switch(boolean set, boolean inv, uint8_t num, uint8_t pos) //отрисовка пунктов
+void _settings_item_switch(boolean set, boolean inv, uint8_t num, uint8_t pos) //отрисовка пунктов
 {
   uint8_t pos_row = (pos << 3) + 8; //переводим позицию в номер строки
 
@@ -2372,7 +2383,7 @@ void _setings_item_switch(boolean set, boolean inv, uint8_t num, uint8_t pos) //
   invertText(false); //выключаем инверсию
 }
 //------------------------------------Прибавление данных------------------------------------------------------
-void _setings_data_up(uint8_t pos) //прибавление данных
+void _settings_data_up(uint8_t pos) //прибавление данных
 {
   switch (pos)
   {
@@ -2421,7 +2432,7 @@ void _setings_data_up(uint8_t pos) //прибавление данных
   }
 }
 //------------------------------------Убавление данных------------------------------------------------------
-void _setings_data_down(uint8_t pos) //убавление данных
+void _settings_data_down(uint8_t pos) //убавление данных
 {
   switch (pos)
   {
@@ -2463,7 +2474,7 @@ void _setings_data_down(uint8_t pos) //убавление данных
   }
 }
 //------------------------------------Настройки------------------------------------------------------
-void setings(void) //настройки
+void settings(void) //настройки
 {
   uint8_t n = 0; //позиция
   uint8_t c = 0; //курсор
@@ -2480,30 +2491,30 @@ void setings(void) //настройки
 
 #if TIME_OUT_SETTINGS
       if (++time_out > TIME_OUT_SETTINGS) {
-        setings_save(0); //сохраняем настройки
+        settings_save(0); //сохраняем настройки
         scr = 0; //разрешаем обновления экрана
         return;
       }
 #endif
 
       clrScr(); // Очистка экрана
-      task_bar(S_SETINGS); //отрисовываем фон
+      task_bar(S_SETTINGS); //отрисовываем фон
 
       for (uint8_t i = 0; i < 5; i++) { //отсчет строк
         for (uint8_t r = 0; r < 2; r++) { //отсчет позиции
           boolean inv = (i == c && r == set); //если курсор на нужной строке
-          _setings_item_switch(r, inv, n - c + i, i); //отрисовываем пункты настроек
+          _settings_item_switch(r, inv, n - c + i, i); //отрисовываем пункты настроек
         }
       }
       showScr(); //вывод буфера на экран
     }
     //+++++++++++++++++++++  опрос кнопок  +++++++++++++++++++++++++++
     switch (check_keys()) {
-      case 1: //Down key hold //вкл/выкл посветки
+      case DOWN_KEY_HOLD: //Down key hold //вкл/выкл посветки
         fast_light(); //быстрое включение посветки
         break;
 
-      case 2: //Down key //вниз
+      case DOWN_KEY_PRESS: //Down key //вниз
         switch (set) {
           case 0:
             if (n < 16 + USE_UART) { //изменяем позицию
@@ -2515,13 +2526,13 @@ void setings(void) //настройки
               c = 0;
             }
             break;
-          case 1: _setings_data_down(n); break; //убавление данных
+          case 1: _settings_data_down(n); break; //убавление данных
         }
         time_out = 0; //сбрасываем авто-выход
         scr = 0; //разрешаем обновления экрана
         break;
 
-      case 3: //Up key  //вверх
+      case UP_KEY_PRESS: //Up key  //вверх
         switch (set) {
           case 0:
             if (n > 0) { //изменяем позицию
@@ -2533,24 +2544,24 @@ void setings(void) //настройки
               c = 4;
             }
             break;
-          case 1: _setings_data_up(n); break; //прибавление данных
+          case 1: _settings_data_up(n); break; //прибавление данных
         }
         time_out = 0; //сбрасываем авто-выход
         scr = 0; //разрешаем обновления экрана
         break;
 
-      case 4: //Up key hold //вкл/выкл фонарика
+      case UP_KEY_HOLD: //Up key hold //вкл/выкл фонарика
         FLASH_SWITCH; //быстрое включение фонарика
         break;
 
-      case 5: //select key //выбор
+      case SEL_KEY_PRESS: //select key //выбор
         set = (set) ? 0 : 1;
         time_out = 0; //сбрасываем авто-выход
         scr = 0; //разрешаем обновления экрана
         break;
 
-      case 6: //hold select key //выход из настроек
-        setings_save(0); //сохраняем настройки
+      case SEL_KEY_HOLD: //hold select key //выход из настроек
+        settings_save(0); //сохраняем настройки
         scr = 0; //разрешаем обновления экрана
         return;
     }
@@ -2571,7 +2582,7 @@ void _menu_item_switch(boolean inv, uint8_t num, uint8_t pos) //отрисовк
     case 1: print(MAIN_SEARCH, CENTER, pos_row); break; //Режим поиска
     case 2: print(MAIN_MEASUR, CENTER, pos_row); break; //Замер бета
     case 3: print(MAIN_LOGBOOK, CENTER, pos_row); break; //Журнал
-    case 4: print(MAIN_SETINGS, CENTER, pos_row); break; //Настройки
+    case 4: print(MAIN_SETTINGS, CENTER, pos_row); break; //Настройки
     case 5: print(MAIN_PARAM, CENTER, pos_row); break; //Параметры
     case 6: print(MAIN_POWER_DOWN, CENTER, pos_row); break; //Выключение
   }
@@ -2611,11 +2622,11 @@ void menu(void) //меню
     }
     //+++++++++++++++++++++  опрос кнопок  +++++++++++++++++++++++++++
     switch (check_keys()) {
-      case 1: //Down key hold //вкл/выкл посветки
+      case DOWN_KEY_HOLD: //Down key hold //вкл/выкл посветки
         fast_light(); //быстрое включение посветки
         break;
 
-      case 2: //Down key //вниз
+      case DOWN_KEY_PRESS: //Down key //вниз
         if (n < 6) { //изменяем позицию
           n++;
           if (c < 4) c++; //изменяем положение курсора
@@ -2628,7 +2639,7 @@ void menu(void) //меню
         scr = 0; //разрешаем обновления экрана
         break;
 
-      case 3: //Up key  //вверх
+      case UP_KEY_PRESS: //Up key  //вверх
         if (n > 0) { //изменяем позицию
           n--;
           if (c > 0) c--; //изменяем положение курсора
@@ -2641,11 +2652,11 @@ void menu(void) //меню
         scr = 0; //разрешаем обновления экрана
         break;
 
-      case 4: //Up key hold //вкл/выкл фонарика
+      case UP_KEY_HOLD: //Up key hold //вкл/выкл фонарика
         FLASH_SWITCH; //быстрое включение фонарика
         break;
 
-      case 5: //select key //выбор
+      case SEL_KEY_PRESS: //select key //выбор
         switch (n) {
           case 0:
             sleep_disable = 0; //разрешаем сон
@@ -2654,7 +2665,7 @@ void menu(void) //меню
           case 1: search_menu(); break;
           case 2: measur_menu(); break;
           case 3: logbook(); break;
-          case 4: setings(); break;
+          case 4: settings(); break;
           case 5: parameters(); break;
           case 6: power_down(); scr = 0; return;
         }
@@ -2662,7 +2673,7 @@ void menu(void) //меню
         scr = 0; //разрешаем обновления экрана
         break;
 
-      case 6: //hold select key //выход к главным экранам
+      case SEL_KEY_HOLD: //hold select key //выход к главным экранам
         sleep_disable = 0; //разрешаем сон
         scr = 0; //разрешаем обновления экрана
         return;
@@ -2680,10 +2691,10 @@ void _logbook_settings(boolean inv, uint8_t num, uint8_t pos) //отрисовк
   }
 
   switch (num) {
-    case 0: print(L_SETINGS_ALARM, LEFT, pos_row); if (bookSettings.logbook_alarm) print(ALL_SWITCH_ON, RIGHT, pos_row); else print(ALL_SWITCH_OFF, RIGHT, pos_row); break; //Тревога
-    case 1: print(L_SETINGS_WARN, LEFT, pos_row); if (bookSettings.logbook_warn) print(ALL_SWITCH_ON, RIGHT, pos_row); else print(ALL_SWITCH_OFF, RIGHT, pos_row); break; //Опасность
-    case 2: print(L_SETINGS_MEASUR, LEFT, pos_row); if (bookSettings.logbook_measur) print(ALL_SWITCH_ON, RIGHT, pos_row); else print(ALL_SWITCH_OFF, RIGHT, pos_row); break; //Замеры бета
-    case 3: print(L_SETINGS_CLEAR, CENTER, pos_row); break; //Очистить
+    case 0: print(L_SETTINGS_ALARM, LEFT, pos_row); if (bookSettings.logbook_alarm) print(ALL_SWITCH_ON, RIGHT, pos_row); else print(ALL_SWITCH_OFF, RIGHT, pos_row); break; //Тревога
+    case 1: print(L_SETTINGS_WARN, LEFT, pos_row); if (bookSettings.logbook_warn) print(ALL_SWITCH_ON, RIGHT, pos_row); else print(ALL_SWITCH_OFF, RIGHT, pos_row); break; //Опасность
+    case 2: print(L_SETTINGS_MEASUR, LEFT, pos_row); if (bookSettings.logbook_measur) print(ALL_SWITCH_ON, RIGHT, pos_row); else print(ALL_SWITCH_OFF, RIGHT, pos_row); break; //Замеры бета
+    case 3: print(L_SETTINGS_CLEAR, CENTER, pos_row); break; //Очистить
   }
   invertText(false); //выключаем инверсию
 }
@@ -2702,7 +2713,7 @@ void _logbook_item_switch(boolean inv, uint8_t num, uint8_t pos) //отрисо�
     case 1: print(L_ITEM_WARN, CENTER, pos_row); if (bookSettings.logbook_warn == 2) print(L_ITEM_ASTER, RIGHT, pos_row); break; //Опасность
     case 2: print(L_ITEM_MEASUR, CENTER, pos_row); if (bookSettings.logbook_measur == 2) print(L_ITEM_ASTER, RIGHT, pos_row); break; //Замеры бета
     case 3: print(L_ITEM_ERRORS, CENTER, pos_row); if (error_switch) print(L_ITEM_ASTER, RIGHT, pos_row); break; //Ошибки
-    case 4: print(L_ITEM_SETINGS, CENTER, pos_row); break; //Настройки
+    case 4: print(L_ITEM_SETTINGS, CENTER, pos_row); break; //Настройки
   }
   invertText(false); //выключаем инверсию
 }
@@ -2844,11 +2855,11 @@ void logbook(void) //журнал
     }
     //+++++++++++++++++++++  опрос кнопок  +++++++++++++++++++++++++++
     switch (check_keys()) {
-      case 1: //Down key hold //вкл/выкл посветки
+      case DOWN_KEY_HOLD: //Down key hold //вкл/выкл посветки
         fast_light(); //быстрое включение посветки
         break;
 
-      case 2: //Down key //вниз
+      case DOWN_KEY_PRESS: //Down key //вниз
         if (n < max_item) { //изменяем позицию
           n++;
           if (c < 4) c++; //изменяем положение курсора
@@ -2861,7 +2872,7 @@ void logbook(void) //журнал
         scr = 0; //разрешаем обновления экрана
         break;
 
-      case 3: //Up key  //вверх
+      case UP_KEY_PRESS: //Up key  //вверх
         if (n > 0) { //изменяем позицию
           n--;
           if (c > 0) c--; //изменяем положение курсора
@@ -2874,11 +2885,11 @@ void logbook(void) //журнал
         scr = 0; //разрешаем обновления экрана
         break;
 
-      case 4: //Up key hold //вкл/выкл фонарика
+      case UP_KEY_HOLD: //Up key hold //вкл/выкл фонарика
         FLASH_SWITCH; //быстрое включение фонарика
         break;
 
-      case 5: //select key //выбор
+      case SEL_KEY_PRESS: //select key //выбор
         switch (p) {
           case 0:
             p = n + 1;
@@ -2905,11 +2916,11 @@ void logbook(void) //журнал
         scr = 0; //разрешаем обновления экрана
         break;
 
-      case 6: //hold select key //выход к главным экранам
+      case SEL_KEY_HOLD: //hold select key //выход к главным экранам
         scr = 0; //разрешаем обновления экрана
         switch (p) {
           case 0: return;
-          case 5: setings_save(2); n = c = p - 1; p = 0; max_item = 4; break; //сохраняем настройки
+          case 5: settings_save(2); n = c = p - 1; p = 0; max_item = 4; break; //сохраняем настройки
           default: n = c = p - 1; p = err_sw = 0; max_item = 4; break;
         }
         break;
@@ -2944,11 +2955,11 @@ void logbook(void) //журнал
     }
     //+++++++++++++++++++++  опрос кнопок  +++++++++++++++++++++++++++
     switch (check_keys()) {
-      case 1: //Down key hold //вкл/выкл посветки
+      case DOWN_KEY_HOLD: //Down key hold //вкл/выкл посветки
         fast_light(); //быстрое включение посветки
         break;
 
-      case 2: //Down key //вниз
+      case DOWN_KEY_PRESS: //Down key //вниз
         if (n < 9) { //изменяем позицию
           n++;
           if (c < 4) c++; //изменяем положение курсора
@@ -2961,7 +2972,7 @@ void logbook(void) //журнал
         scr = 0; //разрешаем обновления экрана
         break;
 
-      case 3: //Up key  //вверх
+      case UP_KEY_PRESS: //Up key  //вверх
         if (n > 0) { //изменяем позицию
           n--;
           if (c > 0) c--; //изменяем положение курсора
@@ -2974,17 +2985,17 @@ void logbook(void) //журнал
         scr = 0; //разрешаем обновления экрана
         break;
 
-      case 4: //Up key hold //вкл/выкл фонарика
+      case UP_KEY_HOLD: //Up key hold //вкл/выкл фонарика
         FLASH_SWITCH; //быстрое включение фонарика
         break;
 
-      case 5: //select key //выбор
+      case SEL_KEY_PRESS: //select key //выбор
         data_reset(2); //очистка журнала
         time_out = 0; //сбрасываем авто-выход
         scr = 0; //разрешаем обновления экрана
         break;
 
-      case 6: //hold select key //выход к главным экранам
+      case SEL_KEY_HOLD: //hold select key //выход к главным экранам
         scr = 0; //разрешаем обновления экрана
         return;
     }
@@ -3107,7 +3118,7 @@ void error_messege(void) //сообщение об ошибке
     for (timer_millis = ERROR_MASSEGE_TIME; timer_millis;) { //ждем
       data_convert(); //преобразование данных
       //==================================================================
-      _melody_chart(error_sound, SAMPLS_ERROR); //играем волшебную мелодию
+      _melody_chart(error_sound, SAMPLS_SIZE(error_sound)); //играем волшебную мелодию
       //==================================================================
       if (check_keys()) {
         error_switch = 0; //сбрасываем флаг ошибки
@@ -3221,18 +3232,18 @@ void data_reset(uint8_t sw) //сброс текущей дозы
 
     switch (check_keys()) {
 
-      case 2: //Down key
+      case DOWN_KEY_PRESS: //Down key
         state = 0;
         time_out = 0; //сбрасывает авто-выход
         scr = 0; //разрешаем обновления экрана
         break;
-      case 3: //Up key
+      case UP_KEY_PRESS: //Up key
         state = 1;
         time_out = 0; //сбрасывает авто-выход
         scr = 0; //разрешаем обновления экрана
         break;
 
-      case 5: //select key
+      case SEL_KEY_PRESS: //select key
         switch (state) {
           case 1:
             clrScr(); //очистка экрана
@@ -3274,7 +3285,7 @@ void data_reset(uint8_t sw) //сброс текущей дозы
                 print(R_SUCC_CLEAR, CENTER, 24); //очищен!
                 break;
             }
-            _waint(MASSEGE_TIME); //ждем
+            _wait(MASSEGE_TIME); //ждем
             sleep_disable = 0; //разрешаем сон
             return;
 
@@ -3287,7 +3298,7 @@ void data_reset(uint8_t sw) //сброс текущей дозы
   }
 }
 //---------------------------------------Сохранить настройки--------------------------------------------
-void setings_save(uint8_t sw) //сохранить настройки
+void settings_save(uint8_t sw) //сохранить настройки
 {
   boolean state = 0; //курсор
   uint8_t time_out = 0; //таймер автовыхода
@@ -3310,7 +3321,7 @@ void setings_save(uint8_t sw) //сохранить настройки
 
   clrScr(); //очистка экрана
   print(W_SAVE, CENTER, 8); //Сохранить
-  print(W_SETINGS, CENTER, 16); //настройки?
+  print(W_SETTINGS, CENTER, 16); //настройки?
 
   while (1) {
     data_convert(); //преобразование данных
@@ -3338,22 +3349,22 @@ void setings_save(uint8_t sw) //сохранить настройки
     }
 
     switch (check_keys()) {
-      case 2: //Down key
+      case DOWN_KEY_PRESS: //Down key
         state = 0;
         time_out = 0; //сбрасывает авто-выход
         scr = 0; //разрешаем обновления экрана
         break;
-      case 3: //Up key
+      case UP_KEY_PRESS: //Up key
         state = 1;
         time_out = 0; //сбрасывает авто-выход
         scr = 0; //разрешаем обновления экрана
         break;
 
-      case 5: //select key
+      case SEL_KEY_PRESS: //select key
         switch (state) {
           case 1:
             clrScr(); //очистка экрана
-            print(W_SETINGS_SUCC, CENTER, 16); //Настройки
+            print(W_SETTINGS_SUCC, CENTER, 16); //Настройки
             print(W_SAVE_SUCC, CENTER, 24); //Сохранены!
             switch (sw) {
               case 0: updateData((uint8_t*)&mainSettings, sizeof(mainSettings), EEPROM_BLOCK_SETTINGS_MAIN, EEPROM_BLOCK_CRC_MAIN); BUZZ_VOL_SET(mainSettings.volume); break; //обновляем настройки
@@ -3364,7 +3375,7 @@ void setings_save(uint8_t sw) //сохранить настройки
               case 2: updateData((uint8_t*)&bookSettings, sizeof(bookSettings), EEPROM_BLOCK_SETTINGS_PUMP, EEPROM_BLOCK_CRC_BOOK); break; //обновляем настройки
 #endif
             }
-            _waint(MASSEGE_TIME); //ждем
+            _wait(MASSEGE_TIME); //ждем
             scr = 0; //разрешаем обновления экрана
             return;
 
@@ -3480,9 +3491,9 @@ uint8_t _rads_unit(boolean set, boolean unit, uint8_t unit_x, uint8_t unit_y) //
   }
 }
 //----------------------------------Индикация тревоги------------------------------------------------
-void _alarm_init(uint8_t waint, uint8_t alarm) //индикация тревоги
+void _alarm_init(uint8_t wait, uint8_t alarm) //индикация тревоги
 {
-  if (waint) drawBitmap(60, 0, beep_alt_waint_img, 7, 8); //если ждем понижения фона
+  if (wait) drawBitmap(60, 0, beep_alt_wait_img, 7, 8); //если ждем понижения фона
   else {
     switch (alarm) //если тревога запрещена
     {
@@ -3549,7 +3560,7 @@ void main_screen(void)
     drawBitmap(43, 0, font_sound_img, 4, 8); //устанавлваем фон тревоги
     if (mainSettings.buzz_switch && !mainSettings.knock_disable) drawBitmap(47, 0, buzz_alt_on_img, 7, 8); //если щелчки и зв.кнопок включен
     else if (mainSettings.buzz_switch) drawBitmap(47, 0, buzz_alt_img, 7, 8); //если щелчки включены и зв.кнопок выключен
-    else if (!mainSettings.knock_disable) drawBitmap(47, 0, beep_alt_waint_img, 7, 8); //если щелчки выключены и зв.кнопок включен
+    else if (!mainSettings.knock_disable) drawBitmap(47, 0, beep_alt_wait_img, 7, 8); //если щелчки выключены и зв.кнопок включен
     else drawBitmap(47, 0, buzz_alt_off_img, 7, 8); //иначе выключено все
 
 #if LOGBOOK_RETURN
@@ -3659,11 +3670,11 @@ void main_screen(void)
 
   //+++++++++++++++++++++  опрос кнопок  +++++++++++++++++++++++++++
   switch (check_keys()) {
-    case 1: //Down key hold //вкл/выкл посветки
+    case DOWN_KEY_HOLD: //Down key hold //вкл/выкл посветки
       if (!alarm_switch) fast_light(); //быстрое включение посветки
       break;
 
-    case 2: //Down key //сброс
+    case DOWN_KEY_PRESS: //Down key //сброс
       switch (alarm_switch) { //режим тревоги
         case 0:
           switch (scr_mode) { //основные экраны
@@ -3691,7 +3702,7 @@ void main_screen(void)
       scr = 0; //разрешаем обновления экрана
       break;
 
-    case 3: //Up key //доп.действие
+    case UP_KEY_PRESS: //Up key //доп.действие
       switch (alarm_switch) { //режим тревоги
         case 0:
           switch (scr_mode) { //основные экраны
@@ -3705,11 +3716,11 @@ void main_screen(void)
       scr = 0; //разрешаем обновления экрана
       break;
 
-    case 4: //Up key hold //вкл/выкл фонарика
+    case UP_KEY_HOLD: //Up key hold //вкл/выкл фонарика
       if (!alarm_switch) FLASH_SWITCH; //быстрое включение фонарика
       break;
 
-    case 5: //Select key //выбор режима
+    case SEL_KEY_PRESS: //Select key //выбор режима
       switch (alarm_switch) { //режим тревоги
         case 0: scr_mode = !scr_mode; break; //переключение фон/доза
         case 3: warn_back_wait = 1; alarm_switch = 0; _vibro_off(); buzz_ret(); break; //фон
@@ -3718,7 +3729,7 @@ void main_screen(void)
       scr = 0; //разрешаем обновления экрана
       break;
 
-    case 6: //hold select key //настройки
+    case SEL_KEY_HOLD: //hold select key //настройки
       if (!alarm_switch) menu(); //если нет тревоги
       scr = 0; //разрешаем обновления экрана
       break;

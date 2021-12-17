@@ -85,7 +85,7 @@ const char D_WDT_PER[] PROGMEM = "GTH"; //ПЕР
 const char D_GEIGER_TIME[] PROGMEM = "CX"; //СЧ
 
 //Настройки
-const char S_SETINGS[] PROGMEM = "Yfcnhjqrb"; //Настройки
+const char S_SETTINGS[] PROGMEM = "Yfcnhjqrb"; //Настройки
 
 const char S_ITEM_SLEEP[] PROGMEM = "Cjy&"; //Сон:
 const char S_ITEM_LIGHT[] PROGMEM = "Gjlcdtnrf&"; //Подсветка:
@@ -121,7 +121,7 @@ const char MAIN_BACK_DOSE[] PROGMEM = "Ajy | Ljpf"; //Фон / Доза
 const char MAIN_SEARCH[] PROGMEM = "Ht;bv gjbcrf"; //Режим поиска
 const char MAIN_MEASUR[] PROGMEM = "Pfvth ,tnf"; //Замер бета
 const char MAIN_LOGBOOK[] PROGMEM = ":ehyfk"; //Журнал
-const char MAIN_SETINGS[] PROGMEM = "Yfcnhjqrb"; //Настройки
+const char MAIN_SETTINGS[] PROGMEM = "Yfcnhjqrb"; //Настройки
 const char MAIN_PARAM[] PROGMEM = "Gfhfvtnhs"; //Параметры
 const char MAIN_POWER_DOWN[] PROGMEM = "Dsrk/xtybt"; //Выключение
 
@@ -138,13 +138,13 @@ const char L_ITEM_ALARM[] PROGMEM = "Nhtdjuf"; //Тревога
 const char L_ITEM_WARN[] PROGMEM = "Jgfcyjcnm"; //Опасность
 const char L_ITEM_MEASUR[] PROGMEM = "Pfvths ,tnf"; //Замеры бета
 const char L_ITEM_ERRORS[] PROGMEM = "Jib,rb"; //Ошибки
-const char L_ITEM_SETINGS[] PROGMEM = "Yfcnhjqrb"; //Настройки
+const char L_ITEM_SETTINGS[] PROGMEM = "Yfcnhjqrb"; //Настройки
 const char L_ITEM_ASTER[] PROGMEM = "*"; //*
 
-const char L_SETINGS_ALARM[] PROGMEM = "Nhtdjuf&"; //Тревога:
-const char L_SETINGS_WARN[] PROGMEM = "Jgfcyjcnm&"; //Опасность:
-const char L_SETINGS_MEASUR[] PROGMEM = "Pfvths&"; //Замеры:
-const char L_SETINGS_CLEAR[] PROGMEM = "Jxbcnbnm"; //Очистить
+const char L_SETTINGS_ALARM[] PROGMEM = "Nhtdjuf&"; //Тревога:
+const char L_SETTINGS_WARN[] PROGMEM = "Jgfcyjcnm&"; //Опасность:
+const char L_SETTINGS_MEASUR[] PROGMEM = "Pfvths&"; //Замеры:
+const char L_SETTINGS_CLEAR[] PROGMEM = "Jxbcnbnm"; //Очистить
 
 //Ошибки
 const char E_ERROR[] PROGMEM = " - JIB<RF - "; //- ОШИБКА -
@@ -177,9 +177,9 @@ const char R_SUCC_CLEAR[] PROGMEM = "jxboty!"; //очищен!
 
 //Сохранение настроек
 const char W_SAVE[] PROGMEM = "Cj[hfybnm";     //Сохранить
-const char W_SETINGS[] PROGMEM = "yfcnhjqrb?"; //настройки?
+const char W_SETTINGS[] PROGMEM = "yfcnhjqrb?"; //настройки?
 
-const char W_SETINGS_SUCC[] PROGMEM = "Yfcnhjqrb"; //Настройки
+const char W_SETTINGS_SUCC[] PROGMEM = "Yfcnhjqrb"; //Настройки
 const char W_SAVE_SUCC[] PROGMEM = "Cj[hfytys!";   //сохранены!
 
 //Общие символы
@@ -303,7 +303,7 @@ const char D_WDT_PER[] PROGMEM = "WDT"; //ПЕР
 const char D_GEIGER_TIME[] PROGMEM = "GT"; //СЧ
 
 //Настройки
-const char S_SETINGS[] PROGMEM = "Settings"; //Настройки
+const char S_SETTINGS[] PROGMEM = "Settings"; //Настройки
 
 const char S_ITEM_SLEEP[] PROGMEM = "Sleep:"; //Сон:
 const char S_ITEM_LIGHT[] PROGMEM = "Light:"; //Подсветка:
@@ -339,7 +339,7 @@ const char MAIN_BACK_DOSE[] PROGMEM = "Back / Dose"; //Фон / Доза
 const char MAIN_SEARCH[] PROGMEM = "Search mode"; //Режим поиска
 const char MAIN_MEASUR[] PROGMEM = "Measur mode"; //Замер бета
 const char MAIN_LOGBOOK[] PROGMEM = "Logbook"; //Журнал
-const char MAIN_SETINGS[] PROGMEM = "Settings"; //Настройки
+const char MAIN_SETTINGS[] PROGMEM = "Settings"; //Настройки
 const char MAIN_PARAM[] PROGMEM = "Parametrs"; //Параметры
 const char MAIN_POWER_DOWN[] PROGMEM = "Turn off"; //Выключение
 
@@ -356,13 +356,13 @@ const char L_ITEM_ALARM[] PROGMEM = "Alarm"; //Тревога
 const char L_ITEM_WARN[] PROGMEM = "Warning"; //Опасность
 const char L_ITEM_MEASUR[] PROGMEM = "Measuring"; //Замеры бета
 const char L_ITEM_ERRORS[] PROGMEM = "Errors"; //Ошибки
-const char L_ITEM_SETINGS[] PROGMEM = "Settings"; //Настройки
+const char L_ITEM_SETTINGS[] PROGMEM = "Settings"; //Настройки
 const char L_ITEM_ASTER[] PROGMEM = "*"; //*
 
-const char L_SETINGS_ALARM[] PROGMEM = "Alarm:"; //Тревога:
-const char L_SETINGS_WARN[] PROGMEM = "Warning:"; //Опасность:
-const char L_SETINGS_MEASUR[] PROGMEM = "Measur:"; //Замеры:
-const char L_SETINGS_CLEAR[] PROGMEM = "Clear book"; //Очистить
+const char L_SETTINGS_ALARM[] PROGMEM = "Alarm:"; //Тревога:
+const char L_SETTINGS_WARN[] PROGMEM = "Warning:"; //Опасность:
+const char L_SETTINGS_MEASUR[] PROGMEM = "Measur:"; //Замеры:
+const char L_SETTINGS_CLEAR[] PROGMEM = "Clear book"; //Очистить
 
 //Ошибки
 const char E_ERROR[] PROGMEM = " - ERROR - "; //- ОШИБКА -
@@ -395,9 +395,9 @@ const char R_SUCC_CLEAR[] PROGMEM = "clear!"; //очищен!
 
 //Сохранение настроек
 const char W_SAVE[] PROGMEM = "Seve"; //Сохранить
-const char W_SETINGS[] PROGMEM = "settings?"; //настройки?
+const char W_SETTINGS[] PROGMEM = "settings?"; //настройки?
 
-const char W_SETINGS_SUCC[] PROGMEM = "Settings"; //Настройки
+const char W_SETTINGS_SUCC[] PROGMEM = "Settings"; //Настройки
 const char W_SAVE_SUCC[] PROGMEM = "save!";   //сохранены!
 
 //Общие символы

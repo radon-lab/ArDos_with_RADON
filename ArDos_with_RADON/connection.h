@@ -46,14 +46,14 @@
 
 //назначаем кнопки//
 //пин кнопки ОК D3
-#define OK_BIT   3 // D3
-#define OK_PORT  PORTD
+#define SEL_BIT   3 // D3
+#define SEL_PORT  PORTD
 
-#define OK_OUT   (BIT_READ(PIN_REG(OK_PORT), OK_BIT))
-#define OK_SET   (BIT_SET(OK_PORT, OK_BIT))
-#define OK_INP   (BIT_CLEAR((DDR_REG(OK_PORT)), OK_BIT))
+#define SEL_OUT   (BIT_READ(PIN_REG(SEL_PORT), SEL_BIT))
+#define SEL_SET   (BIT_SET(SEL_PORT, SEL_BIT))
+#define SEL_INP   (BIT_CLEAR((DDR_REG(SEL_PORT)), SEL_BIT))
 
-#define OK_INIT  OK_SET; OK_INP
+#define SEL_INIT  SEL_SET; SEL_INP
 
 //пин кнопки DOWN D7
 #define DOWN_BIT   7 // D7

@@ -48,7 +48,7 @@ const uint8_t beep_alt_img[] PROGMEM = { //скобка и вертикальн�
   0xFF, 0xAB, 0xD5, 0xFF, 0xDB, 0xE7, 0xBD, 0xC3
 };
 
-const uint8_t beep_alt_waint_img[] PROGMEM = { //звездочка
+const uint8_t beep_alt_wait_img[] PROGMEM = { //звездочка
   0xFF, 0xD7, 0x93, 0xEF, 0x93, 0xD7, 0xFF
 };
 
