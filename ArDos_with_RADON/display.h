@@ -55,14 +55,14 @@ void  setContrast(uint8_t contrast);
 void  enableSleep(void);
 void  disableSleep(uint8_t contrast);
 void  clrScr(void);
-void  clrRow(uint8_t row, uint8_t start_x = 0, uint8_t end_x = 83);
+void  drawLine(uint8_t row, uint8_t start_x = 0, uint8_t end_x = 83, uint8_t line = 0);
 void  invert(bool mode);
 void  invertText(bool mode);
 void  print(const char *st, uint8_t x, uint8_t y, boolean mem = 0);
 void  printNumI(uint32_t num, uint8_t x, uint8_t y, uint8_t length = 0, char filler = ' ');
 void  printNumF(float num, uint8_t dec, uint8_t x, uint8_t y, char divider = '.', uint8_t length = 0, char filler = ' ');
 void  setFont(const uint8_t* font);
-void  drawBitmap(uint8_t x, uint8_t y, const uint8_t* bitmap, uint8_t sx, uint8_t sy,  boolean inv = 0);
+void  drawBitmap(uint8_t x, uint8_t y, const uint8_t* bitmap, uint8_t size_x, uint8_t size_y);
 
 void  _LCD_Write(unsigned char data, unsigned char mode);
 void  _print_char(unsigned char c, uint8_t x, uint8_t row, uint8_t steps);
@@ -154,11 +154,14 @@ void clrScr(void) //очистка экрана
   for (uint16_t c = 0; c < 504; c++) _lcd_buffer[c] = 0;
 }
 //-------------------------Очистка строки----------------------------------------------------
-void clrRow(uint8_t row, uint8_t start_x, uint8_t end_x) //очистка строки
+void drawLine(uint8_t row, uint8_t start_x, uint8_t end_x, uint8_t line) //очистка строки
 {
   uint16_t start = start_x + (uint16_t)(row * 84);
   uint16_t end = end_x + (uint16_t)(row * 84);
-  for (uint16_t c = start; c <= end; c++) _lcd_buffer[c] = 0;
+  for (uint16_t c = start; c <= end; c++) {
+    if (!line) _lcd_buffer[c] = 0;
+    else _lcd_buffer[c] |= line;
+  }
 }
 //-------------------------Инверсия экрана----------------------------------------------------
 void invert(boolean mode) //инверсия экрана
@@ -201,7 +204,7 @@ void print(const char *st, uint8_t x, uint8_t y, boolean mem) //вывод те�
     case RIGHT: x = 84 - (stl * cfont.x_size); break;
     case CENTER: x = (84 - (stl * cfont.x_size)) / 2; break;
   }
-  
+
   if (y % 8 == 0) {
     row = y / 8;
     steps = 0;
@@ -275,21 +278,18 @@ void _print_char(uint8_t c, uint8_t x, uint8_t row, uint8_t steps) //отрис�
     }
   }
 }
-//-------------------------Отрисовка изображений----------------------------------------------------
-void drawBitmap(uint8_t x, uint8_t y, const uint8_t* bitmap, uint8_t sx, uint8_t sy, boolean inv) //отрисовка изображений
+//-------------------------Отрисовка изображений-----------------------------------------------
+void drawBitmap(uint8_t x, uint8_t y, const uint8_t* bitmap, uint8_t size_x, uint8_t size_y) //отрисовка изображений
 {
-  uint8_t starty, rows;
+  uint8_t start_y, rows;
 
-  starty = y / 8;
+  start_y = y / 8;
 
-  if (sy % 8 == 0) rows = sy / 8;
-  else rows = (sy / 8) + 1;
+  if (size_y % 8 == 0) rows = size_y / 8;
+  else rows = (size_y / 8) + 1;
 
   for (uint8_t cy = 0; cy < rows; cy++) {
-    uint16_t cell = (starty + cy) * 84 + x;
-    switch (inv) {
-      case 0: for (uint8_t cx = 0; cx < sx; cx++) _lcd_buffer[cell + cx] = bitmapbyte(cx + (cy * sx)); break;
-      case 1: for (uint8_t cx = 0; cx < sx; cx++) _lcd_buffer[cell + cx] = ~(bitmapbyte(cx + (cy * sx))); break;
-    }
+    uint16_t cell = (start_y + cy) * 84 + x;
+    for (uint8_t cx = 0; cx < size_x; cx++) _lcd_buffer[cell + cx] = bitmapbyte(cx + (cy * size_x));
   }
 }

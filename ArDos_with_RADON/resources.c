@@ -24,14 +24,6 @@ const uint8_t low_bat_img[] PROGMEM = { //эмблемма разряженой 
   0x03, 0x03, 0x03, 0x03, 0x03, 0x00, 0x00, 0x00
 };
 
-//=============набор шкал===============
-const uint8_t l3[] PROGMEM = {0x5A}; //4 пкс
-const uint8_t l2[] PROGMEM = {0x10}; //1 пкс
-const uint8_t l1[] PROGMEM = {0x30}; //2 пкс
-const uint8_t l0[] PROGMEM = {0xFF}; //8 пкс
-//---------------------------------------------//
-const uint8_t* const _scale[] PROGMEM = {l0, l1, l2, l3};
-
 //=============шкала фона===============
 const uint8_t back_scale_img[] PROGMEM = { //шкала фона
   0x7E, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42,
@@ -125,19 +117,7 @@ const uint8_t rad_img[] PROGMEM = { //эмблемма радиации
   0x04, 0x06, 0x03, 0x01, 0x00, 0x00, 0x00, 0x00
 };
 
-//=============график===============
-const uint8_t s8[] PROGMEM = {0xFF}; //8 пкс
-const uint8_t s7[] PROGMEM = {0xFE}; //7 пкс
-const uint8_t s6[] PROGMEM = {0xFC}; //6 пкс
-const uint8_t s5[] PROGMEM = {0xF8}; //5 пкс
-const uint8_t s4[] PROGMEM = {0xF0}; //4 пкс
-const uint8_t s3[] PROGMEM = {0xE0}; //3 пкс
-const uint8_t s2[] PROGMEM = {0xC0}; //2 пкс
-const uint8_t s1[] PROGMEM = {0x80}; //1 пкс
-const uint8_t s0[] PROGMEM = {0x00}; //0 пкс
-//---------------------------------------------//
-const uint8_t* const scan_scale[] PROGMEM = {s0, s1, s2, s3, s4, s5, s6, s7, s8};
-//---------------------------------------------//
+//=============шкалы===============
 const uint8_t scan_left_img[] PROGMEM = {0xFF, 0x49, 0x49, 0x01, 0xFF, 0x92, 0x92, 0x80}; //левая шкала графика
 const uint8_t scan_right_img[] PROGMEM = {0x01, 0x49, 0x49, 0xFF, 0x80, 0x92, 0x92, 0xFF}; //правая шкала графика
 //---------------------------------------------//
@@ -158,16 +138,6 @@ const uint8_t scan_ind_scale_img[] PROGMEM = { //шкала уровня имп�
   0x7C, 0x04, 0x04, 0x04,
   0x04, 0x3C, 0x04, 0x04,
   0x04, 0x04, 0xFC
-};
-
-const uint8_t scan_ind_img[] PROGMEM = { //уровень импульсов
-  0x3F, 0x00, 0x3E, 0x3E, 0x3E, 0x3E, 0x3E, 0x3E,
-  0x3E, 0x3E, 0x3E, 0x3E, 0x3E, 0x3E, 0x3E, 0x3E,
-  0x3E, 0x3E, 0x3E, 0x3E, 0x3E, 0x3E, 0x3E, 0x3E,
-  0x3E, 0x3E, 0x3E, 0x3E, 0x3E, 0x3E, 0x3E, 0x3E,
-  0x3E, 0x3E, 0x3E, 0x3E, 0x3E, 0x3E, 0x3E, 0x3E,
-  0x3E, 0x3E, 0x3E, 0x3E, 0x3E, 0x3E, 0x3E, 0x3E,
-  0x3E, 0x3E, 0x3E, 0x3E, 0x3E, 0x3E, 0x3E
 };
 
 const uint8_t scan_stop_img[] PROGMEM = { //иконка паузы
