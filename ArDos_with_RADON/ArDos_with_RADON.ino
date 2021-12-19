@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.13
-  Версия программы RADON v3.8.0 low_pwr release 19.12.21 специально для проекта ArDos
+  Версия программы RADON v3.8.1 low_pwr release 19.12.21 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/ardos-dozimetr-prodolzhenie-temy-chast-%E2%84%962 и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -257,8 +257,8 @@ uint32_t time_save_old; //предыдущее значение сохранен
 uint32_t rad_dose_old; //предыдущее значение дозы
 
 //счетчики времени
-uint32_t time_total = 0; //счетчик реального времени
 uint32_t time_sec = 0; //секунды реального времени
+uint32_t time_total = 0; //счетчик реального времени
 uint8_t mid_time_now = 0; //текущий номер набранного массива усреднения
 uint8_t back_time_now = 0; //текущий номер набранной секунды счета фона
 uint8_t geiger_time_now = 0; //текущий номер набранной секунды счета
@@ -345,8 +345,8 @@ void _init_rads_unit(boolean type, uint32_t num, uint8_t divisor, uint8_t char_a
 //--------------------------------------Главный цикл программ---------------------------------------------------
 int main(void)  //главный цикл программ
 {
-  static uint8_t mainTask;
-  
+  static uint8_t mainTask = INIT_PROGRAM;
+
   for (;;) {
     scr = 0; //разрешаем обновления экрана
     switch (mainTask) {
@@ -596,7 +596,7 @@ boolean dialogSwitch(void) //диалог выбора
 void _init_param(void) //инициализация параметров
 {
   tick_wdt = 0; //сбрасываем тики собаки
-  TIME_FACT = 100000 / pumpSettings.wdt_period; //расчитываем период для секунд
+  TIME_FACT = 100000UL / pumpSettings.wdt_period; //расчитываем период для секунд
   BUZZ_VOL_SET(mainSettings.volume); //устанавливаем громкость щелчков
 
   GEIGER_CYCLE = (pgm_read_byte(&time_mass[0][0]) + pgm_read_byte(&time_mass[0][1])); //минимум секунд для начала расчетов
@@ -707,7 +707,11 @@ void _data_update(void) //преобразование данных
     else if (timer_melody) timer_melody = 0; //иначе сбрасываем таймер
 
     if (!measur && !search) {
-      time_total++; //микросекунды * 10
+      time_total += pumpSettings.wdt_period; //добавляем ко времени период таймера
+      if (time_total > 100000UL) { //если прошла секунда
+        time_total -= 100000UL; //оставляем остаток
+        time_sec++; //прибавляем секунду
+      }
 
       switch (time_wdt) {
         case TIME_FACT_2: //обновление статистики
@@ -927,10 +931,6 @@ void _data_update(void) //преобразование данных
               break;
           }
 #endif
-          break;
-
-        case TIME_FACT_14: //считаем пройденное время
-          time_sec = (time_total * (pumpSettings.wdt_period / 100.00)) / 1000; //пересчитываем в секунды
           break;
 
 #if USE_UART
@@ -3186,7 +3186,6 @@ void data_reset(uint8_t sw) //сброс текущей дозы
 
                 time_save += time_sec - time_save_old;
                 time_save_old = 0;
-                time_total = 0;
                 time_sec = 0;
 
                 stat_upd_tmr = 0;
