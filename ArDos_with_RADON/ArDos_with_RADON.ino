@@ -346,11 +346,11 @@ void _init_rads_unit(boolean type, uint32_t num, uint8_t divisor, uint8_t char_a
 int main(void)  //главный цикл программ
 {
   static uint8_t mainTask;
-
+  
   for (;;) {
     scr = 0; //разрешаем обновления экрана
     switch (mainTask) {
-      default: startInit(); break;
+      default: mainTask = startInit(); break;
       case 1: mainTask = main_screen(); break;
       case 2: mainTask = search_menu(); break;
       case 3: mainTask = measur_menu(); break;
@@ -361,7 +361,7 @@ int main(void)  //главный цикл программ
       case 8: mainTask = debug(); break;
     }
   }
-  return 0; //конец
+  return INIT_PROGRAM;
 }
 //--------------------------------------Инициализация---------------------------------------------------
 uint8_t startInit(void)  //инициализация
