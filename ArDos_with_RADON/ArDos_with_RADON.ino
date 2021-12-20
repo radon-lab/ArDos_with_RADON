@@ -133,7 +133,7 @@ uint8_t GEIGER_CYCLE; //минимум секунд для начала расч
 uint8_t GEIGER_MASS; //максимум секунд для окончания смещения коэффициентов
 
 //пищалка старт/стоп
-#define BUZZ_START(freq, vol)  PRR &= ~(1 << 3); ICR1 = freq; OCR1A = vol; TCNT1 = 0; TIMSK1 = 0b00000011
+#define BUZZ_START             cnt_puls = buzz_time; PRR &= ~(1 << 3); ICR1 = buzz_freq; OCR1A = buzz_vol; TCNT1 = 0; TIMSK1 = 0b00000011
 #define BUZZ_VOL_SET(vol)      buzz_vol = (buzz_freq / 2) / 10 * vol;
 #define SOUND_START(freq)      PRR &= ~(1 << 3); ICR1 = freq; OCR1A = ((freq / 2) / 10 * mainSettings.volume); TCNT1 = 0; TIMSK1 = 0b00000011
 #define SOUND_STOP             TIMSK1 = 0b00000000; PRR |= (1 << 3)
@@ -653,9 +653,15 @@ ISR(INT0_vect) //внешнее прерывание на пине INT0 - счи
     case 1: _RAD_FLASH_ON break; //индикация попадания частиц
     case 2: if (!sleep) _RAD_FLASH_ON break; //индикация попадания частиц
   }
-  switch (mainSettings.buzz_switch) {
-    case 1: buzz_click(); break; //щелчок пищалкой
-    case 2: if (rad_back >= mainSettings.warn_level_back) buzz_click(); break; //щелчок пищалкой
+  if (!TIMSK1) {
+    switch (mainSettings.buzz_switch) {
+      case 1: BUZZ_START; break; //щелчок пищалкой
+      case 2:
+        if (rad_back >= mainSettings.warn_level_back) {
+          BUZZ_START; //щелчок пищалкой
+        }
+        break;
+    }
   }
 }
 //-------------------------Прерывание по переполнению wdt - 17.5мс------------------------------------
@@ -1238,14 +1244,6 @@ void buzz_pulse(uint16_t freq, uint16_t time) //генерация частот�
 {
   cnt_puls = ((uint32_t)freq * (uint32_t)time) / 1000UL; //пересчитываем частоту и время в циклы таймера
   SOUND_START((F_CPU / SOUND_PRESCALER) / freq); //устанавливаем частоту и запускаем таймер
-}
-//--------------------------------Щелчок пищалкой-------------------------------------------------
-inline void buzz_click(void) //щелчок пищалкой
-{
-  if (!TIMSK1) {
-    cnt_puls = buzz_time; //устанавливаем длительность щелчка
-    BUZZ_START(buzz_freq, buzz_vol); //устанавливаем частоту и запускаем таймер
-  }
 }
 //---------------------------------Воспроизведение мелодии---------------------------------------
 void _melody_chart(const uint16_t arr[][3], uint8_t n) //воспроизведение мелодии
