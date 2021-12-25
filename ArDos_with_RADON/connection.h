@@ -49,7 +49,7 @@
 #define SEL_BIT   3 // D3
 #define SEL_PORT  PORTD
 
-#define SEL_OUT   (BIT_READ(PIN_REG(SEL_PORT), SEL_BIT))
+#define SEL_CHK   (BIT_READ(PIN_REG(SEL_PORT), SEL_BIT))
 #define SEL_SET   (BIT_SET(SEL_PORT, SEL_BIT))
 #define SEL_INP   (BIT_CLEAR((DDR_REG(SEL_PORT)), SEL_BIT))
 
@@ -59,7 +59,7 @@
 #define DOWN_BIT   7 // D7
 #define DOWN_PORT  PORTD
 
-#define DOWN_OUT   (BIT_READ(PIN_REG(DOWN_PORT), DOWN_BIT))
+#define DOWN_CHK   (BIT_READ(PIN_REG(DOWN_PORT), DOWN_BIT))
 #define DOWN_SET   (BIT_SET(DOWN_PORT, DOWN_BIT))
 #define DOWN_INP   (BIT_CLEAR((DDR_REG(DOWN_PORT)), DOWN_BIT))
 
@@ -69,7 +69,7 @@
 #define UP_BIT   4 // D4
 #define UP_PORT  PORTD
 
-#define UP_OUT   (BIT_READ(PIN_REG(UP_PORT), UP_BIT))
+#define UP_CHK   (BIT_READ(PIN_REG(UP_PORT), UP_BIT))
 #define UP_SET   (BIT_SET(UP_PORT, UP_BIT))
 #define UP_INP   (BIT_CLEAR((DDR_REG(UP_PORT)), UP_BIT))
 
