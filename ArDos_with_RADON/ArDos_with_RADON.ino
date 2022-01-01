@@ -594,6 +594,7 @@ boolean dialogSwitch(void) //диалог выбора
 void _init_param(void) //инициализация параметров
 {
   tick_buff = 0; //сбрасываем тики собаки
+  setContrast(mainSettings.contrast); //установка контрастности
   BUZZ_VOL_SET(mainSettings.volume); //устанавливаем громкость щелчков
 
   GEIGER_CYCLE = (pgm_read_byte(&time_mass[0][0]) + pgm_read_byte(&time_mass[0][1])); //минимум секунд для начала расчетов
@@ -2364,7 +2365,7 @@ void _settings_data_up(uint8_t pos) //прибавление данных
         case 2: if (mainSettings.time_bright < mainSettings.time_sleep - 5) mainSettings.time_bright += 5; break;
       }
       break;
-    case 2: if (mainSettings.contrast < 127) mainSettings.contrast++; setContrast(mainSettings.contrast); break; //Контраст
+    case 2: if (mainSettings.contrast < 127) setContrast(++mainSettings.contrast); break; //Контраст
     case 3: if (mainSettings.rad_flash < 2) mainSettings.rad_flash++; break; //Вспышки
     case 4: if (mainSettings.volume < 10) mainSettings.volume++; break; //Громкость
     case 5: if (mainSettings.buzz_switch < 2) mainSettings.buzz_switch++; break; //Щелчки
@@ -2398,7 +2399,7 @@ void _settings_data_down(uint8_t pos) //убавление данных
       else if (mainSettings.sleep_switch == 2) mainSettings.sleep_switch = 1; break;
     case 1:
       if (mainSettings.time_bright > 5) mainSettings.time_bright -= 5; else mainSettings.sleep_switch = 0; break; //Подсветка
-    case 2: if (mainSettings.contrast) mainSettings.contrast--; setContrast(mainSettings.contrast); break; //Контраст
+    case 2: if (mainSettings.contrast) setContrast(--mainSettings.contrast); break; //Контраст
     case 3: if (mainSettings.rad_flash) mainSettings.rad_flash--; break; //Вспышки
     case 4: if (mainSettings.volume > 1) mainSettings.volume--; break; //Громкость
     case 5: if (mainSettings.buzz_switch) mainSettings.buzz_switch--; break; //Щелчки
@@ -3221,7 +3222,7 @@ void settings_save(uint8_t sw) //сохранить настройки
 
             case 0:
               switch (sw) {
-                case 0: EEPROM_ReadBlock((uint16_t)&mainSettings, EEPROM_BLOCK_SETTINGS_MAIN, sizeof(mainSettings)); break; //считываем настройки из памяти
+                case 0: EEPROM_ReadBlock((uint16_t)&mainSettings, EEPROM_BLOCK_SETTINGS_MAIN, sizeof(mainSettings)); setContrast(mainSettings.contrast); break; //считываем настройки из памяти
 #if DEBUG_RETURN || PUMP_READ_MEM
                 case 1: EEPROM_ReadBlock((uint16_t)&pumpSettings, EEPROM_BLOCK_SETTINGS_PUMP, sizeof(pumpSettings)); break; //считываем настройки из памяти
 #endif
@@ -3239,7 +3240,7 @@ void settings_save(uint8_t sw) //сохранить настройки
 #if TIME_OUT_SETTINGS
         if (++time_out > TIME_OUT_SETTINGS) {
           switch (sw) {
-            case 0: EEPROM_ReadBlock((uint16_t)&mainSettings, EEPROM_BLOCK_SETTINGS_MAIN, sizeof(mainSettings)); break; //считываем настройки из памяти
+            case 0: EEPROM_ReadBlock((uint16_t)&mainSettings, EEPROM_BLOCK_SETTINGS_MAIN, sizeof(mainSettings)); setContrast(mainSettings.contrast); break; //считываем настройки из памяти
 #if DEBUG_RETURN || PUMP_READ_MEM
             case 1: EEPROM_ReadBlock((uint16_t)&pumpSettings, EEPROM_BLOCK_SETTINGS_PUMP, sizeof(pumpSettings)); break; //считываем настройки из памяти
 #endif
