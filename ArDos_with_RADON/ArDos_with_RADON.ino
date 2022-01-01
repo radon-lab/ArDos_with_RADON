@@ -2365,17 +2365,9 @@ void _settings_data_up(uint8_t pos) //прибавление данных
       }
       break;
     case 2: if (mainSettings.contrast < 127) mainSettings.contrast++; setContrast(mainSettings.contrast); break; //Контраст
-    case 3: switch (mainSettings.rad_flash) { //Вспышки
-        case 0: mainSettings.rad_flash = 1; break;
-        case 1: mainSettings.rad_flash = 2; break;
-      }
-      break;
+    case 3: if (mainSettings.rad_flash < 2) mainSettings.rad_flash++; break; //Вспышки
     case 4: if (mainSettings.volume < 10) mainSettings.volume++; break; //Громкость
-    case 5: switch (mainSettings.buzz_switch) { //Щелчки
-        case 0: mainSettings.buzz_switch = 1; break;
-        case 1: mainSettings.buzz_switch = 2; break;
-      }
-      break;
+    case 5: if (mainSettings.buzz_switch < 2) mainSettings.buzz_switch++; break; //Щелчки
     case 6: mainSettings.knock_disable = 0; break; //Зв.кнопок
 
     case 7: if (mainSettings.measur_pos < 9) mainSettings.measur_pos++; break; //Разн.зам
@@ -2406,29 +2398,21 @@ void _settings_data_down(uint8_t pos) //убавление данных
       else if (mainSettings.sleep_switch == 2) mainSettings.sleep_switch = 1; break;
     case 1:
       if (mainSettings.time_bright > 5) mainSettings.time_bright -= 5; else mainSettings.sleep_switch = 0; break; //Подсветка
-    case 2: if (mainSettings.contrast > 0) mainSettings.contrast--; setContrast(mainSettings.contrast); break; //Контраст
-    case 3: switch (mainSettings.rad_flash) { //Вспышки
-        case 1: mainSettings.rad_flash = 0; break;
-        case 2: mainSettings.rad_flash = 1; break;
-      }
-      break;
+    case 2: if (mainSettings.contrast) mainSettings.contrast--; setContrast(mainSettings.contrast); break; //Контраст
+    case 3: if (mainSettings.rad_flash) mainSettings.rad_flash--; break; //Вспышки
     case 4: if (mainSettings.volume > 1) mainSettings.volume--; break; //Громкость
-    case 5: switch (mainSettings.buzz_switch) { //Щелчки
-        case 1:  break;
-        case 2: mainSettings.buzz_switch = 1; break;
-      }
-      break;
+    case 5: if (mainSettings.buzz_switch) mainSettings.buzz_switch--; break; //Щелчки
     case 6: mainSettings.knock_disable = 1; break; //Зв.кнопок
 
-    case 7: if (mainSettings.measur_pos > 0) mainSettings.measur_pos--;  break; //Разн.зам
-    case 8: if (mainSettings.sigma_pos > 0) mainSettings.sigma_pos--; else mainSettings.sigma_pos = 2; break; //Сигма
-    case 9: if (mainSettings.search_pos > 0) mainSettings.search_pos--; else mainSettings.search_pos = 8; break; //Поиск
+    case 7: if (mainSettings.measur_pos) mainSettings.measur_pos--;  break; //Разн.зам
+    case 8: if (mainSettings.sigma_pos) mainSettings.sigma_pos--; else mainSettings.sigma_pos = 2; break; //Сигма
+    case 9: if (mainSettings.search_pos) mainSettings.search_pos--; else mainSettings.search_pos = 8; break; //Поиск
     case 10: mainSettings.rad_mode = 0; break; //Ед.измер
 
-    case 11: if (mainSettings.alarm_back > 0) mainSettings.alarm_back--; break; //Тревога Ф
+    case 11: if (mainSettings.alarm_back) mainSettings.alarm_back--; break; //Тревога Ф
     case 12: if (mainSettings.warn_level_back > 30) mainSettings.warn_level_back -= 5; else mainSettings.warn_level_back = 300; break; //Порог Ф1
     case 13: if (mainSettings.alarm_level_back > 1000) mainSettings.alarm_level_back -= 100; else if (mainSettings.alarm_level_back > 500) mainSettings.alarm_level_back -= 50; else if (mainSettings.alarm_level_back > 300) mainSettings.alarm_level_back -= 10; else mainSettings.alarm_level_back = 65000; break; //Порог Ф2
-    case 14: if (mainSettings.alarm_dose > 0) mainSettings.alarm_dose--; break; //Тревога Д
+    case 14: if (mainSettings.alarm_dose) mainSettings.alarm_dose--; break; //Тревога Д
     case 15: if (mainSettings.warn_level_dose > 10) mainSettings.warn_level_dose -= 5; else mainSettings.warn_level_dose = 300; break; //Порог Д1
     case 16: if (mainSettings.alarm_level_dose > 1000) mainSettings.alarm_level_dose -= 100; else if (mainSettings.alarm_level_dose > 500) mainSettings.alarm_level_dose -= 50; else if (mainSettings.alarm_level_dose > 300) mainSettings.alarm_level_dose -= 10; else mainSettings.alarm_level_dose = 65000; break; //Порог Д2
 #if USE_UART
