@@ -3213,7 +3213,7 @@ void settings_save(uint8_t sw) //сохранить настройки
                 case 1: updateData((uint8_t*)&pumpSettings, sizeof(pumpSettings), EEPROM_BLOCK_SETTINGS_PUMP, EEPROM_BLOCK_CRC_PUMP); break; //обновляем настройки
 #endif
 #if LOGBOOK_RETURN
-                case 2: updateData((uint8_t*)&bookSettings, sizeof(bookSettings), EEPROM_BLOCK_SETTINGS_PUMP, EEPROM_BLOCK_CRC_BOOK); break; //обновляем настройки
+                case 2: updateData((uint8_t*)&bookSettings, sizeof(bookSettings), EEPROM_BLOCK_SETTINGS_BOOK, EEPROM_BLOCK_CRC_BOOK); break; //обновляем настройки
 #endif
               }
               _wait(MASSEGE_TIME); //ждем
@@ -3274,7 +3274,7 @@ void _init_dash_unit(boolean type, uint8_t char_all, uint8_t char_unit, uint8_t 
 {
   for (uint8_t i = 0; i < char_all; i++) {
     if (type) setFont(MediumNumbers); //установка шрифта
-    print("-", (num_x == RIGHT) ? 84 - char_all * cfont.x_size - char_unit + i * cfont.x_size : num_x + i * cfont.x_size, num_y);
+    print(UNIT_DASH, (num_x == RIGHT) ? 84 - char_all * cfont.x_size - char_unit + i * cfont.x_size : num_x + i * cfont.x_size, num_y);
   }
 }
 //----------------------------------Инициализация значений------------------------------------------------------
@@ -3413,6 +3413,7 @@ uint8_t main_screen(void)
                 case 0: //сбрасываем фон
                   for (uint8_t i = 0; i < BUFF_LENGTHY; i++) rad_buff[i] = 0; //очищаем буфер фона
                   scan_buff = 0; //очищаем буфер счета
+                  accur_percent = 0; //очищаем статистическую точность
                   back_time_now = geiger_time_now = 0; //сбрасываем счетчик накопления импульсов в буфере
                   mid_time_now = 0; //сбрасываем рассчет среднего
                   rad_back = 0; //сбрасываем фон

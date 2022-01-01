@@ -219,6 +219,8 @@ const char UNIT_USV_H[] PROGMEM = "vrP|x"; //мкЗ/ч
 const char UNIT_MSV[] PROGMEM = "vP";     //мЗ
 const char UNIT_MSV_H[] PROGMEM = "vP|x"; //мЗ/ч
 
+const char UNIT_DASH[] PROGMEM = "-"; //-
+
 #define FONT_DATA_NAME RusFont //Название шрифта
 #endif
 //---------------------------------------------//
@@ -436,6 +438,8 @@ const char UNIT_USV[] PROGMEM = "uSv";     //мкЗ
 const char UNIT_USV_H[] PROGMEM = "uSv/h"; //мкЗ/ч
 const char UNIT_MSV[] PROGMEM = "mSv";     //мЗ
 const char UNIT_MSV_H[] PROGMEM = "mSv/h"; //мЗ/ч
+
+const char UNIT_DASH[] PROGMEM = "-"; //-
 
 #define FONT_DATA_NAME EngFont //Название шрифта
 #endif
