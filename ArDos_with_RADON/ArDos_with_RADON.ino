@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.13
-  Версия программы RADON v3.8.3 low_pwr release 30.12.21 специально для проекта ArDos
+  Версия программы RADON v3.8.4 low_pwr release 01.01.22 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/ardos-dozimetr-prodolzhenie-temy-chast-%E2%84%962 и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -153,6 +153,7 @@ uint16_t rad_buff[BUFF_LENGTHY]; //массив секундных замеро�
 uint32_t rad_mid_buff[MID_BUFF_LENGTHY]; //массив секундных замеров для усреднения фона
 uint16_t search_buff[76]; //буфер поиска
 
+#define TIME_FACT_0  1 //секундные интервалы 0
 #define TIME_FACT_1  3 //секундные интервалы 1
 #define TIME_FACT_2  5 //секундные интервалы 2
 #define TIME_FACT_3  7 //секундные интервалы 3
@@ -567,23 +568,23 @@ boolean dialogSwitch(void) //диалог выбора
   boolean cursor = 0; //положение курсора
 
   while (1) {
-    for (; tick_buff > 0; tick_buff--) { //если был тик, обрабатываем данные
+    for (; tick_buff; tick_buff--) { //если был тик, обрабатываем данные
 
       switch (btn_state) { //таймер опроса кнопок
         case 0: if (btn_check) btn_tmr++; break; //считаем циклы
         case 1: if (btn_tmr) btn_tmr--; break; //убираем дребезг
       }
 
-      if (!scr) { //обновление дисплея
-        scr = 1; //сброс флага
-        choice_menu(cursor); //меню выбора
-        showScr(); //вывод буфера на экран
-      }
-
       switch (check_keys()) {
         case DOWN_KEY_PRESS: cursor = 0; break; //выбор нет
         case UP_KEY_PRESS: cursor = 1; break; //выбор да
         case SEL_KEY_PRESS: return cursor; //выбор пункта
+      }
+
+      if (!scr) { //обновление дисплея
+        scr = 1; //сброс флага
+        choice_menu(cursor); //меню выбора
+        showScr(); //вывод буфера на экран
       }
     }
   }
@@ -672,7 +673,7 @@ ISR(WDT_vect) //прерывание по переполнению wdt - 17.5м�
   tick_buff++; //прибавляем тик в буфер
 }
 //----------------------------------Преобразование данных---------------------------------------------------------
-void _data_update(void) //преобразование данных
+boolean _data_update(void) //преобразование данных
 {
   static uint8_t time_1; //секундные замеры первого плеча
   static uint8_t time_2; //секундные замеры второго плеча
@@ -692,394 +693,400 @@ void _data_update(void) //преобразование данных
   _low_pwr(); //отключение дисплея и подсветки, уход в сон для экономии энергии
   _pump_converter(); //накачка по обратной связи с АЦП
 
-  for (; tick_buff > 0; tick_buff--) { //если был тик, обрабатываем данные
+  if (tick_buff) { //если был тик
+    while (tick_buff--) { //обрабатываем данные
 
-    switch (btn_state) { //таймер опроса кнопок
-      case 0: if (btn_check) btn_tmr++; break; //считаем циклы
-      case 1: if (btn_tmr) btn_tmr--; break; //убираем дребезг
-    }
+      switch (btn_state) { //таймер опроса кнопок
+        case 0: if (btn_check) btn_tmr++; break; //считаем циклы
+        case 1: if (btn_tmr) btn_tmr--; break; //убираем дребезг
+      }
 
-    if (search) _search_update(); //обновляем график
-    _bat_massege(); //обработка сообщения разряженой батареи
+      _bat_massege(); //обработка сообщения разряженой батареи
 
-    if (timer_millis > 17) timer_millis -= 17; //если таймер больше 17мс
-    else if (timer_millis) timer_millis = 0; //иначе сбрасываем таймер
+      if (timer_millis > 17) timer_millis -= 17; //если таймер больше 17мс
+      else if (timer_millis) timer_millis = 0; //иначе сбрасываем таймер
 
-    if (timer_melody > 17) timer_melody -= 17; //если таймер больше 17мс
-    else if (timer_melody) timer_melody = 0; //иначе сбрасываем таймер
+      if (timer_melody > 17) timer_melody -= 17; //если таймер больше 17мс
+      else if (timer_melody) timer_melody = 0; //иначе сбрасываем таймер
 
-    time_total += pumpSettings.wdt_period; //добавляем ко времени период таймера
-    if (time_total > 100000UL) { //если прошла секунда
-      time_total -= 100000UL; //оставляем остаток
-      time_wdt = 0; //расчет времени один раз в секунду
-      if (!sleep) scr = 0; //устанавливаем флаг для обновления экрана
-      if (!measur && !search) time_sec++; //прибавляем секунду
-    }
+      time_total += pumpSettings.wdt_period; //добавляем ко времени период таймера
+      if (time_total > 100000UL) { //если прошла секунда
+        time_total -= 100000UL; //оставляем остаток
+        time_wdt = 0; //расчет времени один раз в секунду
+      }
 
-    if (time_wdt++ > TIME_FACT_13 || (!measur && !search)) {
-      switch (time_wdt) {
-        case TIME_FACT_1: //обновление статистики
-          if (++stat_upd_tmr >= STAT_UPD_TIME) { //если пришло время, обновляем статистику
-            stat_upd_tmr = 0; //сбрасываем таймер
-            statistic_update(); //обновление статистики
-          }
-          break;
+      if (time_wdt++ > TIME_FACT_13 || (!measur && !search)) {
+        switch (time_wdt) {
+          case TIME_FACT_0: //обновление секунд
+            time_sec++; //прибавляем секунду
+            if (!sleep) scr = 0; //устанавливаем флаг для обновления экрана
+            break;
 
-        case TIME_FACT_2: //расчет текущего фона этап-1
-          rad_buff[0] = scan_buff; //смещаем 0-й элемент в 1-й для дальнейшей работы с ним
-          scan_buff = 0; //сбрасываем счетчик импульсов
-          tmp_buff = 0; //сбрасываем временный буфер
+          case TIME_FACT_1: //обновление статистики
+            if (++stat_upd_tmr >= STAT_UPD_TIME) { //если пришло время, обновляем статистику
+              stat_upd_tmr = 0; //сбрасываем таймер
+              statistic_update(); //обновление статистики
+            }
+            break;
 
-          if (geiger_time_now < BUFF_LENGTHY) geiger_time_now++; //прибавляем указатель заполненности буффера
-          if (back_time_now < BUFF_LENGTHY) back_time_now++; //прибавляем указатель заполненности буффера для рассчета фона
-          else {
-            back_time_now = 1; //иначе сбрасываем в начало
-            if (mid_time_now < MID_BUFF_LENGTHY) mid_time_now++; //прибавляем указатель заполненности буффера
-          }
+          case TIME_FACT_2: //расчет текущего фона этап-1
+            rad_buff[0] = scan_buff; //смещаем 0-й элемент в 1-й для дальнейшей работы с ним
+            scan_buff = 0; //сбрасываем счетчик импульсов
+            tmp_buff = 0; //сбрасываем временный буфер
+
+            if (geiger_time_now < BUFF_LENGTHY) geiger_time_now++; //прибавляем указатель заполненности буффера
+            if (back_time_now < BUFF_LENGTHY) back_time_now++; //прибавляем указатель заполненности буффера для рассчета фона
+            else {
+              back_time_now = 1; //иначе сбрасываем в начало
+              if (mid_time_now < MID_BUFF_LENGTHY) mid_time_now++; //прибавляем указатель заполненности буффера
+            }
 
 #if GEIGER_DEAD_TIME
-          if (rad_buff[0] >= COUNT_RATE) rad_buff[0] = rad_buff[0] / (1 - rad_buff[0] * DEAD_TIME); //если скорость счета больше 100имп/с, учитываем мертвое время счетчика
+            if (rad_buff[0] >= COUNT_RATE) rad_buff[0] = rad_buff[0] / (1 - rad_buff[0] * DEAD_TIME); //если скорость счета больше 100имп/с, учитываем мертвое время счетчика
 #endif
 
-          for (uint8_t i = 0; i < back_time_now; i++) tmp_buff += rad_buff[i]; //суммирование всех импульсов для расчета фона
-          break;
+            for (uint8_t i = 0; i < back_time_now; i++) tmp_buff += rad_buff[i]; //суммирование всех импульсов для расчета фона
+            break;
 
-        case TIME_FACT_3: //расчет текущего фона этап-2
-          if (back_time_now >= BUFF_LENGTHY) { //если основной буфер перезаписался
-            for (uint8_t k = MID_BUFF_LENGTHY - 1; k > 0; k--) rad_mid_buff[k] = rad_mid_buff[k - 1]; //перезапись массива
-            rad_mid_buff[0] = tmp_buff; //записываем основной массив в массив усреднения
-          }
-          for (uint8_t i = 0; i < mid_time_now; i++) tmp_buff += rad_mid_buff[i]; //суммирование всех импульсов для расчета фона
-          break;
-
-        case TIME_FACT_4: //расчет текущего фона этап-3
-          if (geiger_time_now >= GEIGER_CYCLE) { //если массив заполнен на минимум начала работы коэффициентов
-            if (geiger_time_now <= GEIGER_MASS) { //если не достигли предела массива сравнения
-              if (geiger_time_now >= (pgm_read_byte(&time_mass[mass_switch + 1][0]) + pgm_read_byte(&time_mass[mass_switch + 1][1]))) mass_switch++; //пересчитываем текущий номер элемента массива в зависимости от заполненности массива счета
+          case TIME_FACT_3: //расчет текущего фона этап-2
+            if (back_time_now >= BUFF_LENGTHY) { //если основной буфер перезаписался
+              for (uint8_t k = MID_BUFF_LENGTHY - 1; k > 0; k--) rad_mid_buff[k] = rad_mid_buff[k - 1]; //перезапись массива
+              rad_mid_buff[0] = tmp_buff; //записываем основной массив в массив усреднения
             }
+            for (uint8_t i = 0; i < mid_time_now; i++) tmp_buff += rad_mid_buff[i]; //суммирование всех импульсов для расчета фона
+            break;
 
-            time_1 = pgm_read_byte(&time_mass[mass_switch][0]); //получаем количество секундных замеров для первого плеча
-            time_2 = pgm_read_byte(&time_mass[mass_switch][1]); //получаем количество секундных замеров для второго плеча
+          case TIME_FACT_4: //расчет текущего фона этап-3
+            if (geiger_time_now >= GEIGER_CYCLE) { //если массив заполнен на минимум начала работы коэффициентов
+              if (geiger_time_now <= GEIGER_MASS) { //если не достигли предела массива сравнения
+                if (geiger_time_now >= (pgm_read_byte(&time_mass[mass_switch + 1][0]) + pgm_read_byte(&time_mass[mass_switch + 1][1]))) mass_switch++; //пересчитываем текущий номер элемента массива в зависимости от заполненности массива счета
+              }
 
-            coef_back = 1.00; //устанавливаем первичный коэффициент
-            for (uint8_t i = 0; i < MASS_BACK; i++) {
-              if (rad_back <= pgm_read_word(&back_mass[i])) {
-                coef_back = pgm_read_float(&coef_back_mass[i]); //пересчитывем фон для коррекции по заданным коэффициентам в массиве
-                break;
+              time_1 = pgm_read_byte(&time_mass[mass_switch][0]); //получаем количество секундных замеров для первого плеча
+              time_2 = pgm_read_byte(&time_mass[mass_switch][1]); //получаем количество секундных замеров для второго плеча
+
+              coef_back = 1.00; //устанавливаем первичный коэффициент
+              for (uint8_t i = 0; i < MASS_BACK; i++) {
+                if (rad_back <= pgm_read_word(&back_mass[i])) {
+                  coef_back = pgm_read_float(&coef_back_mass[i]); //пересчитывем фон для коррекции по заданным коэффициентам в массиве
+                  break;
+                }
               }
             }
-          }
-          break;
+            break;
 
-        case TIME_FACT_5: //расчет текущего фона этап-4
-          if (geiger_time_now >= GEIGER_CYCLE) { //если массив заполнен на минимум начала работы коэффициентов
+          case TIME_FACT_5: //расчет текущего фона этап-4
+            if (geiger_time_now >= GEIGER_CYCLE) { //если массив заполнен на минимум начала работы коэффициентов
 
-            coef = pgm_read_float(&coef_time_mass[mass_switch]) * coef_back; //получаем коэффициент из массива для сравнения на скачок/спад
+              coef = pgm_read_float(&coef_time_mass[mass_switch]) * coef_back; //получаем коэффициент из массива для сравнения на скачок/спад
 
 #if COEF_DEBUG //отладка коэффициента
-            debug_coef = coef;
+              debug_coef = coef;
 #endif
 
-            temp_run = 0; //сбрасываем буффер первого плеча
-            temp = 0; //сбрасываем буффер второго плеча
-            for (uint8_t i = 0; i < time_1; i++) temp_run += rad_buff[i]; //запоняем буффер первого плеча
-            for (uint8_t i = time_1; i < (time_1 + time_2); i++) temp += rad_buff[i]; //запоняем буффер вторго плеча
-          }
-          break;
+              temp_run = 0; //сбрасываем буффер первого плеча
+              temp = 0; //сбрасываем буффер второго плеча
+              for (uint8_t i = 0; i < time_1; i++) temp_run += rad_buff[i]; //запоняем буффер первого плеча
+              for (uint8_t i = time_1; i < (time_1 + time_2); i++) temp += rad_buff[i]; //запоняем буффер вторго плеча
+            }
+            break;
 
-        case TIME_FACT_6: //расчет текущего фона этап-5
-          if (geiger_time_now >= GEIGER_CYCLE) { //если массив заполнен на минимум начала работы коэффициентов
+          case TIME_FACT_6: //расчет текущего фона этап-5
+            if (geiger_time_now >= GEIGER_CYCLE) { //если массив заполнен на минимум начала работы коэффициентов
 
-            if (temp_run && temp) {
-              now = ((float)temp_run / time_1) / ((float)temp / time_2); //получаем текущее соотношение первого плеча ко второму
+              if (temp_run && temp) {
+                now = ((float)temp_run / time_1) / ((float)temp / time_2); //получаем текущее соотношение первого плеча ко второму
 
-              if (now > coef || now < (1.00 / coef)) { //если видим скачок или спад
-                tmp_buff = 0; //сбрасываем текущий буфер
-                for (uint8_t i = 0; i < pgm_read_byte(&time_mass[0][0]); i++) tmp_buff += rad_buff[i]; //запоняем буффер первого плеча
-                back_time_now = geiger_time_now = pgm_read_byte(&time_mass[0][0]); //устанавливаем текущий размер буфера
-                mid_time_now = 0; //сбрасываем рассчет среднего
-                mass_switch = 0; //сбрасываем позицию переключения
+                if (now > coef || now < (1.00 / coef)) { //если видим скачок или спад
+                  tmp_buff = 0; //сбрасываем текущий буфер
+                  for (uint8_t i = 0; i < pgm_read_byte(&time_mass[0][0]); i++) tmp_buff += rad_buff[i]; //запоняем буффер первого плеча
+                  back_time_now = geiger_time_now = pgm_read_byte(&time_mass[0][0]); //устанавливаем текущий размер буфера
+                  mid_time_now = 0; //сбрасываем рассчет среднего
+                  mass_switch = 0; //сбрасываем позицию переключения
+                }
               }
             }
-          }
-          break;
+            break;
 
-        case TIME_FACT_7: { //расчет текущего фона этап-6
+          case TIME_FACT_7: { //расчет текущего фона этап-6
 #if APPROX_BACK_SCORE
-            float imp_per_sec = 0; //текущее количество имп/с
-            if (geiger_time_now > 1) imp_per_sec = (float)tmp_buff / ((uint16_t)mid_time_now * BUFF_LENGTHY + back_time_now); //расчет имп/с
+              float imp_per_sec = 0; //текущее количество имп/с
+              if (geiger_time_now > 1) imp_per_sec = (float)tmp_buff / ((uint16_t)mid_time_now * BUFF_LENGTHY + back_time_now); //расчет имп/с
 #if GEIGER_OWN_BACK
-            if (imp_per_sec > OWN_BACK) imp_per_sec -= OWN_BACK; //убираем собственный фон счетчика
-            else imp_per_sec = tmp_buff = 0; //иначе ничего кроме собственного фона нету
+              if (imp_per_sec > OWN_BACK) imp_per_sec -= OWN_BACK; //убираем собственный фон счетчика
+              else imp_per_sec = tmp_buff = 0; //иначе ничего кроме собственного фона нету
 #endif
-            for (uint8_t i = 0; i < PATTERNS_APROX; i++) { //выбор паттерна
-              if (imp_per_sec <= pgm_read_word(&back_aprox[i][0])) { //если имп/с совпадают с паттерном
-                rad_back = imp_per_sec * (pumpSettings.geiger_time + pgm_read_word(&back_aprox[i][1])) - pgm_read_word(&back_aprox[i][2]) * 10.0; //рассчитываем фон в мкр/ч
-                break;
+              for (uint8_t i = 0; i < PATTERNS_APROX; i++) { //выбор паттерна
+                if (imp_per_sec <= pgm_read_word(&back_aprox[i][0])) { //если имп/с совпадают с паттерном
+                  rad_back = imp_per_sec * (pumpSettings.geiger_time + pgm_read_word(&back_aprox[i][1])) - pgm_read_word(&back_aprox[i][2]) * 10.0; //рассчитываем фон в мкр/ч
+                  break;
+                }
               }
-            }
 #else
 #if GEIGER_OWN_BACK
-            float own_back_now = ((uint16_t)mid_time_now * BUFF_LENGTHY + back_time_now) * OWN_BACK; //рассчитываем количество импульсов собственного фона
-            if (tmp_buff > own_back_now) tmp_buff -= own_back_now; //убираем собственный фон счетчика
-            else tmp_buff = 0; //иначе ничего кроме собственного фона нету
+              float own_back_now = ((uint16_t)mid_time_now * BUFF_LENGTHY + back_time_now) * OWN_BACK; //рассчитываем количество импульсов собственного фона
+              if (tmp_buff > own_back_now) tmp_buff -= own_back_now; //убираем собственный фон счетчика
+              else tmp_buff = 0; //иначе ничего кроме собственного фона нету
 #endif
-            if (pumpSettings.geiger_time_now > 1) rad_back = tmp_buff * (pumpSettings.geiger_time / ((uint16_t)mid_time_now * BUFF_LENGTHY + back_time_now)); //расчет фона мкР/ч
+              if (pumpSettings.geiger_time_now > 1) rad_back = tmp_buff * (pumpSettings.geiger_time / ((uint16_t)mid_time_now * BUFF_LENGTHY + back_time_now)); //расчет фона мкР/ч
 #endif
 
-          }
-          break;
+            }
+            break;
 
-        case TIME_FACT_8: //перезапись массива секундных замеров
-          for (uint8_t k = BUFF_LENGTHY - 1; k > 0; k--) rad_buff[k] = rad_buff[k - 1]; //перезапись массива
-          break;
+          case TIME_FACT_8: //перезапись массива секундных замеров
+            for (uint8_t k = BUFF_LENGTHY - 1; k > 0; k--) rad_buff[k] = rad_buff[k - 1]; //перезапись массива
+            break;
 
-        case TIME_FACT_9: //рассчитываем точность
-          accur_percent = _init_accur(tmp_buff); //рассчет точности
-          break;
+          case TIME_FACT_9: //рассчитываем точность
+            accur_percent = _init_accur(tmp_buff); //рассчет точности
+            break;
 
-        case TIME_FACT_10: //минимальный и максимальный фон
-          if (accur_percent <= RAD_ACCUR_START) { //если достаточно данных в массиве
-            if (rad_back < rad_min) rad_min = rad_back; //фиксируем минимум фона
-            if (rad_back > rad_max) rad_max = rad_back; //фиксируем максимум фона
-          }
-          else rad_min = rad_back; //фиксируем минимум фона
-          break;
+          case TIME_FACT_10: //минимальный и максимальный фон
+            if (accur_percent <= RAD_ACCUR_START) { //если достаточно данных в массиве
+              if (rad_back < rad_min) rad_min = rad_back; //фиксируем минимум фона
+              if (rad_back > rad_max) rad_max = rad_back; //фиксируем максимум фона
+            }
+            else rad_min = rad_back; //фиксируем минимум фона
+            break;
 
-        case TIME_FACT_11: { //расчет текущей дозы
+          case TIME_FACT_11: { //расчет текущей дозы
 #if GEIGER_OWN_BACK
-            if (rad_sum_timer != 65535) rad_sum_timer++;
-            uint16_t puls_per_ur = (3600 / pumpSettings.geiger_time) + (rad_sum_timer * OWN_BACK);
-            if ((rad_sum += rad_buff[0]) >= puls_per_ur) {
-              rad_dose += rad_sum / puls_per_ur;
-              rad_sum -= rad_sum % puls_per_ur;
-              rad_sum_timer = 0;
-            }
+              if (rad_sum_timer != 65535) rad_sum_timer++;
+              uint16_t puls_per_ur = (3600 / pumpSettings.geiger_time) + (rad_sum_timer * OWN_BACK);
+              if ((rad_sum += rad_buff[0]) >= puls_per_ur) {
+                rad_dose += rad_sum / puls_per_ur;
+                rad_sum -= rad_sum % puls_per_ur;
+                rad_sum_timer = 0;
+              }
 #else
-            uint16_t puls_per_ur = 3600 / pumpSettings.geiger_time;
-            if ((rad_sum += rad_buff[0]) >= puls_per_ur) {
-              rad_dose += rad_sum / puls_per_ur;
-              rad_sum -= rad_sum % puls_per_ur;
-            }
-#endif
-          }
-          break;
-
-        case TIME_FACT_12: { //расчет данных для графика
-            uint16_t graf_max = 0; //максимальное значение графика
-            for (uint8_t i = 0; i > 38; i--) if (rad_buff[i] > graf_max) graf_max = rad_buff[i]; //ищем максимум
-
-            if (graf_max > 15) maxLevel_back = graf_max * GRAF_COEF_MAX; //если текущий замер больше максимума
-            else maxLevel_back = 15; //иначе устанавливаем минимум
-          }
-          break;
-
-        case TIME_FACT_13: //обработка тревоги
-          if (mainSettings.alarm_dose && (rad_dose - alarm_dose_wait) >= mainSettings.alarm_level_dose) { //если тревога не запрещена и текущая(предыдущая) доза больше порога
-#if LOGBOOK_RETURN
-            if (!alarm_switch && bookSettings.logbook_warn) _logbook_data_update(0, 2, rad_dose); //обновление журнала
-#endif
-            alarm_switch = 2;  //превышение дозы 2
-            break;
-          }
-          else if (mainSettings.alarm_dose && (rad_dose - warn_dose_wait) >= mainSettings.warn_level_dose) { //если предупреждения не запрещены и текущая(предыдущая) доза больше порога
-            if (!alarm_switch) { //если это первая сработка тревоги
-              melody_switch = 0; //сбрасываем переключатель мелодии
-              _sleep_out(); //выход из сна
-              _buzz_save(); //запрещаем щелчки
-#if LOGBOOK_RETURN
-              if (bookSettings.logbook_alarm) _logbook_data_update(1, 2, rad_dose); //обновление журнала
+              uint16_t puls_per_ur = 3600 / pumpSettings.geiger_time;
+              if ((rad_sum += rad_buff[0]) >= puls_per_ur) {
+                rad_dose += rad_sum / puls_per_ur;
+                rad_sum -= rad_sum % puls_per_ur;
+              }
 #endif
             }
-            alarm_switch = 4;  //превышение дозы 1
             break;
-          }
 
-          if (accur_percent <= RAD_ACCUR_WARN) {
-            if (mainSettings.alarm_back && !alarm_back_wait && rad_back >= mainSettings.alarm_level_back) { //если тревога не запрещена и текущий фон больше порога
+          case TIME_FACT_12: { //расчет данных для графика
+              uint16_t graf_max = 0; //максимальное значение графика
+              for (uint8_t i = 0; i > 38; i--) if (rad_buff[i] > graf_max) graf_max = rad_buff[i]; //ищем максимум
+
+              if (graf_max > 15) maxLevel_back = graf_max * GRAF_COEF_MAX; //если текущий замер больше максимума
+              else maxLevel_back = 15; //иначе устанавливаем минимум
+            }
+            break;
+
+          case TIME_FACT_13: //обработка тревоги
+            if (mainSettings.alarm_dose && (rad_dose - alarm_dose_wait) >= mainSettings.alarm_level_dose) { //если тревога не запрещена и текущая(предыдущая) доза больше порога
 #if LOGBOOK_RETURN
-              if (!alarm_switch && bookSettings.logbook_warn) _logbook_data_update(0, 1, rad_back); //обновление журнала
+              if (!alarm_switch && bookSettings.logbook_warn) _logbook_data_update(0, 2, rad_dose); //обновление журнала
 #endif
-              alarm_switch = 1;  //превышение фона 2
+              alarm_switch = 2;  //превышение дозы 2
               break;
             }
-            else if (mainSettings.alarm_back && !warn_back_wait && rad_back >= mainSettings.warn_level_back) { //если предупреждения не запрещены и текущий фон больше порога
+            else if (mainSettings.alarm_dose && (rad_dose - warn_dose_wait) >= mainSettings.warn_level_dose) { //если предупреждения не запрещены и текущая(предыдущая) доза больше порога
               if (!alarm_switch) { //если это первая сработка тревоги
                 melody_switch = 0; //сбрасываем переключатель мелодии
                 _sleep_out(); //выход из сна
                 _buzz_save(); //запрещаем щелчки
 #if LOGBOOK_RETURN
-                if (bookSettings.logbook_alarm) _logbook_data_update(1, 1, rad_back); //обновление журнала
+                if (bookSettings.logbook_alarm) _logbook_data_update(1, 2, rad_dose); //обновление журнала
 #endif
               }
-              alarm_switch = 3;  //превышение фона 1
+              alarm_switch = 4;  //превышение дозы 1
               break;
             }
-          }
 
-          if (warn_back_wait && rad_back < (mainSettings.warn_level_back * ALARM_AUTO_GISTERESIS)) { //если текущий фон упал ниже порога + гистерезис
-            warn_back_wait = 0; //сброс предупреждения
+            if (accur_percent <= RAD_ACCUR_WARN) {
+              if (mainSettings.alarm_back && !alarm_back_wait && rad_back >= mainSettings.alarm_level_back) { //если тревога не запрещена и текущий фон больше порога
 #if LOGBOOK_RETURN
-            if (bookSettings.logbook_warn) bookSettings.logbook_warn = 2; //устанавливаем флаг пропущенного предупреждения
+                if (!alarm_switch && bookSettings.logbook_warn) _logbook_data_update(0, 1, rad_back); //обновление журнала
 #endif
-          }
-          if (alarm_back_wait && rad_back < (mainSettings.alarm_level_back * ALARM_AUTO_GISTERESIS)) { //если текущий фон упал ниже порога + гистерезис
-            alarm_back_wait = 0; //сброс тревоги
+                alarm_switch = 1;  //превышение фона 2
+                break;
+              }
+              else if (mainSettings.alarm_back && !warn_back_wait && rad_back >= mainSettings.warn_level_back) { //если предупреждения не запрещены и текущий фон больше порога
+                if (!alarm_switch) { //если это первая сработка тревоги
+                  melody_switch = 0; //сбрасываем переключатель мелодии
+                  _sleep_out(); //выход из сна
+                  _buzz_save(); //запрещаем щелчки
 #if LOGBOOK_RETURN
-            if (bookSettings.logbook_alarm) bookSettings.logbook_alarm = 2; //устанавливаем флаг пропущенной тревоги
+                  if (bookSettings.logbook_alarm) _logbook_data_update(1, 1, rad_back); //обновление журнала
 #endif
-          }
+                }
+                alarm_switch = 3;  //превышение фона 1
+                break;
+              }
+            }
+
+            if (warn_back_wait && rad_back < (mainSettings.warn_level_back * ALARM_AUTO_GISTERESIS)) { //если текущий фон упал ниже порога + гистерезис
+              warn_back_wait = 0; //сброс предупреждения
+#if LOGBOOK_RETURN
+              if (bookSettings.logbook_warn) bookSettings.logbook_warn = 2; //устанавливаем флаг пропущенного предупреждения
+#endif
+            }
+            if (alarm_back_wait && rad_back < (mainSettings.alarm_level_back * ALARM_AUTO_GISTERESIS)) { //если текущий фон упал ниже порога + гистерезис
+              alarm_back_wait = 0; //сброс тревоги
+#if LOGBOOK_RETURN
+              if (bookSettings.logbook_alarm) bookSettings.logbook_alarm = 2; //устанавливаем флаг пропущенной тревоги
+#endif
+            }
 
 #if ALARM_AUTO_DISABLE
-          switch (alarm_switch) {
-            case 1:
-            case 3:
-              if (alarm_switch == 1 && rad_back < (mainSettings.alarm_level_back * ALARM_AUTO_GISTERESIS)) alarm_switch = 0;  //иначе ждем понижения фона тревоги 2
-              if (rad_back < (mainSettings.warn_level_back * ALARM_AUTO_GISTERESIS)) { //иначе ждем понижения фона тревоги 1
-                _vibro_off(); //выключаем вибрацию
-                _buzz_ret(); //чтение состояния щелчков
-                melody_switch = 0; //сбрасываем переключатель мелодии
-                alarm_switch = 0; //устанавливаем признак отсутствия тревоги
-              }
-              break;
-          }
+            switch (alarm_switch) {
+              case 1:
+              case 3:
+                if (alarm_switch == 1 && rad_back < (mainSettings.alarm_level_back * ALARM_AUTO_GISTERESIS)) alarm_switch = 0;  //иначе ждем понижения фона тревоги 2
+                if (rad_back < (mainSettings.warn_level_back * ALARM_AUTO_GISTERESIS)) { //иначе ждем понижения фона тревоги 1
+                  _vibro_off(); //выключаем вибрацию
+                  _buzz_ret(); //чтение состояния щелчков
+                  melody_switch = 0; //сбрасываем переключатель мелодии
+                  alarm_switch = 0; //устанавливаем признак отсутствия тревоги
+                }
+                break;
+            }
 #endif
-          break;
+            break;
 
 #if USE_UART
-        case TIME_FACT_14: //отправляем данные в порт
+          case TIME_FACT_14: //отправляем данные в порт
 #if UART_SEND_BACK
-          sendNumI(rad_back);
+            sendNumI(rad_back);
 #endif
 #if UART_SEND_DOSE
-          sendNumI(rad_dose);
+            sendNumI(rad_dose);
 #endif
 #if UART_SEND_IMP
-          sendNumI(rad_buff[0]);
+            sendNumI(rad_buff[0]);
 #endif
-          break;
+            break;
 #endif
 
-        case TIME_FACT_15: //обработка ошибок
-          if (speed_pump >= HV_SPEED_ERROR) { //если текущая скорость накачки выше порога
+          case TIME_FACT_15: //обработка ошибок
+            if (speed_pump >= HV_SPEED_ERROR) { //если текущая скорость накачки выше порога
 #if LOGBOOK_RETURN
-            if (error_switch < 2) _logbook_data_update(3, 2, speed_pump); //обновление журнала устанавливаем ошибку 2 - перегрузка преобразователя
-            error_switch = 2; //поднимаем флаг ошибки
-#else
-            error_switch = 2; //поднимаем флаг ошибки
-#endif
-          }
-          speed_hv = speed_pump; //текущая скорость накачки
-          speed_pump = 0; //сбрасываем скорость накачки
-
-          if (hv_adc < pumpSettings.ADC_value - HV_ADC_MIN) { //если значение АЦП преобразователя ниже на установленное значение
-#if LOGBOOK_RETURN
-            if (error_switch < 2) _logbook_data_update(3, 4, hv_adc); //обновление журнала устанавливаем ошибку 4 - низкое напряжение
-            error_switch = 2; //поднимаем флаг ошибки
-#else
-            error_switch = 4; //поднимаем флаг ошибки
-#endif
-          }
-          if (hv_adc < HV_ADC_ERROR) { //если значение АЦП преобразователя ниже порога
-#if LOGBOOK_RETURN
-            if (error_switch < 2) _logbook_data_update(3, 3, hv_adc); //обновление журнала устанавливаем ошибку 3 - кз преобразователя
-            error_switch = 2; //поднимаем флаг ошибки
-#else
-            error_switch = 3; //поднимаем флаг ошибки
-#endif
-          }
-
-          if (!rad_buff[0]) { //если нету импульсов в обменном буфере
-            if (++tmr_nop_imp >= IMP_ERROR_TIME) { //считаем время до вывода предупреждения
-#if LOGBOOK_RETURN
-              if (error_switch < 2) _logbook_data_update(3, 5, 5); //обновление журнала устанавливаем ошибку 5 - нет импульсов
+              if (error_switch < 2) _logbook_data_update(3, 2, speed_pump); //обновление журнала устанавливаем ошибку 2 - перегрузка преобразователя
               error_switch = 2; //поднимаем флаг ошибки
 #else
-              error_switch = 5; //поднимаем флаг ошибки
+              error_switch = 2; //поднимаем флаг ошибки
 #endif
-              tmr_nop_imp = 0; //сбрасываем таймер
             }
-          }
-          else tmr_nop_imp = 0; //иначе импульсы возобновились
+            speed_hv = speed_pump; //текущая скорость накачки
+            speed_pump = 0; //сбрасываем скорость накачки
 
-          if (tmr_upd_err >= ERROR_LENGTHY_TIME) {
-            if (error_massege) {
-              tmr_upd_err = 0; //сброс таймера
-              error_massege = 0; //устанавливаем флаг для обновления сообщения об ошибке
+            if (hv_adc < pumpSettings.ADC_value - HV_ADC_MIN) { //если значение АЦП преобразователя ниже на установленное значение
+#if LOGBOOK_RETURN
+              if (error_switch < 2) _logbook_data_update(3, 4, hv_adc); //обновление журнала устанавливаем ошибку 4 - низкое напряжение
+              error_switch = 2; //поднимаем флаг ошибки
+#else
+              error_switch = 4; //поднимаем флаг ошибки
+#endif
             }
-          }
-          else tmr_upd_err++;
-          break;
+            if (hv_adc < HV_ADC_ERROR) { //если значение АЦП преобразователя ниже порога
+#if LOGBOOK_RETURN
+              if (error_switch < 2) _logbook_data_update(3, 3, hv_adc); //обновление журнала устанавливаем ошибку 3 - кз преобразователя
+              error_switch = 2; //поднимаем флаг ошибки
+#else
+              error_switch = 3; //поднимаем флаг ошибки
+#endif
+            }
 
-        case TIME_FACT_16: //разностный замер
-          switch (measur) { //выбираем режим замера
-            case 1: if (time_switch < (pgm_read_byte(&diff_measuring[mainSettings.measur_pos]) * 60)) time_switch ++; //прибавляем секунду
-              else next_measur = 1; //иначе время вышло
-              if (!next_measur) first_froze += scan_buff; //если идет замер, заполняем буфер первого замера
-              rad_buff[0] = scan_buff; //смещаем 0-й элемент в 1-й для дальнейшей работы с ним
-              scan_buff = 0; //сбрасывает счетчик частиц
-              break;
-            case 2: if (time_switch < (pgm_read_byte(&diff_measuring[mainSettings.measur_pos]) * 60)) time_switch ++; //прибавляем секунду
-              else next_measur = 1; //иначе время вышло
-              if (!next_measur) second_froze += scan_buff; //если идет замер, заполняем буфер второго замера
-              rad_buff[0] = scan_buff; //смещаем 0-й элемент в 1-й для дальнейшей работы с ним
-              scan_buff = 0; //сбрасывает счетчик частиц
-              break;
-          }
-          break;
+            if (!rad_buff[0]) { //если нету импульсов в обменном буфере
+              if (++tmr_nop_imp >= IMP_ERROR_TIME) { //считаем время до вывода предупреждения
+#if LOGBOOK_RETURN
+                if (error_switch < 2) _logbook_data_update(3, 5, 5); //обновление журнала устанавливаем ошибку 5 - нет импульсов
+                error_switch = 2; //поднимаем флаг ошибки
+#else
+                error_switch = 5; //поднимаем флаг ошибки
+#endif
+                tmr_nop_imp = 0; //сбрасываем таймер
+              }
+            }
+            else tmr_nop_imp = 0; //иначе импульсы возобновились
 
-        case TIME_FACT_17: //считаем время до ухода в сон
-          switch (mainSettings.sleep_switch) { //выбераем счет времени
-            case 1: if (cnt_pwr <= mainSettings.time_bright) cnt_pwr++; break; //счет выключения подсветки
-            case 2: if (cnt_pwr <= mainSettings.time_sleep) cnt_pwr++; break; //счет ухода в сон
-          }
-          if (cnt_pwr == mainSettings.time_sleep && mainSettings.sleep_switch == 2 && !sleep_disable) { //если пришло время спать и сон не запрещен
-            enableSleep(); //уводим в сон дисплей
-            sleep = 1; //выставляем флаг сна
-            _buzz_save(); //запрещаем щелчки
+            if (tmr_upd_err >= ERROR_LENGTHY_TIME) {
+              if (error_massege) {
+                tmr_upd_err = 0; //сброс таймера
+                error_massege = 0; //устанавливаем флаг для обновления сообщения об ошибке
+              }
+            }
+            else tmr_upd_err++;
+            break;
 
-          }
-          else if (cnt_pwr == mainSettings.time_bright) { //если пришло время выключить подсветку
-            _LIGHT_OFF(); //выключаем подсветку
-            light = 1; //выставляем флаг выключенной подсветки
-          }
-          break;
-
-        case TIME_FACT_18: { //управление энергосбережением
-            uint16_t _imp_per_second = rad_back / pumpSettings.geiger_time; //получили имп/с
-            switch (power_manager) {
-              case 0: if (_imp_per_second <= (IMP_PWR_MANAGER * IMP_PWR_GISTERESIS)) power_manager = 1; break; //если текущее количество импульсов меньше установленного порога включения энергосбережения
-              case 1:
-                if (_imp_per_second > IMP_PWR_MANAGER) power_manager = 0; //если текущее количество импульсов больше установленного порога отключения энергосбережения
-                else if (_imp_per_second <= (IMP_PWR_DOWN * IMP_PWR_GISTERESIS)) power_manager = 2; //если текущее количество импульсов меньше установленного порога включения глубокого энергосбережения
+          case TIME_FACT_16: //разностный замер
+            switch (measur) { //выбираем режим замера
+              case 1: if (time_switch < (pgm_read_byte(&diff_measuring[mainSettings.measur_pos]) * 60)) time_switch ++; //прибавляем секунду
+                else next_measur = 1; //иначе время вышло
+                if (!next_measur) first_froze += scan_buff; //если идет замер, заполняем буфер первого замера
+                rad_buff[0] = scan_buff; //смещаем 0-й элемент в 1-й для дальнейшей работы с ним
+                scan_buff = 0; //сбрасывает счетчик частиц
                 break;
-              case 2: if (_imp_per_second > IMP_PWR_DOWN) power_manager = 1; break; //если текущее количество импульсов больше установленного порога отключения глубокого энергосбережения
+              case 2: if (time_switch < (pgm_read_byte(&diff_measuring[mainSettings.measur_pos]) * 60)) time_switch ++; //прибавляем секунду
+                else next_measur = 1; //иначе время вышло
+                if (!next_measur) second_froze += scan_buff; //если идет замер, заполняем буфер второго замера
+                rad_buff[0] = scan_buff; //смещаем 0-й элемент в 1-й для дальнейшей работы с ним
+                scan_buff = 0; //сбрасывает счетчик частиц
+                break;
             }
-            if (rad_back > RAD_SLEEP_OUT) _sleep_out(); //выход из сна
-          }
-          break;
+            break;
 
-        case TIME_FACT_19: //таймер обновления батареи
-          if (tmr_upd_bat >= UPD_BAT_TIME) {
-            tmr_upd_bat = 0; //сброс таймера
-            _bat_check(); //опрос батареи
-          }
-          else tmr_upd_bat++;
-          if (tmr_low_bat >= LOW_BAT_TIME) {
-            if (low_bat_massege) {
-              tmr_low_bat = 0; //сброс таймера
-              low_bat_massege = 0; //устанавливаем флаг для обновления сообщения об разряженной акб
+          case TIME_FACT_17: //считаем время до ухода в сон
+            switch (mainSettings.sleep_switch) { //выбераем счет времени
+              case 1: if (cnt_pwr <= mainSettings.time_bright) cnt_pwr++; break; //счет выключения подсветки
+              case 2: if (cnt_pwr <= mainSettings.time_sleep) cnt_pwr++; break; //счет ухода в сон
             }
-          }
-          else tmr_low_bat++;
-          break;
+            if (cnt_pwr == mainSettings.time_sleep && mainSettings.sleep_switch == 2 && !sleep_disable) { //если пришло время спать и сон не запрещен
+              enableSleep(); //уводим в сон дисплей
+              sleep = 1; //выставляем флаг сна
+              _buzz_save(); //запрещаем щелчки
 
-        case TIME_FACT_20: //таймер обновления экрана
-          if (search) rad_buff[0] = 0; //очищаем буфер
-          break;
+            }
+            else if (cnt_pwr == mainSettings.time_bright) { //если пришло время выключить подсветку
+              _LIGHT_OFF(); //выключаем подсветку
+              light = 1; //выставляем флаг выключенной подсветки
+            }
+            break;
+
+          case TIME_FACT_18: { //управление энергосбережением
+              uint16_t _imp_per_second = rad_back / pumpSettings.geiger_time; //получили имп/с
+              switch (power_manager) {
+                case 0: if (_imp_per_second <= (IMP_PWR_MANAGER * IMP_PWR_GISTERESIS)) power_manager = 1; break; //если текущее количество импульсов меньше установленного порога включения энергосбережения
+                case 1:
+                  if (_imp_per_second > IMP_PWR_MANAGER) power_manager = 0; //если текущее количество импульсов больше установленного порога отключения энергосбережения
+                  else if (_imp_per_second <= (IMP_PWR_DOWN * IMP_PWR_GISTERESIS)) power_manager = 2; //если текущее количество импульсов меньше установленного порога включения глубокого энергосбережения
+                  break;
+                case 2: if (_imp_per_second > IMP_PWR_DOWN) power_manager = 1; break; //если текущее количество импульсов больше установленного порога отключения глубокого энергосбережения
+              }
+              if (rad_back > RAD_SLEEP_OUT) _sleep_out(); //выход из сна
+            }
+            break;
+
+          case TIME_FACT_19: //таймер обновления батареи
+            if (tmr_upd_bat >= UPD_BAT_TIME) {
+              tmr_upd_bat = 0; //сброс таймера
+              _bat_check(); //опрос батареи
+            }
+            else tmr_upd_bat++;
+            if (tmr_low_bat >= LOW_BAT_TIME) {
+              if (low_bat_massege) {
+                tmr_low_bat = 0; //сброс таймера
+                low_bat_massege = 0; //устанавливаем флаг для обновления сообщения об разряженной акб
+              }
+            }
+            else tmr_low_bat++;
+            break;
+
+          case TIME_FACT_20: //таймер обновления экрана
+            if (search) rad_buff[0] = 0; //очищаем буфер
+            break;
+        }
       }
+      return 1; //разрешаем обновить данные
     }
   }
+  return 0; //запрещаем обновить данные
 }
 //-------------------------Расчет точности замера----------------------------------------------------
 uint8_t _init_accur(uint32_t num) //расчет точности замера
@@ -1344,31 +1351,31 @@ void measur_stop(void) //остановка замера
   print(M_MEASUR, CENTER, 16); //замер?
 
   while (1) {
-    _data_update(); //преобразование данных
+    if (_data_update()) { //обработка данных
+      switch (check_keys()) {
+        case DOWN_KEY_PRESS: cursor = 0; break; //выбор нет
+        case UP_KEY_PRESS: cursor = 1; break; //выбор да
 
-    if (!scr) {
-      scr = 1; //устанавливаем флаг
-      choice_menu(cursor); //меню выбора
-      showScr(); //вывод буфера на экран
-    }
+        case SEL_KEY_PRESS: //выбор пункта
+          switch (cursor) {
+            case 1:
+              measur = 0; //выключаем замер
+              time_switch = 0; //сбрасываем таймер
+              next_measur = 1; //сбрасываем флаг продолжения замера
+              alarm_measur = 1; //разрешаем оповещение окончания замера
+              first_froze = 0; //сбрасываем счетчик 1-го замера
+              second_froze = 0; //сбрасываем счетчик 2-го замера
+              scan_buff = rad_buff[0] = 0; //очищаем 0-й и 1-й элемент буфера
+              break;
+          }
+          return; //выход
+      }
 
-    switch (check_keys()) {
-      case DOWN_KEY_PRESS: cursor = 0; break; //выбор нет
-      case UP_KEY_PRESS: cursor = 1; break; //выбор да
-
-      case SEL_KEY_PRESS: //выбор пункта
-        switch (cursor) {
-          case 1:
-            measur = 0; //выключаем замер
-            time_switch = 0; //сбрасываем таймер
-            next_measur = 1; //сбрасываем флаг продолжения замера
-            alarm_measur = 1; //разрешаем оповещение окончания замера
-            first_froze = 0; //сбрасываем счетчик 1-го замера
-            second_froze = 0; //сбрасываем счетчик 2-го замера
-            scan_buff = rad_buff[0] = 0; //очищаем 0-й и 1-й элемент буфера
-            break;
-        }
-        return; //выход
+      if (!scr) {
+        scr = 1; //устанавливаем флаг
+        choice_menu(cursor); //меню выбора
+        showScr(); //вывод буфера на экран
+      }
     }
   }
 }
@@ -1388,10 +1395,11 @@ void _measur_massege(void) //окончание замера
     melody_switch = 0; //сбрасываем переключатель мелодии
 
     for (timer_millis = MASSEGE_TIME; timer_millis && !check_keys();) { //ждём
-      _data_update(); //преобразование данных
+      if (_data_update()) { //обработка данных
 #if MEASUR_SOUND
-      _melody_chart(measur_sound, SAMPLS_SIZE(measur_sound)); //играем волшебную мелодию
+        _melody_chart(measur_sound, SAMPLS_SIZE(measur_sound)); //играем волшебную мелодию
 #endif
+      }
     }
     switch (measur) {
       case 1: alarm_measur = 1; break; //запрещаем повторное оповещение
@@ -1431,132 +1439,133 @@ uint8_t measur_menu(void) //режим замера
   next_measur = 1; //поднимаем флаг продолжения замера
 
   while (1) {
-    _data_update(); //преобразование данных
-    _error_messege(); //обработка ошибок
-    _measur_massege(); //оповещение об окончании замера
+    if (_data_update()) { //обработка данных
+      _error_messege(); //обработка ошибок
+      _measur_massege(); //оповещение об окончании замера
 
-    if (!scr) {
-      scr = 1; //устанавливаем флаг
-
-      clrScr(); //очистка экрана
-      task_bar(M_MEASUR_BETA); //отрисовываем фон
-
-      switch (measur) {
-        case 0: //результат
-          buff = (first_froze < second_froze) ? second_froze - first_froze : 0; //рассчитываем результат замера
-
-          if (next_measur) {
-            switch (anim) {
-              case 0:
-                print(M_RESULT, CENTER, 24); //результат
-                _init_couts_per_cm2((float)buff / pgm_read_byte(&diff_measuring[mainSettings.measur_pos])); //результат ч/см2*м
-                break;
-              case 1:
-                print(M_BACK_OK, CENTER, 24); //ок - замер фона
-                _init_rads_unit(1, buff * (pumpSettings.geiger_time / (pgm_read_byte(&diff_measuring[mainSettings.measur_pos]) * 60)), 1, 4, 1, 8, 0, 54, 16); //результат мкр/ч
-                break;
-            }
-            anim = !anim;
-          }
-          else print(M_RESULT, CENTER, 24); //результат
-
-          _init_accur_percent(_init_accur(buff)); //отрисовка точности
-
-          print(M_BACK_I, LEFT, 32); //строка 1 фон
-          _init_small_couts_per_cm2((float)first_froze / pgm_read_byte(&diff_measuring[mainSettings.measur_pos]), 32);
-
-          print(M_SAMP_I, LEFT, 40); //строка 2 обр
-          _init_small_couts_per_cm2((float)second_froze / pgm_read_byte(&diff_measuring[mainSettings.measur_pos]), 40);
-
+      switch (check_keys())
+      {
+        case DOWN_KEY_HOLD: //удержание кнопки вниз
+          fast_light(); //быстрое включение подсветки
           break;
 
-        case 1: //1-й замер
-          if (next_measur) {
-            switch (anim) {
-              case 0: print(M_BACK, CENTER, 24); break; //замер фона
-              case 1: print(M_SAMP_OK, CENTER, 24); break; //ок - зам. образца
-            }
-            anim = !anim;
+        case DOWN_KEY_PRESS: //клик кнопки вниз
+          if (measur) measur_stop(); //если идет замер, спрашиваем нужно ли остановить замер
+          else {
+            measur = 0; //выключаем замер
+            time_switch = 0; //сбрасываем таймер
+            next_measur = 1; //сбрасываем флаг следующего замера
+            alarm_measur = 1; //разрешаем оповещение оканчания замера
+            first_froze = 0; //сбрасываем счетчик 1-го замера
+            second_froze = 0; //сбрасываем счетчик 2-го замера
+            scan_buff = rad_buff[0] = 0; //очищаем 0-й и 1-й элемент буфера
           }
-          else print(M_BACK, CENTER, 24); //замер фона
-          _init_couts_per_cm2(first_froze / (((time_switch) ? time_switch : 1) / 60.0)); //рассчитываем результат замера в ч*см2/м); //первый замер ч/см2*м
-          _init_accur_percent(_init_accur(first_froze)); //отрисовка точности
           break;
 
-        case 2: //2-й замер
-          _init_couts_per_cm2(second_froze / (((time_switch) ? time_switch : 1) / 60.0)); //второй замер ч/см2*м
-          _init_accur_percent(_init_accur(second_froze)); //отрисовка точности
-          print(M_SAMP, CENTER, 24); //замер образца
+        case UP_KEY_PRESS: //клик кнопки вверх
+          if (measur) measur_stop(); //если идет замер, спрашиваем нужно ли остановить замер
+          break;
+
+        case UP_KEY_HOLD: //удержание кнопки вверх
+          FLASH_SWITCH; //быстрое включение фонарика
+          break;
+
+        case SEL_KEY_PRESS: //клик кнопки выбора
+          if (!measur) {
+            measur = 1; //включаем замер
+            next_measur = 0; //сбрасываем флаг следующего замера
+            alarm_measur = 0; //разрешаем оповещение оканчания замера
+            first_froze = 0; //сбрасываем счетчик 1-го замера
+            second_froze = 0; //сбрасываем счетчик 2-го замера
+            scan_buff = 0; //очищаем 0-й элемент буфера
+          }
+          else if (next_measur && measur == 1) {
+            measur = 2;
+            next_measur = 0;
+            time_switch = 0;
+            alarm_measur = 0;
+            scan_buff = 0; //очищаем 0-й элемент буфера
+            anim = 0;
+          }
+          break;
+
+        case SEL_KEY_HOLD: //удержание кнопки выбора
+          if (measur) measur_stop(); //если идет замер, спрашиваем нужно ли остановить замер
+          else return MENU_PROGRAM; //выходим в меню
           break;
       }
 
-      if (measur) { //если идет замер
-        printNumI(pgm_read_byte(&diff_measuring[mainSettings.measur_pos]), 50, 40, 2, 32); //минут всего
-        print(M_MIN, RIGHT, 40);            //строка 1 мин
+      if (!scr) {
+        scr = 1; //устанавливаем флаг
+
+        clrScr(); //очистка экрана
+        task_bar(M_MEASUR_BETA); //отрисовываем фон
+
+        switch (measur) {
+          case 0: //результат
+            buff = (first_froze < second_froze) ? second_froze - first_froze : 0; //рассчитываем результат замера
+
+            if (next_measur) {
+              switch (anim) {
+                case 0:
+                  print(M_RESULT, CENTER, 24); //результат
+                  _init_couts_per_cm2((float)buff / pgm_read_byte(&diff_measuring[mainSettings.measur_pos])); //результат ч/см2*м
+                  break;
+                case 1:
+                  print(M_BACK_OK, CENTER, 24); //ок - замер фона
+                  _init_rads_unit(1, buff * (pumpSettings.geiger_time / (pgm_read_byte(&diff_measuring[mainSettings.measur_pos]) * 60)), 1, 4, 1, 8, 0, 54, 16); //результат мкр/ч
+                  break;
+              }
+              anim = !anim;
+            }
+            else print(M_RESULT, CENTER, 24); //результат
+
+            _init_accur_percent(_init_accur(buff)); //отрисовка точности
+
+            print(M_BACK_I, LEFT, 32); //строка 1 фон
+            _init_small_couts_per_cm2((float)first_froze / pgm_read_byte(&diff_measuring[mainSettings.measur_pos]), 32);
+
+            print(M_SAMP_I, LEFT, 40); //строка 2 обр
+            _init_small_couts_per_cm2((float)second_froze / pgm_read_byte(&diff_measuring[mainSettings.measur_pos]), 40);
+
+            break;
+
+          case 1: //1-й замер
+            if (next_measur) {
+              switch (anim) {
+                case 0: print(M_BACK, CENTER, 24); break; //замер фона
+                case 1: print(M_SAMP_OK, CENTER, 24); break; //ок - зам. образца
+              }
+              anim = !anim;
+            }
+            else print(M_BACK, CENTER, 24); //замер фона
+            _init_couts_per_cm2(first_froze / (((time_switch) ? time_switch : 1) / 60.0)); //рассчитываем результат замера в ч*см2/м); //первый замер ч/см2*м
+            _init_accur_percent(_init_accur(first_froze)); //отрисовка точности
+            break;
+
+          case 2: //2-й замер
+            _init_couts_per_cm2(second_froze / (((time_switch) ? time_switch : 1) / 60.0)); //второй замер ч/см2*м
+            _init_accur_percent(_init_accur(second_froze)); //отрисовка точности
+            print(M_SAMP, CENTER, 24); //замер образца
+            break;
+        }
+
+        if (measur) { //если идет замер
+          printNumI(pgm_read_byte(&diff_measuring[mainSettings.measur_pos]), 50, 40, 2, 32); //минут всего
+          print(M_MIN, RIGHT, 40);            //строка 1 мин
 #if (TYPE_CHAR_FILL > 44)
-        printNumI(((pgm_read_byte(&diff_measuring[mainSettings.measur_pos]) * 60 - time_switch) / 60), 0, 40, 2, TYPE_CHAR_FILL); //минут
+          printNumI(((pgm_read_byte(&diff_measuring[mainSettings.measur_pos]) * 60 - time_switch) / 60), 0, 40, 2, TYPE_CHAR_FILL); //минут
 #else
-        printNumI(((pgm_read_byte(&diff_measuring[mainSettings.measur_pos]) * 60 - time_switch) / 60), 0, 40, 2, 32); //минут
+          printNumI(((pgm_read_byte(&diff_measuring[mainSettings.measur_pos]) * 60 - time_switch) / 60), 0, 40, 2, 32); //минут
 #endif
-        print(M_TIME, 12, 40);            //строка 2
-        printNumI((pgm_read_byte(&diff_measuring[mainSettings.measur_pos]) * 60 - time_switch) % 60, 18, 40, 2, 48); //секунд
+          print(M_TIME, 12, 40);            //строка 2
+          printNumI((pgm_read_byte(&diff_measuring[mainSettings.measur_pos]) * 60 - time_switch) % 60, 18, 40, 2, 48); //секунд
 
-        drawLine(4, 1, map(time_switch, 0, pgm_read_byte(&diff_measuring[mainSettings.measur_pos]) * 60, 5, 82), 0x30); //шкала пройденого времени
+          drawLine(4, 1, map(time_switch, 0, pgm_read_byte(&diff_measuring[mainSettings.measur_pos]) * 60, 5, 82), 0x30); //шкала пройденого времени
+        }
+
+        showScr(); //вывод буфера на экран
       }
-
-      showScr(); //вывод буфера на экран
-    }
-    //+++++++++++++++++++++  опрос кнопок  +++++++++++++++++++++++++++
-    switch (check_keys())
-    {
-      case DOWN_KEY_HOLD: //удержание кнопки вниз
-        fast_light(); //быстрое включение подсветки
-        break;
-
-      case DOWN_KEY_PRESS: //клик кнопки вниз
-        if (measur) measur_stop(); //если идет замер, спрашиваем нужно ли остановить замер
-        else {
-          measur = 0; //выключаем замер
-          time_switch = 0; //сбрасываем таймер
-          next_measur = 1; //сбрасываем флаг следующего замера
-          alarm_measur = 1; //разрешаем оповещение оканчания замера
-          first_froze = 0; //сбрасываем счетчик 1-го замера
-          second_froze = 0; //сбрасываем счетчик 2-го замера
-          scan_buff = rad_buff[0] = 0; //очищаем 0-й и 1-й элемент буфера
-        }
-        break;
-
-      case UP_KEY_PRESS: //клик кнопки вверх
-        if (measur) measur_stop(); //если идет замер, спрашиваем нужно ли остановить замер
-        break;
-
-      case UP_KEY_HOLD: //удержание кнопки вверх
-        FLASH_SWITCH; //быстрое включение фонарика
-        break;
-
-      case SEL_KEY_PRESS: //клик кнопки выбора
-        if (!measur) {
-          measur = 1; //включаем замер
-          next_measur = 0; //сбрасываем флаг следующего замера
-          alarm_measur = 0; //разрешаем оповещение оканчания замера
-          first_froze = 0; //сбрасываем счетчик 1-го замера
-          second_froze = 0; //сбрасываем счетчик 2-го замера
-          scan_buff = 0; //очищаем 0-й элемент буфера
-        }
-        else if (next_measur && measur == 1) {
-          measur = 2;
-          next_measur = 0;
-          time_switch = 0;
-          alarm_measur = 0;
-          scan_buff = 0; //очищаем 0-й элемент буфера
-          anim = 0;
-        }
-        break;
-
-      case SEL_KEY_HOLD: //удержание кнопки выбора
-        if (measur) measur_stop(); //если идет замер, спрашиваем нужно ли остановить замер
-        else return MENU_PROGRAM; //выходим в меню
-        break;
     }
   }
   return INIT_PROGRAM;
@@ -1583,7 +1592,7 @@ void _init_small_couts_per_cm2(float num, uint8_t pos_y) //частиц/см2*м
 #endif
 }
 //-------------------------------Выбор тревоги----------------------------------------------------------
-void alarm_warning(void) //выбор тревоги
+void _alarm_warning(void) //выбор тревоги
 {
   switch (alarm_switch) {
     case 1: alarm_messege(0, mainSettings.alarm_back, A_BACK); break; //фон 2
@@ -1621,48 +1630,48 @@ void alarm_messege(boolean set, uint8_t sound, const char *mode) //тревог�
   print(A_ALARM, CENTER, 32); //строка ТРЕВОГА!
 
   while (1) {
-    _data_update(); //преобразование данных
-
-    if (!scr) {
-      scr = 1; //сбросили флаг обновления экрана
-      cnt_pwr = 0; //обнуляем счетчик сна
-
-#if TYPE_ALARM_IND != 2
-      drawLine(4); //очистка строки 4
-      _init_alarm_massage(1, 32); //тревога
-#endif
-
-      drawLine(5); //очистка строки 5
-      print(mode, LEFT, 40); //фон
-      _init_rads_unit(0, (set) ? rad_dose : rad_back, 10, 5, RIGHT, 40, set, RIGHT, 40); //результат
-
-      showScr(); //вывод буфера на экран
-    }
-
-    switch (sound) {
-      case 1: _melody_chart(alarm_sound, SAMPLS_SIZE(alarm_sound)); break; //играем волшебную мелодию
-      case 2: _vibro_on(); break; //включаем вибрацию
-      case 3: _melody_chart(alarm_sound, SAMPLS_SIZE(alarm_sound)); _vibro_on(); break; //играем волшебную мелодию и включаем вибрацию
-    }
-
-#if ALARM_AUTO_DISABLE
-    if (check_keys() || (!set && !alarm_switch)) //если нажата любая кнопка или фон упал отключаем тревогу
-#else
-    if (check_keys())
-#endif
-    {
-      _vibro_off(); //выключаем вибрацию
-      _buzz_ret(); //восстанавливаем настроку щелчков
-
-      switch (set) {
-        case 0: alarm_back_wait = warn_back_wait = 1; break;
-        case 1: alarm_dose_wait = warn_dose_wait = rad_dose; break;
+    if (_data_update()) { //обработка данных
+      switch (sound) {
+        case 1: _melody_chart(alarm_sound, SAMPLS_SIZE(alarm_sound)); break; //играем волшебную мелодию
+        case 2: _vibro_on(); break; //включаем вибрацию
+        case 3: _melody_chart(alarm_sound, SAMPLS_SIZE(alarm_sound)); _vibro_on(); break; //играем волшебную мелодию и включаем вибрацию
       }
 
-      melody_switch = 0; //сбрасываем переключатель мелодии
-      alarm_switch = 0; //устанавливаем признак отсутствия тревоги
-      scr = 0; //разрешаем обновление экрана
-      return;
+#if ALARM_AUTO_DISABLE
+      if (check_keys() || (!set && !alarm_switch)) //если нажата любая кнопка или фон упал отключаем тревогу
+#else
+      if (check_keys())
+#endif
+      {
+        _vibro_off(); //выключаем вибрацию
+        _buzz_ret(); //восстанавливаем настроку щелчков
+
+        switch (set) {
+          case 0: alarm_back_wait = warn_back_wait = 1; break;
+          case 1: alarm_dose_wait = warn_dose_wait = rad_dose; break;
+        }
+
+        melody_switch = 0; //сбрасываем переключатель мелодии
+        alarm_switch = 0; //устанавливаем признак отсутствия тревоги
+        scr = 0; //разрешаем обновление экрана
+        return;
+      }
+
+      if (!scr) {
+        scr = 1; //сбросили флаг обновления экрана
+        cnt_pwr = 0; //обнуляем счетчик сна
+
+#if TYPE_ALARM_IND != 2
+        drawLine(4); //очистка строки 4
+        _init_alarm_massage(1, 32); //тревога
+#endif
+
+        drawLine(5); //очистка строки 5
+        print(mode, LEFT, 40); //фон
+        _init_rads_unit(0, (set) ? rad_dose : rad_back, 10, 5, RIGHT, 40, set, RIGHT, 40); //результат
+
+        showScr(); //вывод буфера на экран
+      }
     }
   }
 }
@@ -1831,10 +1840,11 @@ void _bat_massege(void) //сообщение об разряженной бат�
     _init_low_bat(); //отрисовка сообщения разряженной батареи
 
     for (timer_millis = MASSEGE_TIME; timer_millis && !check_keys();) { //ждём
-      _data_update(); //преобразование данных
+      if (_data_update()) { //обработка данных
 #if BAT_LOW_SOUND
-      _melody_chart(bat_low_sound, SAMPLS_SIZE(bat_low_sound)); //играем волшебную мелодию
+        _melody_chart(bat_low_sound, SAMPLS_SIZE(bat_low_sound)); //играем волшебную мелодию
 #endif
+      }
     }
     _buzz_ret(); //считываем настроку щелчков
     if (bat_adc >= LOW_BAT_POWER) power_down(); //выключение устройства
@@ -1913,95 +1923,96 @@ uint8_t search_menu(void) //инициализация режима поиск
   graf = 0; //разрешаем обновление экрана
 
   while (1) {
-    _data_update(); //преобразование данных
-    _error_messege(); //обработка ошибок
+    if (_data_update()) { //обработка данных
+      _search_update(); //обновляем данные поика
+      _error_messege(); //обработка ошибок
 
-    if (!graf) {
-      graf = 1; //запрещаем обновление графика
-
-      clrScr(); //очистка экрана
-
-      task_bar(S_SEARCH); //отрисовываем фон
-      if (search_disable) drawBitmap(59, 0, scan_stop_img, 6, 8); //рисуем паузу
-      drawBitmap(0, 8, scan_ind_scale_img, 51, 8); //рисуем шкалу
-      drawLine(2, 0, 1, 0x3E); //рисуем шкалу
-
-      switch (units) {
-        case 0:
-          print(S_IMP_PER_SEC, RIGHT, 8); //имп/с
-#if (TYPE_CHAR_FILL > 44)
-          printNumF(rad_imp, (rad_imp < 100) ? 2 : 0, 54, 16, 46, 5, TYPE_CHAR_FILL); //строка 1
-#else
-          printNumF(rad_imp, (rad_imp < 100) ? 2 : 0, 54, 16, 46, 5, 32); //строка 1
-#endif
+      switch (check_keys()) {
+        case DOWN_KEY_HOLD: //вкл/выкл посветки
+          fast_light(); //быстрое включение посветки
           break;
 
-        case 1:
-          print(S_IMP_PER_MIN, RIGHT, 8); //имп/м
-#if (TYPE_CHAR_FILL > 44)
-          printNumF(rad_imp_m, (rad_imp_m < 100) ? 2 : 0, 54, 16, 46, 5, TYPE_CHAR_FILL); //строка 1
-#else
-          printNumF(rad_imp_m, (rad_imp_m < 100) ? 2 : 0, 54, 16, 46, 5, 32); //строка 1
-#endif
+        case DOWN_KEY_PRESS: //сброс
+          rad_imp = 0; //сбрасываем имп/с
+          rad_imp_m = 0; //сбрасываем имп/м
+          rad_search = 0; //сбрасываем счет импульсов
+          search_time_now = 0; //сбрасываем время счета графика
+          scan_buff = 0; //сбрасываем буфер
+          rad_buff[0] = 0; //сбрасываем буфер
+          search_disable = 0; //разрешаем обновление графика
+          for (uint8_t i = 0; i < 76; i++) search_buff[i] = 0; //очищаем буфер графика
+          graf = 0; //разрешаем обновления экрана
           break;
 
-        case 2:
-          _init_rads_unit(0, rad_search, 10, 5, 54, 16, 0, RIGHT, 8); //результат
+        case UP_KEY_HOLD: //вкл/выкл фонарика
+          FLASH_SWITCH; //быстрое включение фонарика
           break;
+
+        case UP_KEY_PRESS: //доп.действие
+          search_disable = (search_disable) ? 0 : 1; //запрещаем обновление графика
+          graf = 0; //разрешаем обновления экрана
+          break;
+
+        case SEL_KEY_PRESS: //выбор режима
+          if (units < 2) units++; else units = 0;
+          graf = 0; //разрешаем обновления экрана
+          break;
+
+        case SEL_KEY_HOLD: //настройки
+          scan_buff = 0; //сбрасываем счетчик импульсов
+          rad_buff[0] = 0; //сбрасываем счетчик импульсов
+          search = 0; //сбрасываем флаг поиска
+          return MENU_PROGRAM;
       }
+
+      if (!graf) {
+        graf = 1; //запрещаем обновление графика
+
+        clrScr(); //очистка экрана
+
+        task_bar(S_SEARCH); //отрисовываем фон
+        if (search_disable) drawBitmap(59, 0, scan_stop_img, 6, 8); //рисуем паузу
+        drawBitmap(0, 8, scan_ind_scale_img, 51, 8); //рисуем шкалу
+        drawLine(2, 0, 1, 0x3E); //рисуем шкалу
+
+        switch (units) {
+          case 0:
+            print(S_IMP_PER_SEC, RIGHT, 8); //имп/с
+#if (TYPE_CHAR_FILL > 44)
+            printNumF(rad_imp, (rad_imp < 100) ? 2 : 0, 54, 16, 46, 5, TYPE_CHAR_FILL); //строка 1
+#else
+            printNumF(rad_imp, (rad_imp < 100) ? 2 : 0, 54, 16, 46, 5, 32); //строка 1
+#endif
+            break;
+
+          case 1:
+            print(S_IMP_PER_MIN, RIGHT, 8); //имп/м
+#if (TYPE_CHAR_FILL > 44)
+            printNumF(rad_imp_m, (rad_imp_m < 100) ? 2 : 0, 54, 16, 46, 5, TYPE_CHAR_FILL); //строка 1
+#else
+            printNumF(rad_imp_m, (rad_imp_m < 100) ? 2 : 0, 54, 16, 46, 5, 32); //строка 1
+#endif
+            break;
+
+          case 2:
+            _init_rads_unit(0, rad_search, 10, 5, 54, 16, 0, RIGHT, 8); //результат
+            break;
+        }
 
 #if TYPE_GRAF_MOVE //слева-направо
-      for (uint8_t i = 4; i < 80; i++) {
-        graf_lcd(map(search_buff[i - 4], 0, maxLevel, 0, 22), i, 22, 3); //инициализируем график
-      }
+        for (uint8_t i = 4; i < 80; i++) {
+          graf_lcd(map(search_buff[i - 4], 0, maxLevel, 0, 22), i, 22, 3); //инициализируем график
+        }
 #else //справа-налево
-      for (uint8_t i = 79; i > 3; i--) {
-        graf_lcd(map(search_buff[i - 4], 0, maxLevel, 0, 22), i, 22, 3); //инициализируем график
-      }
+        for (uint8_t i = 79; i > 3; i--) {
+          graf_lcd(map(search_buff[i - 4], 0, maxLevel, 0, 22), i, 22, 3); //инициализируем график
+        }
 #endif
-    }
+      }
 
-    drawLine(2, scan_ind + 1, 54); //убираем лишнее
-    drawLine(2, 2, scan_ind, 0x3E); //рисуем полосу имп/с
-    showScr(); //вывод буфера на экран
-
-    //+++++++++++++++++++++  опрос кнопок  +++++++++++++++++++++++++++
-    switch (check_keys()) {
-      case DOWN_KEY_HOLD: //вкл/выкл посветки
-        fast_light(); //быстрое включение посветки
-        break;
-
-      case DOWN_KEY_PRESS: //сброс
-        rad_imp = 0; //сбрасываем имп/с
-        rad_imp_m = 0; //сбрасываем имп/м
-        rad_search = 0; //сбрасываем счет импульсов
-        search_time_now = 0; //сбрасываем время счета графика
-        scan_buff = 0; //сбрасываем буфер
-        rad_buff[0] = 0; //сбрасываем буфер
-        search_disable = 0; //разрешаем обновление графика
-        for (uint8_t i = 0; i < 76; i++) search_buff[i] = 0; //очищаем буфер графика
-        graf = 0; //разрешаем обновления экрана
-        break;
-
-      case UP_KEY_HOLD: //вкл/выкл фонарика
-        FLASH_SWITCH; //быстрое включение фонарика
-        break;
-
-      case UP_KEY_PRESS: //доп.действие
-        search_disable = (search_disable) ? 0 : 1; //запрещаем обновление графика
-        graf = 0; //разрешаем обновления экрана
-        break;
-
-      case SEL_KEY_PRESS: //выбор режима
-        if (units < 2) units++; else units = 0;
-        graf = 0; //разрешаем обновления экрана
-        break;
-
-      case SEL_KEY_HOLD: //настройки
-        scan_buff = 0; //сбрасываем счетчик импульсов
-        rad_buff[0] = 0; //сбрасываем счетчик импульсов
-        search = 0; //сбрасываем флаг поиска
-        return MENU_PROGRAM;
+      drawLine(2, scan_ind + 1, 54); //убираем лишнее
+      drawLine(2, 2, scan_ind, 0x3E); //рисуем полосу имп/с
+      showScr(); //вывод буфера на экран
     }
   }
   return INIT_PROGRAM;
@@ -2052,45 +2063,45 @@ uint16_t _convert_vcc_hv(uint8_t adc) //параметры
 uint8_t parameters(void) //параметры
 {
   while (1) {
-    _data_update(); //преобразование данных
-
-    if (!scr) {
-      scr = 1; //запрещаем обновление экрана
-
-#if TIME_OUT_PARAM
-      if (++time_out > TIME_OUT_PARAM) return MAIN_PROGRAM;
-#endif
-
+    if (_data_update()) { //обработка данных
       _bat_check(); //опрос батареи
 
-      clrScr(); //очистка экрана
-      task_bar(P_PARAM); //отрисовываем фон
-
-      print(P_BAT, LEFT, 8); //Батарея:
-      printNumF(_convert_vcc_bat(bat_adc), 2, RIGHT, 8, 46, 4, 48); //напряжение акб
-      print(P_ADC_BAT, LEFT, 16); //Знач.АЦП:
-      printNumI(bat_adc, RIGHT, 16); //значение ацп акб
-
-      print(P_HV_PUMP, LEFT, 24); //Накачка ВВ:
-      printNumI(_convert_vcc_hv(hv_adc), RIGHT, 24);//напряжение высокого
-      print(P_PUMP_SPEED, LEFT, 32); //Скорость:
-      printNumI(speed_hv, RIGHT, 32);//скорость накачки
-
-      print(P_REFERENCE, LEFT, 40); //Опорное:
-      printNumF(pumpSettings.reference, 2, RIGHT, 40, 46, 4, 48); //опорное напряжение
-
-      showScr(); //вывод буфера на экран
-    }
-
-    switch (check_keys()) {
+      switch (check_keys()) {
 #if DEBUG_RETURN
-      case DOWN_KEY_HOLD: //удержание кнопки вниз
-      case UP_KEY_HOLD: //удержание кнопки вверх
-        return DEBUG_PROGRAM;
+        case DOWN_KEY_HOLD: //удержание кнопки вниз
+        case UP_KEY_HOLD: //удержание кнопки вверх
+          return DEBUG_PROGRAM;
 #endif
 
-      case SEL_KEY_HOLD: //удержание кнопки выбора
-        return MENU_PROGRAM; //выход
+        case SEL_KEY_HOLD: //удержание кнопки выбора
+          return MENU_PROGRAM; //выход
+      }
+
+      if (!scr) {
+        scr = 1; //запрещаем обновление экрана
+
+#if TIME_OUT_PARAM
+        if (++time_out > TIME_OUT_PARAM) return MAIN_PROGRAM;
+#endif
+
+        clrScr(); //очистка экрана
+        task_bar(P_PARAM); //отрисовываем фон
+
+        print(P_BAT, LEFT, 8); //Батарея:
+        printNumF(_convert_vcc_bat(bat_adc), 2, RIGHT, 8, 46, 4, 48); //напряжение акб
+        print(P_ADC_BAT, LEFT, 16); //Знач.АЦП:
+        printNumI(bat_adc, RIGHT, 16); //значение ацп акб
+
+        print(P_HV_PUMP, LEFT, 24); //Накачка ВВ:
+        printNumI(_convert_vcc_hv(hv_adc), RIGHT, 24);//напряжение высокого
+        print(P_PUMP_SPEED, LEFT, 32); //Скорость:
+        printNumI(speed_hv, RIGHT, 32);//скорость накачки
+
+        print(P_REFERENCE, LEFT, 40); //Опорное:
+        printNumF(pumpSettings.reference, 2, RIGHT, 40, 46, 4, 48); //опорное напряжение
+
+        showScr(); //вывод буфера на экран
+      }
     }
   }
   return INIT_PROGRAM;
@@ -2102,95 +2113,95 @@ uint8_t debug(void) //отладка
   boolean set = ((uint8_t)pumpSettings.geiger_time < 100) ? 1 : 0; //режим знака счета времени
 
   while (1) {
-    _data_update(); //преобразование данных
-
-    if (!scr) {
-      scr = 1; //запрещаем обновление экрана
-
-#if TIME_OUT_DEBUG
-      if (++time_out > TIME_OUT_DEBUG) {
-        settings_save(1); //сохраняем настройки преобразователя
-        error_switch = 0; //сбрасываем указатель ошибки
-        return MAIN_PROGRAM;
-      }
-#endif
-
-      clrScr(); //очистка экрана
-      task_bar(D_DEBUG); //отрисовываем фон
-
+    if (_data_update()) { //обработка данных
       _bat_check(); //опрос батареи
 
-      print(D_BAT, LEFT, 8); //БАТ
-      printNumF(_convert_vcc_bat(bat_adc), 2, 20, 8, 46, 4, 48); //напряжение акб
-      print(D_ADC_BAT, 46, 8); //АЦП
-      printNumI(bat_adc, RIGHT, 8); //значение ацп акб
-      print(D_PUMP_SPEED, 0, 16); //СКР
-      printNumI(speed_hv, 20, 16); //скорость накачки
-      print(D_HV_PUMP, 46, 16); //ВВ
-      printNumI(_convert_vcc_hv(hv_adc), RIGHT, 16); //напряжение высокого
+      switch (check_keys()) {
 
-      printNumI(pumpSettings.wdt_period, 20, 24); //период
-      printNumF(pumpSettings.geiger_time, set, RIGHT, 24, 46, 4, 32); //счёт
-      printNumF(pumpSettings.reference, 2, 20, 32, 46, 4, 48); //опорное напряжение
-      printNumF(0.2 * pumpSettings.puls, 1, RIGHT, 32, 46, 3, 32); //длинна импульса
-      printNumI(pumpSettings.k_delitel, 20, 40); //коэффициент делителя
-      printNumI(pumpSettings.ADC_value, RIGHT, 40); //значение АЦП для преобразователя
+        case DOWN_KEY_HOLD: //переключение дробной части
+        case UP_KEY_HOLD:
+          if (cursor == 1) {
+            set = !set;
+            pumpSettings.geiger_time = (uint8_t)pumpSettings.geiger_time;
+          }
+          break;
 
-      for (uint8_t i = 0; i < 6; i++) {
-        if (cursor == i) invertText(true); //включаем инверсию
-        switch (i) {
-          case 0: print(D_WDT_PER, LEFT, 24); break; //ПЕР
-          case 1: print(D_GEIGER_TIME, 46, 24); break; //СЧ
-          case 2: print(D_REFERENCE, LEFT, 32); break; //ОПР
-          case 3: print(D_PULS_LEN, 46, 32); break; //ИМП
-          case 4: print(D_COEF_DIV, LEFT, 40); break; //КДЛ
-          case 5: print(D_PUMP_ADC, 46, 40); break; //АЦП
-        }
-        if (cursor == i) invertText(false); //выключаем инверсию
+        case UP_KEY_PRESS: //прибавить значение
+          switch (cursor) {
+            case 0: if (pumpSettings.wdt_period < MAX_WDT_PERIOD) pumpSettings.wdt_period++; break; //период
+            case 1: if (pumpSettings.geiger_time < MAX_GEIGER_TIME) pumpSettings.geiger_time += (set) ? 0.1 : 1; if ((uint8_t)pumpSettings.geiger_time == 100) set = 0;  break; //счет
+            case 2: if (pumpSettings.reference < 1.50) pumpSettings.reference += 0.01; break; //прибавляем опорное напряжение
+            case 3: if (pumpSettings.puls < 49) pumpSettings.puls++; break; //прибавляем длинну импульса
+            case 4: if (pumpSettings.k_delitel < 1500) pumpSettings.k_delitel++; break; //прибавляем коэффициент делителя
+            case 5: if (pumpSettings.ADC_value < 254) pumpSettings.ADC_value++; break; //прибавляем значение АЦП для преобразователя
+          }
+          break;
+
+        case DOWN_KEY_PRESS: //убавить значение
+          switch (cursor) {
+            case 0: if (pumpSettings.wdt_period > MIN_WDT_PERIOD) pumpSettings.wdt_period--; break; //период
+            case 1: if (pumpSettings.geiger_time > MIN_GEIGER_TIME) pumpSettings.geiger_time -= (set) ? 0.1 : 1; if ((uint8_t)pumpSettings.geiger_time == 100) set = 1; break; //счет
+            case 2: if (pumpSettings.reference > 0.50) pumpSettings.reference -= 0.01; break; //убавляем опорное напряжение
+            case 3: if (pumpSettings.puls > 1) pumpSettings.puls--; break; //убавляем длинну импульса
+            case 4: if (pumpSettings.k_delitel > 10) pumpSettings.k_delitel--; break; //убавляем коэффициент делителя
+            case 5: if (pumpSettings.ADC_value > 10) pumpSettings.ADC_value--; break; //убавляем значение АЦП для преобразователя
+          }
+          break;
+
+        case SEL_KEY_PRESS: //переключение пунктов
+          if (++cursor > 5) cursor = 0;
+          break;
+
+        case SEL_KEY_HOLD: //выход в настройки
+          settings_save(1); //сохраняем настройки преобразователя
+          error_switch = 0; //сбрасываем указатель ошибки
+          return MENU_PROGRAM;
       }
-      showScr(); //вывод буфера на экран
-    }
 
-    switch (check_keys()) {
+      if (!scr) {
+        scr = 1; //запрещаем обновление экрана
 
-      case DOWN_KEY_HOLD: //переключение дробной части
-      case UP_KEY_HOLD:
-        if (cursor == 1) {
-          set = !set;
-          pumpSettings.geiger_time = (uint8_t)pumpSettings.geiger_time;
+#if TIME_OUT_DEBUG
+        if (++time_out > TIME_OUT_DEBUG) {
+          settings_save(1); //сохраняем настройки преобразователя
+          error_switch = 0; //сбрасываем указатель ошибки
+          return MAIN_PROGRAM;
         }
-        break;
+#endif
 
-      case UP_KEY_PRESS: //прибавить значение
-        switch (cursor) {
-          case 0: if (pumpSettings.wdt_period < MAX_WDT_PERIOD) pumpSettings.wdt_period++; break; //период
-          case 1: if (pumpSettings.geiger_time < MAX_GEIGER_TIME) pumpSettings.geiger_time += (set) ? 0.1 : 1; if ((uint8_t)pumpSettings.geiger_time == 100) set = 0;  break; //счет
-          case 2: if (pumpSettings.reference < 1.50) pumpSettings.reference += 0.01; break; //прибавляем опорное напряжение
-          case 3: if (pumpSettings.puls < 49) pumpSettings.puls++; break; //прибавляем длинну импульса
-          case 4: if (pumpSettings.k_delitel < 1500) pumpSettings.k_delitel++; break; //прибавляем коэффициент делителя
-          case 5: if (pumpSettings.ADC_value < 254) pumpSettings.ADC_value++; break; //прибавляем значение АЦП для преобразователя
+        clrScr(); //очистка экрана
+        task_bar(D_DEBUG); //отрисовываем фон
+
+        print(D_BAT, LEFT, 8); //БАТ
+        printNumF(_convert_vcc_bat(bat_adc), 2, 20, 8, 46, 4, 48); //напряжение акб
+        print(D_ADC_BAT, 46, 8); //АЦП
+        printNumI(bat_adc, RIGHT, 8); //значение ацп акб
+        print(D_PUMP_SPEED, 0, 16); //СКР
+        printNumI(speed_hv, 20, 16); //скорость накачки
+        print(D_HV_PUMP, 46, 16); //ВВ
+        printNumI(_convert_vcc_hv(hv_adc), RIGHT, 16); //напряжение высокого
+
+        printNumI(pumpSettings.wdt_period, 20, 24); //период
+        printNumF(pumpSettings.geiger_time, set, RIGHT, 24, 46, 4, 32); //счёт
+        printNumF(pumpSettings.reference, 2, 20, 32, 46, 4, 48); //опорное напряжение
+        printNumF(0.2 * pumpSettings.puls, 1, RIGHT, 32, 46, 3, 32); //длинна импульса
+        printNumI(pumpSettings.k_delitel, 20, 40); //коэффициент делителя
+        printNumI(pumpSettings.ADC_value, RIGHT, 40); //значение АЦП для преобразователя
+
+        for (uint8_t i = 0; i < 6; i++) {
+          if (cursor == i) invertText(true); //включаем инверсию
+          switch (i) {
+            case 0: print(D_WDT_PER, LEFT, 24); break; //ПЕР
+            case 1: print(D_GEIGER_TIME, 46, 24); break; //СЧ
+            case 2: print(D_REFERENCE, LEFT, 32); break; //ОПР
+            case 3: print(D_PULS_LEN, 46, 32); break; //ИМП
+            case 4: print(D_COEF_DIV, LEFT, 40); break; //КДЛ
+            case 5: print(D_PUMP_ADC, 46, 40); break; //АЦП
+          }
+          if (cursor == i) invertText(false); //выключаем инверсию
         }
-        break;
-
-      case DOWN_KEY_PRESS: //убавить значение
-        switch (cursor) {
-          case 0: if (pumpSettings.wdt_period > MIN_WDT_PERIOD) pumpSettings.wdt_period--; break; //период
-          case 1: if (pumpSettings.geiger_time > MIN_GEIGER_TIME) pumpSettings.geiger_time -= (set) ? 0.1 : 1; if ((uint8_t)pumpSettings.geiger_time == 100) set = 1; break; //счет
-          case 2: if (pumpSettings.reference > 0.50) pumpSettings.reference -= 0.01; break; //убавляем опорное напряжение
-          case 3: if (pumpSettings.puls > 1) pumpSettings.puls--; break; //убавляем длинну импульса
-          case 4: if (pumpSettings.k_delitel > 10) pumpSettings.k_delitel--; break; //убавляем коэффициент делителя
-          case 5: if (pumpSettings.ADC_value > 10) pumpSettings.ADC_value--; break; //убавляем значение АЦП для преобразователя
-        }
-        break;
-
-      case SEL_KEY_PRESS: //переключение пунктов
-        if (++cursor > 5) cursor = 0;
-        break;
-
-      case SEL_KEY_HOLD: //выход в настройки
-        settings_save(1); //сохраняем настройки преобразователя
-        error_switch = 0; //сбрасываем указатель ошибки
-        return MENU_PROGRAM;
+        showScr(); //вывод буфера на экран
+      }
     }
   }
   return INIT_PROGRAM;
@@ -2433,79 +2444,78 @@ uint8_t settings(void) //настройки
   boolean set = 0; //разрешение на настройку
 
   while (1) {
-    _data_update(); //преобразование данных
+    if (_data_update()) { //обработка данных
+      switch (check_keys()) {
+        case DOWN_KEY_HOLD: //вкл/выкл посветки
+          fast_light(); //быстрое включение посветки
+          break;
 
-    //+++++++++++++++++++   вывод информации на экран  +++++++++++++++++++++++++
-    if (!scr) {
-      scr = 1; //запрещаем обновления экрана
+        case DOWN_KEY_PRESS: //вниз
+          switch (set) {
+            case 0:
+              if (pos < 16 + USE_UART) { //изменяем позицию
+                pos++;
+                if (cursor < 4) cursor++; //изменяем положение курсора
+              }
+              else { //иначе начало списка
+                pos = 0;
+                cursor = 0;
+              }
+              break;
+            case 1: _settings_data_down(pos); break; //убавление данных
+          }
+          break;
+
+        case UP_KEY_PRESS: //вверх
+          switch (set) {
+            case 0:
+              if (pos > 0) { //изменяем позицию
+                pos--;
+                if (cursor > 0) cursor--; //изменяем положение курсора
+              }
+              else { //иначе конец списка
+                pos = 16 + USE_UART;
+                cursor = 4;
+              }
+              break;
+            case 1: _settings_data_up(pos); break; //прибавление данных
+          }
+          break;
+
+        case UP_KEY_HOLD: //вкл/выкл фонарика
+          FLASH_SWITCH; //быстрое включение фонарика
+          break;
+
+        case SEL_KEY_PRESS: //select key //выбор
+          set = !set;
+          break;
+
+        case SEL_KEY_HOLD: //выход из настроек
+          settings_save(0); //сохраняем настройки
+          return MAIN_PROGRAM;
+      }
+
+      if (!scr) {
+        scr = 1; //запрещаем обновления экрана
 
 #if TIME_OUT_SETTINGS
-      if (++time_out > TIME_OUT_SETTINGS) {
-        settings_save(0); //сохраняем настройки
-        return MAIN_PROGRAM;
-      }
+        if (++time_out > TIME_OUT_SETTINGS) {
+          settings_save(0); //сохраняем настройки
+          return MAIN_PROGRAM;
+        }
 #endif
 
-      clrScr(); // Очистка экрана
-      task_bar(S_SETTINGS); //отрисовываем фон
+        clrScr(); // Очистка экрана
+        task_bar(S_SETTINGS); //отрисовываем фон
 
-      for (uint8_t i = 0; i < 5; i++) { //отсчет строк
-        for (uint8_t r = 0; r < 2; r++) { //отсчет позиции
-          boolean inv = (i == cursor && r == set); //если курсор на нужной строке
-          _settings_item_switch(r, inv, pos - cursor + i, i); //отрисовываем пункты настроек
+        for (uint8_t i = 0; i < 5; i++) { //отсчет строк
+          for (uint8_t r = 0; r < 2; r++) { //отсчет позиции
+            boolean inv = (i == cursor && r == set); //если курсор на нужной строке
+            _settings_item_switch(r, inv, pos - cursor + i, i); //отрисовываем пункты настроек
+          }
         }
+        showScr(); //вывод буфера на экран
       }
-      showScr(); //вывод буфера на экран
-    }
-    //+++++++++++++++++++++  опрос кнопок  +++++++++++++++++++++++++++
-    switch (check_keys()) {
-      case DOWN_KEY_HOLD: //вкл/выкл посветки
-        fast_light(); //быстрое включение посветки
-        break;
-
-      case DOWN_KEY_PRESS: //вниз
-        switch (set) {
-          case 0:
-            if (pos < 16 + USE_UART) { //изменяем позицию
-              pos++;
-              if (cursor < 4) cursor++; //изменяем положение курсора
-            }
-            else { //иначе начало списка
-              pos = 0;
-              cursor = 0;
-            }
-            break;
-          case 1: _settings_data_down(pos); break; //убавление данных
-        }
-        break;
-
-      case UP_KEY_PRESS: //вверх
-        switch (set) {
-          case 0:
-            if (pos > 0) { //изменяем позицию
-              pos--;
-              if (cursor > 0) cursor--; //изменяем положение курсора
-            }
-            else { //иначе конец списка
-              pos = 16 + USE_UART;
-              cursor = 4;
-            }
-            break;
-          case 1: _settings_data_up(pos); break; //прибавление данных
-        }
-        break;
-
-      case UP_KEY_HOLD: //вкл/выкл фонарика
-        FLASH_SWITCH; //быстрое включение фонарика
-        break;
-
-      case SEL_KEY_PRESS: //select key //выбор
-        set = !set;
-        break;
-
-      case SEL_KEY_HOLD: //выход из настроек
-        settings_save(0); //сохраняем настройки
-        return MAIN_PROGRAM;
     }
   }
   return INIT_PROGRAM;
@@ -2540,63 +2550,62 @@ uint8_t menu(void) //меню
   sleep_disable = 1; //запрещаем сон
 
   while (1) {
-    _data_update(); //преобразование данных
+    if (_data_update()) { //обработка данных
+      switch (check_keys()) {
+        case DOWN_KEY_HOLD: //вкл/выкл посветки
+          fast_light(); //быстрое включение посветки
+          break;
 
-    //+++++++++++++++++++   вывод информации на экран  +++++++++++++++++++++++++
-    if (!scr) {
-      scr = 1; //запрещаем обновления экрана
+        case DOWN_KEY_PRESS: //вниз
+          if (pos < 6) { //изменяем позицию
+            pos++;
+            if (cursor < 4) cursor++; //изменяем положение курсора
+          }
+          else { //иначе начало списка
+            pos = 0;
+            cursor = 0;
+          }
+          break;
+
+        case UP_KEY_PRESS: //вверх
+          if (pos > 0) { //изменяем позицию
+            pos--;
+            if (cursor > 0) cursor--; //изменяем положение курсора
+          }
+          else { //иначе конец списка
+            pos = 6;
+            cursor = 4;
+          }
+          break;
+
+        case UP_KEY_HOLD: //вкл/выкл фонарика
+          FLASH_SWITCH; //быстрое включение фонарика
+          break;
+
+        case SEL_KEY_PRESS: //выбор пункта
+          switch (pos) {
+            default: return pos + 1;
+            case 6: power_down(); return MAIN_PROGRAM;
+          }
+          break;
+
+        case SEL_KEY_HOLD: //выход к главным экранам
+          return MAIN_PROGRAM;
+      }
+
+      if (!scr) {
+        scr = 1; //запрещаем обновления экрана
 
 #if TIME_OUT_MENU
-      if (++time_out > TIME_OUT_MENU) return MAIN_PROGRAM;
+        if (++time_out > TIME_OUT_MENU) return MAIN_PROGRAM;
 #endif
 
-      clrScr(); // Очистка экрана
-      task_bar(MAIN_MENU); //отрисовываем фон
+        clrScr(); // Очистка экрана
+        task_bar(MAIN_MENU); //отрисовываем фон
 
-      for (uint8_t i = 0; i < 5; i++) _menu_item_switch((i == cursor) ? 1 : 0, pos - cursor + i, i); //отрисовываем пункты настроек
-      showScr(); //вывод буфера на экран
-    }
-    //+++++++++++++++++++++  опрос кнопок  +++++++++++++++++++++++++++
-    switch (check_keys()) {
-      case DOWN_KEY_HOLD: //вкл/выкл посветки
-        fast_light(); //быстрое включение посветки
-        break;
-
-      case DOWN_KEY_PRESS: //вниз
-        if (pos < 6) { //изменяем позицию
-          pos++;
-          if (cursor < 4) cursor++; //изменяем положение курсора
-        }
-        else { //иначе начало списка
-          pos = 0;
-          cursor = 0;
-        }
-        break;
-
-      case UP_KEY_PRESS: //вверх
-        if (pos > 0) { //изменяем позицию
-          pos--;
-          if (cursor > 0) cursor--; //изменяем положение курсора
-        }
-        else { //иначе конец списка
-          pos = 6;
-          cursor = 4;
-        }
-        break;
-
-      case UP_KEY_HOLD: //вкл/выкл фонарика
-        FLASH_SWITCH; //быстрое включение фонарика
-        break;
-
-      case SEL_KEY_PRESS: //выбор пункта
-        switch (pos) {
-          default: return pos + 1;
-          case 6: power_down(); return MAIN_PROGRAM;
-        }
-        break;
-
-      case SEL_KEY_HOLD: //выход к главным экранам
-        return MAIN_PROGRAM;
+        for (uint8_t i = 0; i < 5; i++) _menu_item_switch((i == cursor) ? 1 : 0, pos - cursor + i, i); //отрисовываем пункты настроек
+        showScr(); //вывод буфера на экран
+      }
     }
   }
   return INIT_PROGRAM;
@@ -2743,95 +2752,94 @@ uint8_t logbook(void) //журнал
   uint8_t max_item = 4; //максимум пунктов
 
   while (1) {
-    _data_update(); //преобразование данных
+    if (_data_update()) { //обработка данных
+      switch (check_keys()) {
+        case DOWN_KEY_HOLD: //вкл/выкл посветки
+          fast_light(); //быстрое включение посветки
+          break;
 
-    //+++++++++++++++++++   вывод информации на экран  +++++++++++++++++++++++++
-    if (!scr) {
-      scr = 1; //запрещаем обновления экрана
+        case DOWN_KEY_PRESS: //вниз
+          if (pos < max_item) { //изменяем позицию
+            pos++;
+            if (cursor < 4) cursor++; //изменяем положение курсора
+          }
+          else { //иначе начало списка
+            pos = 0;
+            cursor = 0;
+          }
+          break;
+
+        case UP_KEY_PRESS: //вверх
+          if (pos > 0) { //изменяем позицию
+            pos--;
+            if (cursor > 0) cursor--; //изменяем положение курсора
+          }
+          else { //иначе конец списка
+            pos = max_item;
+            cursor = (max_item < 4) ? max_item : 4;
+          }
+          break;
+
+        case UP_KEY_HOLD: //вкл/выкл фонарика
+          FLASH_SWITCH; //быстрое включение фонарика
+          break;
+
+        case SEL_KEY_PRESS: //выбор
+          switch (point) {
+            case 0:
+              point = pos + 1;
+              pos = cursor = 0;
+              max_item = (point != 5) ? 9 : 3;
+              switch (point) {
+                case 1: if (bookSettings.logbook_alarm) bookSettings.logbook_alarm = 1; break; //сбрасываем флаг журнала тревоги
+                case 2: if (bookSettings.logbook_warn) bookSettings.logbook_warn = 1; break; //сбрасываем флаг журнала предупрежлений
+                case 3: if (bookSettings.logbook_measur) bookSettings.logbook_measur = 1; break; //сбрасываем флаг журнала замеров
+                case 4: if (error_switch) error_switch = 0; break; //сбрасываем флаг журнала ошибок
+              }
+              break;
+            case 4: err_sw = (err_sw) ? 0 : 1; break; //переходим на предпросмотр ошибки
+            case 5:
+              switch (pos) {
+                case 0: bookSettings.logbook_alarm = (bookSettings.logbook_alarm) ? 0 : 1; break; //вкл/выкл журнала тревоги
+                case 1: bookSettings.logbook_warn = (bookSettings.logbook_warn) ? 0 : 1; break; //вкл/выкл журнала предупреждений
+                case 2: bookSettings.logbook_measur = (bookSettings.logbook_measur) ? 0 : 1; break; //вкл/выкл журнала замеров
+                case 3: data_reset(2); break;
+              }
+              break;
+          }
+          break;
+
+        case SEL_KEY_HOLD: //выход к главным экранам
+          switch (point) {
+            case 0: return MENU_PROGRAM;
+            case 5: settings_save(2); pos = cursor = point - 1; point = 0; max_item = 4; break; //сохраняем настройки
+            default: pos = cursor = point - 1; point = err_sw = 0; max_item = 4; break;
+          }
+          break;
+      }
+
+      if (!scr) {
+        scr = 1; //запрещаем обновления экрана
 
 #if TIME_OUT_LOGBOOK
-      if (++time_out > TIME_OUT_LOGBOOK) return MAIN_PROGRAM;
+        if (++time_out > TIME_OUT_LOGBOOK) return MAIN_PROGRAM;
 #endif
 
-      clrScr(); // Очистка экрана
-      task_bar(L_LOGBOOK); //отрисовываем фон
+        clrScr(); // Очистка экрана
+        task_bar(L_LOGBOOK); //отрисовываем фон
 
-      if (!err_sw) {
-        for (uint8_t i = 0; i < 5; i++) {
-          switch (point) {
-            case 0: _logbook_item_switch((i == cursor) ? 1 : 0, pos - cursor + i, i); break; //отрисовываем пункты настроек
-            case 5: _logbook_settings((i == cursor) ? 1 : 0, pos - cursor + i, i); break; //отрисовываем пункты настроек
-            default: _logbook_data_switch((i == cursor) ? 1 : 0, pos - cursor + i, i, point - 1); break; //отрисовывам информацию
+        if (!err_sw) {
+          for (uint8_t i = 0; i < 5; i++) {
+            switch (point) {
+              case 0: _logbook_item_switch((i == cursor) ? 1 : 0, pos - cursor + i, i); break; //отрисовываем пункты настроек
+              case 5: _logbook_settings((i == cursor) ? 1 : 0, pos - cursor + i, i); break; //отрисовываем пункты настроек
+              default: _logbook_data_switch((i == cursor) ? 1 : 0, pos - cursor + i, i, point - 1); break; //отрисовывам информацию
+            }
           }
         }
+        else _init_error_messege(_data_read_byte(pos, 230), _data_read_dword(pos, 360)); //отрисовка информации
+        showScr(); //вывод буфера на экран
       }
-      else _init_error_messege(_data_read_byte(pos, 230), _data_read_dword(pos, 360)); //отрисовка информации
-      showScr(); //вывод буфера на экран
-    }
-    //+++++++++++++++++++++  опрос кнопок  +++++++++++++++++++++++++++
-    switch (check_keys()) {
-      case DOWN_KEY_HOLD: //вкл/выкл посветки
-        fast_light(); //быстрое включение посветки
-        break;
-
-      case DOWN_KEY_PRESS: //вниз
-        if (pos < max_item) { //изменяем позицию
-          pos++;
-          if (cursor < 4) cursor++; //изменяем положение курсора
-        }
-        else { //иначе начало списка
-          pos = 0;
-          cursor = 0;
-        }
-        break;
-
-      case UP_KEY_PRESS: //вверх
-        if (pos > 0) { //изменяем позицию
-          pos--;
-          if (cursor > 0) cursor--; //изменяем положение курсора
-        }
-        else { //иначе конец списка
-          pos = max_item;
-          cursor = (max_item < 4) ? max_item : 4;
-        }
-        break;
-
-      case UP_KEY_HOLD: //вкл/выкл фонарика
-        FLASH_SWITCH; //быстрое включение фонарика
-        break;
-
-      case SEL_KEY_PRESS: //выбор
-        switch (point) {
-          case 0:
-            point = pos + 1;
-            pos = cursor = 0;
-            max_item = (point != 5) ? 9 : 3;
-            switch (point) {
-              case 1: if (bookSettings.logbook_alarm) bookSettings.logbook_alarm = 1; break; //сбрасываем флаг журнала тревоги
-              case 2: if (bookSettings.logbook_warn) bookSettings.logbook_warn = 1; break; //сбрасываем флаг журнала предупрежлений
-              case 3: if (bookSettings.logbook_measur) bookSettings.logbook_measur = 1; break; //сбрасываем флаг журнала замеров
-              case 4: if (error_switch) error_switch = 0; break; //сбрасываем флаг журнала ошибок
-            }
-            break;
-          case 4: err_sw = (err_sw) ? 0 : 1; break; //переходим на предпросмотр ошибки
-          case 5:
-            switch (pos) {
-              case 0: bookSettings.logbook_alarm = (bookSettings.logbook_alarm) ? 0 : 1; break; //вкл/выкл журнала тревоги
-              case 1: bookSettings.logbook_warn = (bookSettings.logbook_warn) ? 0 : 1; break; //вкл/выкл журнала предупреждений
-              case 2: bookSettings.logbook_measur = (bookSettings.logbook_measur) ? 0 : 1; break; //вкл/выкл журнала замеров
-              case 3: data_reset(2); break;
-            }
-            break;
-        }
-        break;
-
-      case SEL_KEY_HOLD: //выход к главным экранам
-        switch (point) {
-          case 0: return MENU_PROGRAM;
-          case 5: settings_save(2); pos = cursor = point - 1; point = 0; max_item = 4; break; //сохраняем настройки
-          default: pos = cursor = point - 1; point = err_sw = 0; max_item = 4; break;
-        }
-        break;
     }
   }
 #else
@@ -2839,60 +2847,59 @@ uint8_t logbook(void) //журнал
   uint8_t cursor = 0; //курсор
 
   while (1) {
-    _data_update(); //преобразование данных
+    if (_data_update()) { //обработка данных
+      switch (check_keys()) {
+        case DOWN_KEY_HOLD: //вкл/выкл посветки
+          fast_light(); //быстрое включение посветки
+          break;
 
-    //+++++++++++++++++++   вывод информации на экран  +++++++++++++++++++++++++
-    if (!scr) {
-      scr = 1; //запрещаем обновления экрана
+        case DOWN_KEY_PRESS: //вниз
+          if (pos < 9) { //изменяем позицию
+            pos++;
+            if (cursor < 4) cursor++; //изменяем положение курсора
+          }
+          else { //иначе начало списка
+            pos = 0;
+            cursor = 0;
+          }
+          break;
+
+        case UP_KEY_PRESS: //вверх
+          if (pos > 0) { //изменяем позицию
+            pos--;
+            if (cursor > 0) cursor--; //изменяем положение курсора
+          }
+          else { //иначе конец списка
+            pos = 9;
+            cursor = 4;
+          }
+          break;
+
+        case UP_KEY_HOLD: //вкл/выкл фонарика
+          FLASH_SWITCH; //быстрое включение фонарика
+          break;
+
+        case SEL_KEY_PRESS: //выбор
+          data_reset(2); //очистка журнала
+          break;
+
+        case SEL_KEY_HOLD: //выход к главным экранам
+          return MENU_PROGRAM;
+      }
+
+      if (!scr) {
+        scr = 1; //запрещаем обновления экрана
 
 #if TIME_OUT_LOGBOOK
-      if (++time_out > TIME_OUT_LOGBOOK) return MAIN_PROGRAM;
+        if (++time_out > TIME_OUT_LOGBOOK) return MAIN_PROGRAM;
 #endif
 
-      clrScr(); // Очистка экрана
-      task_bar(L_LOGBOOK); //отрисовываем фон
+        clrScr(); // Очистка экрана
+        task_bar(L_LOGBOOK); //отрисовываем фон
 
-      for (uint8_t i = 0; i < 5; i++) _logbook_data_switch((i == cursor) ? 1 : 0, pos - cursor + i, i, 2); //отрисовывам информацию
-      showScr(); //вывод буфера на экран
-    }
-    //+++++++++++++++++++++  опрос кнопок  +++++++++++++++++++++++++++
-    switch (check_keys()) {
-      case DOWN_KEY_HOLD: //вкл/выкл посветки
-        fast_light(); //быстрое включение посветки
-        break;
-
-      case DOWN_KEY_PRESS: //вниз
-        if (pos < 9) { //изменяем позицию
-          pos++;
-          if (cursor < 4) cursor++; //изменяем положение курсора
-        }
-        else { //иначе начало списка
-          pos = 0;
-          cursor = 0;
-        }
-        break;
-
-      case UP_KEY_PRESS: //вверх
-        if (pos > 0) { //изменяем позицию
-          pos--;
-          if (cursor > 0) cursor--; //изменяем положение курсора
-        }
-        else { //иначе конец списка
-          pos = 9;
-          cursor = 4;
-        }
-        break;
-
-      case UP_KEY_HOLD: //вкл/выкл фонарика
-        FLASH_SWITCH; //быстрое включение фонарика
-        break;
-
-      case SEL_KEY_PRESS: //выбор
-        data_reset(2); //очистка журнала
-        break;
-
-      case SEL_KEY_HOLD: //выход к главным экранам
-        return MENU_PROGRAM;
+        for (uint8_t i = 0; i < 5; i++) _logbook_data_switch((i == cursor) ? 1 : 0, pos - cursor + i, i, 2); //отрисовывам информацию
+        showScr(); //вывод буфера на экран
+      }
     }
   }
 #endif
@@ -3007,11 +3014,12 @@ void _error_messege(void) //сообщение об ошибке
 #endif
 
     for (timer_millis = ERROR_MASSEGE_TIME; timer_millis;) { //ждем
-      _data_update(); //преобразование данных
-      _melody_chart(error_sound, SAMPLS_SIZE(error_sound)); //играем волшебную мелодию
-      if (check_keys()) {
-        error_switch = 0; //сбрасываем флаг ошибки
-        break;
+      if (_data_update()) { //обработка данных
+        _melody_chart(error_sound, SAMPLS_SIZE(error_sound)); //играем волшебную мелодию
+        if (check_keys()) {
+          error_switch = 0; //сбрасываем флаг ошибки
+          break;
+        }
       }
     }
     _buzz_ret(); //считываем настроку щелчков
@@ -3109,71 +3117,70 @@ void data_reset(uint8_t sw) //сброс текущей дозы
   }
 
   while (1) {
-    _data_update(); //преобразование данных
+    if (_data_update()) { //обработка данных
+      switch (check_keys()) {
+        case DOWN_KEY_PRESS: cursor = 0; break; //выбор нет
+        case UP_KEY_PRESS: cursor = 1; break; //выбор да
 
-    if (!scr) {
-      scr = 1; //запрещаем обновление экрана
-#if TIME_OUT_DATA
-      if (++time_out > TIME_OUT_DATA) return;
-#endif
-
-      choice_menu(cursor); //меню выбора
-      showScr(); //вывод буфера на экран
-    }
-
-    switch (check_keys()) {
-
-      case DOWN_KEY_PRESS: cursor = 0; break; //выбор нет
-      case UP_KEY_PRESS: cursor = 1; break; //выбор да
-
-      case SEL_KEY_PRESS: //выбор пункта
-        switch (cursor) {
-          case 1:
-            clrScr(); //очистка экрана
-            switch (sw) {
-              case 0: //текущая доза
+        case SEL_KEY_PRESS: //выбор пункта
+          switch (cursor) {
+            case 1:
+              clrScr(); //очистка экрана
+              switch (sw) {
+                case 0: //текущая доза
 #if GEIGER_OWN_BACK
-                rad_sum_timer = 0;
+                  rad_sum_timer = 0;
 #endif
-                rad_sum = 0;
-                rad_dose = 0;
-                rad_dose_old = 0;
+                  rad_sum = 0;
+                  rad_dose = 0;
+                  rad_dose_old = 0;
 
-                rad_dose_save += rad_dose - rad_dose_old;
-                time_save += time_sec - time_save_old;
-                time_save_old = 0;
-                time_sec = 0;
+                  rad_dose_save += rad_dose - rad_dose_old;
+                  time_save += time_sec - time_save_old;
+                  time_save_old = 0;
+                  time_sec = 0;
 
-                stat_upd_tmr = 0;
+                  stat_upd_tmr = 0;
 
-                alarm_dose_wait = 0;
-                warn_dose_wait = 0;
+                  alarm_dose_wait = 0;
+                  warn_dose_wait = 0;
 
-                print(R_SUCC_CURRENT_DOSE, CENTER, 16); //Текущая доза
-                print(R_SUCC_RESET, CENTER, 24); //сброшена!
-                break;
+                  print(R_SUCC_CURRENT_DOSE, CENTER, 16); //Текущая доза
+                  print(R_SUCC_RESET, CENTER, 24); //сброшена!
+                  break;
 
-              case 1: //накопленная доза
-                time_save = 0;
-                rad_dose_save = 0;
-                _statistic_erase(); //стирание статистики
-                rad_dose_old = rad_dose;
+                case 1: //накопленная доза
+                  time_save = 0;
+                  rad_dose_save = 0;
+                  _statistic_erase(); //стирание статистики
+                  rad_dose_old = rad_dose;
 
-                print(R_SUCC_ALL_DOSE, CENTER, 16); //Общая доза
-                print(R_SUCC_RESET, CENTER, 24); //сброшена!
-                break;
+                  print(R_SUCC_ALL_DOSE, CENTER, 16); //Общая доза
+                  print(R_SUCC_RESET, CENTER, 24); //сброшена!
+                  break;
 
-              case 2: //журнал
-                _logbook_data_clear(); //очистка журнала
+                case 2: //журнал
+                  _logbook_data_clear(); //очистка журнала
 
-                print(R_SUCC_LOGBOOK, CENTER, 16); //Журнал
-                print(R_SUCC_CLEAR, CENTER, 24); //очищен!
-                break;
-            }
-            _wait(MASSEGE_TIME); //ждем
-            break;
-        }
-        return; //выход
+                  print(R_SUCC_LOGBOOK, CENTER, 16); //Журнал
+                  print(R_SUCC_CLEAR, CENTER, 24); //очищен!
+                  break;
+              }
+              _wait(MASSEGE_TIME); //ждем
+              break;
+          }
+          return; //выход
+      }
+
+      if (!scr) {
+        scr = 1; //запрещаем обновление экрана
+#if TIME_OUT_DATA
+        if (++time_out > TIME_OUT_DATA) return;
+#endif
+
+        choice_menu(cursor); //меню выбора
+        showScr(); //вывод буфера на экран
+      }
     }
   }
 }
@@ -3205,64 +3212,64 @@ void settings_save(uint8_t sw) //сохранить настройки
   print(W_SETTINGS, CENTER, 16); //настройки?
 
   while (1) {
-    _data_update(); //преобразование данных
+    if (_data_update()) { //обработка данных
+      switch (check_keys()) {
+        case DOWN_KEY_PRESS: cursor = 0; break; //выбор нет
+        case UP_KEY_PRESS: cursor = 1; break; //выбор да
 
-    if (!scr) {
-      scr = 1; //сбрасываем флаг
-#if TIME_OUT_SETTINGS
-      if (++time_out > TIME_OUT_SETTINGS) {
-        switch (sw) {
-          case 0: EEPROM_ReadBlock((uint16_t)&mainSettings, EEPROM_BLOCK_SETTINGS_MAIN, sizeof(mainSettings)); break; //считываем настройки из памяти
-#if DEBUG_RETURN || PUMP_READ_MEM
-          case 1: EEPROM_ReadBlock((uint16_t)&pumpSettings, EEPROM_BLOCK_SETTINGS_PUMP, sizeof(pumpSettings)); break; //считываем настройки из памяти
-#endif
-#if LOGBOOK_RETURN
-          case 2: EEPROM_ReadBlock((uint16_t)&bookSettings, EEPROM_BLOCK_SETTINGS_BOOK, sizeof(bookSettings)); break; //считываем настройки из памяти
-#endif
-        }
-        return; //выходим
-      }
-#endif
-
-      choice_menu(cursor); //меню выбора
-      showScr(); //вывод буфера на экран
-    }
-
-    switch (check_keys()) {
-      case DOWN_KEY_PRESS: cursor = 0; break; //выбор нет
-      case UP_KEY_PRESS: cursor = 1; break; //выбор да
-
-      case SEL_KEY_PRESS: //выбор пункта
-        switch (cursor) {
-          case 1:
-            clrScr(); //очистка экрана
-            print(W_SETTINGS_SUCC, CENTER, 16); //Настройки
-            print(W_SAVE_SUCC, CENTER, 24); //Сохранены!
-            switch (sw) {
-              case 0: updateData((uint8_t*)&mainSettings, sizeof(mainSettings), EEPROM_BLOCK_SETTINGS_MAIN, EEPROM_BLOCK_CRC_MAIN); BUZZ_VOL_SET(mainSettings.volume); break; //обновляем настройки
+        case SEL_KEY_PRESS: //выбор пункта
+          switch (cursor) {
+            case 1:
+              clrScr(); //очистка экрана
+              print(W_SETTINGS_SUCC, CENTER, 16); //Настройки
+              print(W_SAVE_SUCC, CENTER, 24); //Сохранены!
+              switch (sw) {
+                case 0: updateData((uint8_t*)&mainSettings, sizeof(mainSettings), EEPROM_BLOCK_SETTINGS_MAIN, EEPROM_BLOCK_CRC_MAIN); BUZZ_VOL_SET(mainSettings.volume); break; //обновляем настройки
 #if DEBUG_RETURN
-              case 1: updateData((uint8_t*)&pumpSettings, sizeof(pumpSettings), EEPROM_BLOCK_SETTINGS_PUMP, EEPROM_BLOCK_CRC_PUMP); break; //обновляем настройки
+                case 1: updateData((uint8_t*)&pumpSettings, sizeof(pumpSettings), EEPROM_BLOCK_SETTINGS_PUMP, EEPROM_BLOCK_CRC_PUMP); break; //обновляем настройки
 #endif
 #if LOGBOOK_RETURN
-              case 2: updateData((uint8_t*)&bookSettings, sizeof(bookSettings), EEPROM_BLOCK_SETTINGS_PUMP, EEPROM_BLOCK_CRC_BOOK); break; //обновляем настройки
+                case 2: updateData((uint8_t*)&bookSettings, sizeof(bookSettings), EEPROM_BLOCK_SETTINGS_PUMP, EEPROM_BLOCK_CRC_BOOK); break; //обновляем настройки
 #endif
-            }
-            _wait(MASSEGE_TIME); //ждем
-            break;
+              }
+              _wait(MASSEGE_TIME); //ждем
+              break;
 
-          case 0:
-            switch (sw) {
-              case 0: EEPROM_ReadBlock((uint16_t)&mainSettings, EEPROM_BLOCK_SETTINGS_MAIN, sizeof(mainSettings)); break; //считываем настройки из памяти
+            case 0:
+              switch (sw) {
+                case 0: EEPROM_ReadBlock((uint16_t)&mainSettings, EEPROM_BLOCK_SETTINGS_MAIN, sizeof(mainSettings)); break; //считываем настройки из памяти
 #if DEBUG_RETURN || PUMP_READ_MEM
-              case 1: EEPROM_ReadBlock((uint16_t)&pumpSettings, EEPROM_BLOCK_SETTINGS_PUMP, sizeof(pumpSettings)); break; //считываем настройки из памяти
+                case 1: EEPROM_ReadBlock((uint16_t)&pumpSettings, EEPROM_BLOCK_SETTINGS_PUMP, sizeof(pumpSettings)); break; //считываем настройки из памяти
 #endif
 #if LOGBOOK_RETURN
-              case 2: EEPROM_ReadBlock((uint16_t)&bookSettings, EEPROM_BLOCK_SETTINGS_BOOK, sizeof(bookSettings)); break; //считываем настройки из памяти
+                case 2: EEPROM_ReadBlock((uint16_t)&bookSettings, EEPROM_BLOCK_SETTINGS_BOOK, sizeof(bookSettings)); break; //считываем настройки из памяти
 #endif
-            }
-            break;
+              }
+              break;
+          }
+          return;
+      }
+
+      if (!scr) {
+        scr = 1; //сбрасываем флаг
+#if TIME_OUT_SETTINGS
+        if (++time_out > TIME_OUT_SETTINGS) {
+          switch (sw) {
+            case 0: EEPROM_ReadBlock((uint16_t)&mainSettings, EEPROM_BLOCK_SETTINGS_MAIN, sizeof(mainSettings)); break; //считываем настройки из памяти
+#if DEBUG_RETURN || PUMP_READ_MEM
+            case 1: EEPROM_ReadBlock((uint16_t)&pumpSettings, EEPROM_BLOCK_SETTINGS_PUMP, sizeof(pumpSettings)); break; //считываем настройки из памяти
+#endif
+#if LOGBOOK_RETURN
+            case 2: EEPROM_ReadBlock((uint16_t)&bookSettings, EEPROM_BLOCK_SETTINGS_BOOK, sizeof(bookSettings)); break; //считываем настройки из памяти
+#endif
+          }
+          return; //выходим
         }
-        return;
+#endif
+
+        choice_menu(cursor); //меню выбора
+        showScr(); //вывод буфера на экран
+      }
     }
   }
 }
@@ -3406,195 +3413,194 @@ uint8_t main_screen(void)
   _sleep_ret(); //разрешаем сон
 
   while (1) {
-    _data_update(); //преобразование данных
-    _error_messege(); //обработка сообщений ошибок
-    alarm_warning(); //обработка сообщений тревоги
+    if (_data_update()) { //обработка данных
+      _error_messege(); //обработка сообщений ошибок
+      _alarm_warning(); //обработка сообщений тревоги
 
-    //+++++++++++++++++++   вывод информации на экран  +++++++++++++++++++++++++
-    if (!scr) { //обновление дисплея
-      scr = 1; //сброс флага
-      clrScr(); //очистка экрана
+      switch (check_keys()) {
+        case DOWN_KEY_HOLD: //вкл/выкл посветки
+          if (!alarm_switch) fast_light(); //быстрое включение посветки
+          break;
 
-      //рисуем шапку экрана
-      switch (scr_mode) {
-        case 0: task_bar(MAIN_SCREEN_BACK); _alarm_init(alarm_back_wait + warn_back_wait, mainSettings.alarm_back); break;  //режим текущего фона
-        case 1: task_bar(MAIN_SCREEN_DOSE); _alarm_init(0, mainSettings.alarm_dose); break;  //режим накопленной дозы
+        case DOWN_KEY_PRESS: //сброс
+          switch (alarm_switch) { //режим тревоги
+            case 0:
+              switch (scr_mode) { //основные экраны
+                case 0: //сбрасываем фон
+                  for (uint8_t i = 0; i < BUFF_LENGTHY; i++) rad_buff[i] = 0; //очищаем буфер фона
+                  scan_buff = 0; //очищаем буфер счета
+                  back_time_now = geiger_time_now = 0; //сбрасываем счетчик накопления импульсов в буфере
+                  mid_time_now = 0; //сбрасываем рассчет среднего
+                  rad_back = 0; //сбрасываем фон
+
+                  switch (back_mode) {
+                    case 1: //сбрасываем максимальный фон и средний фон
+                      rad_min = 0; //сбрасываем среднее значение фона
+                      rad_max = 0; //сбрасываем максимальное значение фона
+                      break;
+                  }
+                  break;
+
+                case 1: data_reset(dose_mode); _sleep_ret(); break; //сбрасываем дозу и время
+              }
+              break;
+            case 3: warn_back_wait = 1; alarm_switch = 0; _vibro_off(); _buzz_ret(); break; //фон
+            case 4: warn_dose_wait = rad_dose; alarm_switch = 0; _vibro_off(); _buzz_ret(); break; //доза
+          }
+          break;
+
+        case UP_KEY_PRESS: //доп.действие
+          switch (alarm_switch) { //режим тревоги
+            case 0:
+              switch (scr_mode) { //основные экраны
+                case 0: back_mode = !back_mode; break; //переключаем экраны фона
+                case 1: dose_mode = !dose_mode; break; //переключаем экраны дозы
+              }
+              break;
+            case 3: warn_back_wait = 1; alarm_switch = 0; _vibro_off(); _buzz_ret(); break; //фон
+            case 4: warn_dose_wait = rad_dose; alarm_switch = 0; _vibro_off(); _buzz_ret(); break; //доза
+          }
+          break;
+
+        case UP_KEY_HOLD: //вкл/выкл фонарика
+          if (!alarm_switch) FLASH_SWITCH; //быстрое включение фонарика
+          break;
+
+        case SEL_KEY_PRESS: //выбор режима
+          switch (alarm_switch) { //режим тревоги
+            case 0: scr_mode = !scr_mode; break; //переключение фон/доза
+            case 3: warn_back_wait = 1; alarm_switch = 0; _vibro_off(); _buzz_ret(); break; //фон
+            case 4: warn_dose_wait = rad_dose; alarm_switch = 0; _vibro_off(); _buzz_ret(); break; //доза
+          }
+          break;
+
+        case SEL_KEY_HOLD: //настройки
+          if (!alarm_switch) return MENU_PROGRAM; //если нет тревоги
+          break;
       }
 
-      drawBitmap(55, 0, font_alarm_img, 5, 8); //устанавлваем фон звуков
-      drawBitmap(43, 0, font_sound_img, 4, 8); //устанавлваем фон тревоги
-      if (mainSettings.buzz_switch && !mainSettings.knock_disable) drawBitmap(47, 0, buzz_alt_on_img, 7, 8); //если щелчки и зв.кнопок включен
-      else if (mainSettings.buzz_switch) drawBitmap(47, 0, buzz_alt_img, 7, 8); //если щелчки включены и зв.кнопок выключен
-      else if (!mainSettings.knock_disable) drawBitmap(47, 0, beep_alt_wait_img, 7, 8); //если щелчки выключены и зв.кнопок включен
-      else drawBitmap(47, 0, buzz_alt_off_img, 7, 8); //иначе выключено все
+      if (!scr) { //обновление дисплея
+        scr = 1; //сброс флага
+        clrScr(); //очистка экрана
+
+        //рисуем шапку экрана
+        switch (scr_mode) {
+          case 0: task_bar(MAIN_SCREEN_BACK); _alarm_init(alarm_back_wait + warn_back_wait, mainSettings.alarm_back); break;  //режим текущего фона
+          case 1: task_bar(MAIN_SCREEN_DOSE); _alarm_init(0, mainSettings.alarm_dose); break;  //режим накопленной дозы
+        }
+
+        drawBitmap(55, 0, font_alarm_img, 5, 8); //устанавлваем фон звуков
+        drawBitmap(43, 0, font_sound_img, 4, 8); //устанавлваем фон тревоги
+        if (mainSettings.buzz_switch && !mainSettings.knock_disable) drawBitmap(47, 0, buzz_alt_on_img, 7, 8); //если щелчки и зв.кнопок включен
+        else if (mainSettings.buzz_switch) drawBitmap(47, 0, buzz_alt_img, 7, 8); //если щелчки включены и зв.кнопок выключен
+        else if (!mainSettings.knock_disable) drawBitmap(47, 0, beep_alt_wait_img, 7, 8); //если щелчки выключены и зв.кнопок включен
+        else drawBitmap(47, 0, buzz_alt_off_img, 7, 8); //иначе выключено все
 
 #if LOGBOOK_RETURN
-      static boolean anim; //переключатель мигания
-      if (error_switch) {
-        if (anim) drawBitmap(27, 0, error_ico_img, 14, 8); //ERR
-        anim = !anim;
-      }
-      else {
-        if (bookSettings.logbook_alarm == 2 || bookSettings.logbook_warn == 2 || bookSettings.logbook_measur == 2) {
-          if (anim) drawBitmap(32, 0, logbook_ico_img, 9, 8); //logbook
+        static boolean anim; //переключатель мигания
+        if (error_switch) {
+          if (anim) drawBitmap(27, 0, error_ico_img, 14, 8); //ERR
           anim = !anim;
         }
-        else if (bookSettings.logbook_alarm == 1 || bookSettings.logbook_warn == 1 || bookSettings.logbook_measur == 1) drawBitmap(32, 0, logbook_ico_img, 9, 8); //logbook
-      }
+        else {
+          if (bookSettings.logbook_alarm == 2 || bookSettings.logbook_warn == 2 || bookSettings.logbook_measur == 2) {
+            if (anim) drawBitmap(32, 0, logbook_ico_img, 9, 8); //logbook
+            anim = !anim;
+          }
+          else if (bookSettings.logbook_alarm == 1 || bookSettings.logbook_warn == 1 || bookSettings.logbook_measur == 1) drawBitmap(32, 0, logbook_ico_img, 9, 8); //logbook
+        }
 #endif
 
 #if COEF_DEBUG //отладка коэффициента
-      switch (scr_mode)
-      {
-        case 0:
-          invertText(true);
-          setFont(TinyNumbersDown); //установка шрифта
-          printNumF(now, 2, 19, 0, 46, 5, 43); //строка 1
-          setFont(TinyNumbersDown); //установка шрифта
-          printNumF(debug_coef, 2, 40, 0, 46, 5, 43); //строка 2
-          invertText(false);
-          break;
-      }
-#endif
-
-      //===========================================================//
-      switch (scr_mode) { //отрисовываем выбранный экран
-        case 0: //режим измерения текущего фона
-          switch (alarm_switch) {
-            case 0:
-#if BACK_SCALE_RETURN
-              _init_back_bar(rad_back);
-#else
-              drawLine(3, 1, map(geiger_time_now, 0, BUFF_LENGTHY, 5, 82), 0x06); //шкала точности
-              drawLine(3, 1, map(mid_time_now, 0, MID_BUFF_LENGTHY, 5, 82), 0x30); //шкала усреднения
-#endif
-              break;
-            case 3: _init_alarm_massage(0, 24); break; //предупреждение
-          }
-
-          switch (back_mode) {
-            case 0: for (uint8_t i = 4; i < 80; i++) graf_lcd(map(rad_buff[(i >> 1) - 1], 0, maxLevel_back, 0, 15), i, 15, 2); break; //инициализируем график
-            case 1: //максимальный и средний фон
-              print(MAIN_SCREEN_BACK_MIN, 0, 32); //строка 2 мин:
-              _init_rads_unit(0, rad_min, 1, 4, RIGHT, 32, 0, RIGHT, 32, (accur_percent > RAD_ACCUR_START) ? 1 : 0); //строка 2 минимальный
-
-              print(MAIN_SCREEN_BACK_MAX, 0, 40); //строка 3 макс:
-              _init_rads_unit(0, rad_max, 1, 4, RIGHT, 40, 0, RIGHT, 40); //строка 3 максимальный
-              break;
-          }
-
-          _init_accur_percent(accur_percent); //отрисовка точности
-          _init_rads_unit(1, rad_back, 1, 4, 1, 8, 0, 54, 16); //строка 1 основной фон
-
-          break;
-        //===========================================================//
-        case 1: //режим накопленной дозы
-
-          switch (dose_mode)
-          {
-            case 0: //текущая доза
-              setFont(TinyNumbersDown); //установка шрифта
-              printNumI(time_sec / 60 / 60 / 24, 34, 23, 2, 48); //дней
-              drawBitmap(42, 24, day_img, 8, 8); //дн
-              setFont(TinyNumbersDown); //установка шрифта
-              printNumI((time_sec / 60 / 60) % 24, 54, 23, 2, 48); //часов
-              drawBitmap(62, 24, colon_img, 3, 8); //:
-              setFont(TinyNumbersDown); //установка шрифта
-              printNumI((time_sec / 60) % 60, 65, 23, 2, 48); //минут
-              drawBitmap(73, 24, colon_img, 3, 8); //:
-              setFont(TinyNumbersDown); //установка шрифта
-              printNumI(time_sec % 60, 76, 23, 2, 48); //секунд
-
-              switch (alarm_switch) {
-                case 0: drawLine(4, 1, map(stat_upd_tmr, 0, STAT_UPD_TIME, 5, 82), 0x30); break; //шкала времени до сохранения дозы
-                case 4: _init_alarm_massage(0, 32); break; //предупреждение
-              }
-
-              _init_rads_unit(1, rad_dose, 10, 5, 1, 8, 1, 66, 16); //строка 1 текущая доза
-              print(MAIN_SCREEN_CURRENT_DOSE_ALL, 0, 40); //строка 2 всего
-              _init_rads_unit(0, rad_dose_save, 10, 5, RIGHT, 40, 1, RIGHT, 40); //строка 2 сохранённая доза
-              break;
-
-            case 1: //общая накопленная доза и время
-              printNumI(time_save / 60 / 60 / 24, 8, 40, 2, 48);
-              print(MAIN_SCREEN_DOSE_DAYS, 20, 40);
-              printNumI((time_save / 60 / 60) % 24, 32, 40, 2, 48);
-              print(MAIN_SCREEN_DOSE_HOURSE, 44, 40);
-              printNumI((time_save / 60) % 60, 56, 40, 2, 48);
-              print(MAIN_SCREEN_DOSE_MINS, 68, 40);
-
-              print(MAIN_SCREEN_DOSE_ACCUM, CENTER, 24); //накоплено
-              print(MAIN_SCREEN_DOSE_JUST_OVER, 16, 30); //всего за:
-
-              _init_rads_unit(1, rad_dose_save, 10, 5, 1, 8, 1, 66, 16); //строка 1 сохранённая доза
-              break;
-          }
-          break;
-      }
-      showScr(); //вывод буфера на экран
-    }
-
-    //+++++++++++++++++++++  опрос кнопок  +++++++++++++++++++++++++++
-    switch (check_keys()) {
-      case DOWN_KEY_HOLD: //вкл/выкл посветки
-        if (!alarm_switch) fast_light(); //быстрое включение посветки
-        break;
-
-      case DOWN_KEY_PRESS: //сброс
-        switch (alarm_switch) { //режим тревоги
+        switch (scr_mode)
+        {
           case 0:
-            switch (scr_mode) { //основные экраны
-              case 0: //сбрасываем фон
-                for (uint8_t i = 0; i < BUFF_LENGTHY; i++) rad_buff[i] = 0; //очищаем буфер фона
-                scan_buff = 0; //очищаем буфер счета
-                back_time_now = geiger_time_now = 0; //сбрасываем счетчик накопления импульсов в буфере
-                mid_time_now = 0; //сбрасываем рассчет среднего
-                rad_back = 0; //сбрасываем фон
+            invertText(true);
+            setFont(TinyNumbersDown); //установка шрифта
+            printNumF(now, 2, 19, 0, 46, 5, 43); //строка 1
+            setFont(TinyNumbersDown); //установка шрифта
+            printNumF(debug_coef, 2, 40, 0, 46, 5, 43); //строка 2
+            invertText(false);
+            break;
+        }
+#endif
 
-                switch (back_mode) {
-                  case 1: //сбрасываем максимальный фон и средний фон
-                    rad_min = 0; //сбрасываем среднее значение фона
-                    rad_max = 0; //сбрасываем максимальное значение фона
-                    break;
+        //===========================================================//
+        switch (scr_mode) { //отрисовываем выбранный экран
+          case 0: //режим измерения текущего фона
+            switch (alarm_switch) {
+              case 0:
+#if BACK_SCALE_RETURN
+                _init_back_bar(rad_back);
+#else
+                drawLine(3, 1, map(geiger_time_now, 0, BUFF_LENGTHY, 5, 82), 0x06); //шкала точности
+                drawLine(3, 1, map(mid_time_now, 0, MID_BUFF_LENGTHY, 5, 82), 0x30); //шкала усреднения
+#endif
+                break;
+              case 3: _init_alarm_massage(0, 24); break; //предупреждение
+            }
+
+            switch (back_mode) {
+              case 0: for (uint8_t i = 4; i < 80; i++) graf_lcd(map(rad_buff[(i >> 1) - 1], 0, maxLevel_back, 0, 15), i, 15, 2); break; //инициализируем график
+              case 1: //максимальный и средний фон
+                print(MAIN_SCREEN_BACK_MIN, 0, 32); //строка 2 мин:
+                _init_rads_unit(0, rad_min, 1, 4, RIGHT, 32, 0, RIGHT, 32, (accur_percent > RAD_ACCUR_START) ? 1 : 0); //строка 2 минимальный
+
+                print(MAIN_SCREEN_BACK_MAX, 0, 40); //строка 3 макс:
+                _init_rads_unit(0, rad_max, 1, 4, RIGHT, 40, 0, RIGHT, 40); //строка 3 максимальный
+                break;
+            }
+
+            _init_accur_percent(accur_percent); //отрисовка точности
+            _init_rads_unit(1, rad_back, 1, 4, 1, 8, 0, 54, 16); //строка 1 основной фон
+
+            break;
+          //===========================================================//
+          case 1: //режим накопленной дозы
+
+            switch (dose_mode)
+            {
+              case 0: //текущая доза
+                setFont(TinyNumbersDown); //установка шрифта
+                printNumI(time_sec / 60 / 60 / 24, 34, 23, 2, 48); //дней
+                drawBitmap(42, 24, day_img, 8, 8); //дн
+                setFont(TinyNumbersDown); //установка шрифта
+                printNumI((time_sec / 60 / 60) % 24, 54, 23, 2, 48); //часов
+                drawBitmap(62, 24, colon_img, 3, 8); //:
+                setFont(TinyNumbersDown); //установка шрифта
+                printNumI((time_sec / 60) % 60, 65, 23, 2, 48); //минут
+                drawBitmap(73, 24, colon_img, 3, 8); //:
+                setFont(TinyNumbersDown); //установка шрифта
+                printNumI(time_sec % 60, 76, 23, 2, 48); //секунд
+
+                switch (alarm_switch) {
+                  case 0: drawLine(4, 1, map(stat_upd_tmr, 0, STAT_UPD_TIME, 5, 82), 0x30); break; //шкала времени до сохранения дозы
+                  case 4: _init_alarm_massage(0, 32); break; //предупреждение
                 }
+
+                _init_rads_unit(1, rad_dose, 10, 5, 1, 8, 1, 66, 16); //строка 1 текущая доза
+                print(MAIN_SCREEN_CURRENT_DOSE_ALL, 0, 40); //строка 2 всего
+                _init_rads_unit(0, rad_dose_save, 10, 5, RIGHT, 40, 1, RIGHT, 40); //строка 2 сохранённая доза
                 break;
 
-              case 1: data_reset(dose_mode); _sleep_ret(); break; //сбрасываем дозу и время
+              case 1: //общая накопленная доза и время
+                printNumI(time_save / 60 / 60 / 24, 8, 40, 2, 48);
+                print(MAIN_SCREEN_DOSE_DAYS, 20, 40);
+                printNumI((time_save / 60 / 60) % 24, 32, 40, 2, 48);
+                print(MAIN_SCREEN_DOSE_HOURSE, 44, 40);
+                printNumI((time_save / 60) % 60, 56, 40, 2, 48);
+                print(MAIN_SCREEN_DOSE_MINS, 68, 40);
+
+                print(MAIN_SCREEN_DOSE_ACCUM, CENTER, 24); //накоплено
+                print(MAIN_SCREEN_DOSE_JUST_OVER, 16, 30); //всего за:
+
+                _init_rads_unit(1, rad_dose_save, 10, 5, 1, 8, 1, 66, 16); //строка 1 сохранённая доза
+                break;
             }
             break;
-          case 3: warn_back_wait = 1; alarm_switch = 0; _vibro_off(); _buzz_ret(); break; //фон
-          case 4: warn_dose_wait = rad_dose; alarm_switch = 0; _vibro_off(); _buzz_ret(); break; //доза
         }
-        break;
-
-      case UP_KEY_PRESS: //доп.действие
-        switch (alarm_switch) { //режим тревоги
-          case 0:
-            switch (scr_mode) { //основные экраны
-              case 0: back_mode = !back_mode; break; //переключаем экраны фона
-              case 1: dose_mode = !dose_mode; break; //переключаем экраны дозы
-            }
-            break;
-          case 3: warn_back_wait = 1; alarm_switch = 0; _vibro_off(); _buzz_ret(); break; //фон
-          case 4: warn_dose_wait = rad_dose; alarm_switch = 0; _vibro_off(); _buzz_ret(); break; //доза
-        }
-        break;
-
-      case UP_KEY_HOLD: //вкл/выкл фонарика
-        if (!alarm_switch) FLASH_SWITCH; //быстрое включение фонарика
-        break;
-
-      case SEL_KEY_PRESS: //выбор режима
-        switch (alarm_switch) { //режим тревоги
-          case 0: scr_mode = !scr_mode; break; //переключение фон/доза
-          case 3: warn_back_wait = 1; alarm_switch = 0; _vibro_off(); _buzz_ret(); break; //фон
-          case 4: warn_dose_wait = rad_dose; alarm_switch = 0; _vibro_off(); _buzz_ret(); break; //доза
-        }
-        break;
-
-      case SEL_KEY_HOLD: //настройки
-        if (!alarm_switch) return MENU_PROGRAM; //если нет тревоги
-        break;
+        showScr(); //вывод буфера на экран
+      }
     }
   }
   return INIT_PROGRAM;
