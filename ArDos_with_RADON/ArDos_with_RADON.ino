@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.13
-  Версия программы RADON v3.8.4 low_pwr release 01.01.22 специально для проекта ArDos
+  Версия программы RADON v3.8.4 low_pwr release 02.01.22 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/ardos-dozimetr-prodolzhenie-temy-chast-%E2%84%962 и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -857,14 +857,14 @@ boolean _data_update(void) //преобразование данных
               uint16_t puls_per_ur = (3600 / pumpSettings.geiger_time) + (rad_sum_timer * OWN_BACK);
               if ((rad_sum += rad_buff[0]) >= puls_per_ur) {
                 rad_dose += rad_sum / puls_per_ur;
-                rad_sum -= rad_sum % puls_per_ur;
+                rad_sum = rad_sum % puls_per_ur;
                 rad_sum_timer = 0;
               }
 #else
               uint16_t puls_per_ur = 3600 / pumpSettings.geiger_time;
               if ((rad_sum += rad_buff[0]) >= puls_per_ur) {
                 rad_dose += rad_sum / puls_per_ur;
-                rad_sum -= rad_sum % puls_per_ur;
+                rad_sum = rad_sum % puls_per_ur;
               }
 #endif
             }
@@ -3019,7 +3019,7 @@ void _error_messege(void) //сообщение об ошибке
 void _statistic_erase(void) //стирание статистики
 {
   cur_dose_cell = 0; //сбрасываем текущую ячейку
-  for (uint16_t cell = 510; cell < 1024; cell++) EEPROM_UpdateByte(cell, 0); //стираем заглавления времени
+  for (uint16_t cell = 510; cell < 766; cell++) EEPROM_UpdateByte(cell, 0); //стираем заглавления времени
 }
 //---------------------------------------Чтение статистики--------------------------------------------------
 void statistic_read(void) //чтение статистики
@@ -3031,19 +3031,18 @@ void statistic_read(void) //чтение статистики
     EEPROM_ReadBlock((uint16_t)&tempData, search_cell, sizeof(tempData));
     if (maxData < tempData) { //если буфер меньше ячейки
       maxData = tempData; //записываем в буфер значение ячейки
-    }
-    else {
       cur_dose_cell = c; //устанавливаем последнюю ячейку
-      break; //завершаем поиск
     }
+    else break; //завершаем поиск
   }
   if (maxData) { //если в буфере есть информация
-    uint16_t time_cell = 510 + (4 * (cur_dose_cell - 1)); //находим запрашиваемую позицию
+    uint16_t time_cell = 510 + (4 * cur_dose_cell); //находим запрашиваемую позицию
     EEPROM_ReadBlock((uint16_t)&tempData, time_cell, sizeof(tempData));
     time_save = tempData; //считываем время
-    uint16_t dose_cell = 766 + (4 * (cur_dose_cell - 1)); //находим запрашиваемую позицию
+    uint16_t dose_cell = 766 + (4 * cur_dose_cell); //находим запрашиваемую позицию
     EEPROM_ReadBlock((uint16_t)&tempData, dose_cell, sizeof(tempData));
     rad_dose_save = tempData; //считываем дозу
+    if (++cur_dose_cell > 63) cur_dose_cell = 0; //меняем ячейку
   }
 }
 //--------------------------------------Обновление статистики-----------------------------------------------
@@ -3058,7 +3057,7 @@ void statistic_update(void) //обновление статистики
   EEPROM_UpdateBlock((uint16_t)&time_save, time_cell, sizeof(time_save)); //записываем время
   uint16_t dose_cell = 766 + (4 * cur_dose_cell); //находим запрашиваемую позицию
   EEPROM_UpdateBlock((uint16_t)&rad_dose_save, dose_cell, sizeof(rad_dose_save)); //записываем дозу
-  if (cur_dose_cell < 63) cur_dose_cell++; else cur_dose_cell = 0; //меняем ячейку
+  if (++cur_dose_cell > 63) cur_dose_cell = 0; //меняем ячейку
 }
 //------------------------------------Чтение состояния щелчков----------------------------------------------
 void _buzz_ret(void) //чтение состояния щелчков
@@ -3531,7 +3530,7 @@ uint8_t main_screen(void)
                 _init_rads_unit(0, rad_min, 1, 4, RIGHT, 32, 0, RIGHT, 32, (accur_percent > RAD_ACCUR_START) ? 1 : 0); //строка 2 минимальный
 
                 print(MAIN_SCREEN_BACK_MAX, 0, 40); //строка 3 макс:
-                _init_rads_unit(0, rad_max, 1, 4, RIGHT, 40, 0, RIGHT, 40); //строка 3 максимальный
+                _init_rads_unit(0, rad_max, 1, 4, RIGHT, 40, 0, RIGHT, 40, (accur_percent > RAD_ACCUR_START) ? 1 : 0); //строка 3 максимальный
                 break;
             }
 
