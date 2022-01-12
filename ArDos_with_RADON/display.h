@@ -139,13 +139,13 @@ void disableSleep(uint8_t contrast) //выключение режима сна
 void showScr(void) //вывод буфера на экран
 {
 #if ROTATE_DISP
-  _LCD_Write(PCD8544_SETYADDR, LCD_COMMAND);
-  _LCD_Write(PCD8544_SETXADDR, LCD_COMMAND);
   for (uint16_t c = 504; c; c--) _LCD_Write(_lcd_buffer[c - 1], LCD_DATA);
-#else
   _LCD_Write(PCD8544_SETYADDR, LCD_COMMAND);
   _LCD_Write(PCD8544_SETXADDR, LCD_COMMAND);
+#else
   for (uint16_t c = 0; c < 504; c++) _LCD_Write(_lcd_buffer[c], LCD_DATA);
+  _LCD_Write(PCD8544_SETYADDR, LCD_COMMAND);
+  _LCD_Write(PCD8544_SETXADDR, LCD_COMMAND);
 #endif
 }
 //-------------------------Очистка экрана----------------------------------------------------
