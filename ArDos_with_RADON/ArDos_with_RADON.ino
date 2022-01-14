@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.13
-  Версия программы RADON v3.8.4 low_pwr release 12.01.22 специально для проекта ArDos
+  Версия программы RADON v3.8.4 low_pwr release 14.01.22 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/ardos-dozimetr-prodolzhenie-temy-chast-%E2%84%962 и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -1033,16 +1033,18 @@ boolean _data_update(void) //преобразование данных
             break;
 
           case TIME_FACT_18: { //управление энергосбережением
-              uint16_t _imp_per_second = rad_back / pumpSettings.geiger_time; //получили имп/с
-              switch (power_manager) {
-                case 0: if (_imp_per_second <= (IMP_PWR_MANAGER * IMP_PWR_GISTERESIS)) power_manager = 1; break; //если текущее количество импульсов меньше установленного порога включения энергосбережения
-                case 1:
-                  if (_imp_per_second > IMP_PWR_MANAGER) power_manager = 0; //если текущее количество импульсов больше установленного порога отключения энергосбережения
-                  else if (_imp_per_second <= (IMP_PWR_DOWN * IMP_PWR_GISTERESIS)) power_manager = 2; //если текущее количество импульсов меньше установленного порога включения глубокого энергосбережения
-                  break;
-                case 2: if (_imp_per_second > IMP_PWR_DOWN) power_manager = 1; break; //если текущее количество импульсов больше установленного порога отключения глубокого энергосбережения
+              if (!sleep_disable) {
+                uint16_t _imp_per_second = rad_back / pumpSettings.geiger_time; //получили имп/с
+                switch (power_manager) {
+                  case 0: if (_imp_per_second <= (IMP_PWR_MANAGER * IMP_PWR_GISTERESIS)) power_manager = 1; break; //если текущее количество импульсов меньше установленного порога включения энергосбережения
+                  case 1:
+                    if (_imp_per_second > IMP_PWR_MANAGER) power_manager = 0; //если текущее количество импульсов больше установленного порога отключения энергосбережения
+                    else if (_imp_per_second <= (IMP_PWR_DOWN * IMP_PWR_GISTERESIS)) power_manager = 2; //если текущее количество импульсов меньше установленного порога включения глубокого энергосбережения
+                    break;
+                  case 2: if (_imp_per_second > IMP_PWR_DOWN) power_manager = 1; break; //если текущее количество импульсов больше установленного порога отключения глубокого энергосбережения
+                }
+                if (rad_back > RAD_SLEEP_OUT) _sleep_out(); //выход из сна
               }
-              if (rad_back > RAD_SLEEP_OUT) _sleep_out(); //выход из сна
             }
             break;
 
@@ -2536,6 +2538,7 @@ uint8_t menu(void) //меню
   uint8_t cursor = 0; //курсор
 
   sleep_disable = 1; //запрещаем сон
+  power_manager = 0; //сбрасываем менеджер питания
 
   while (1) {
     if (_data_update()) { //обработка данных
@@ -3084,6 +3087,7 @@ void data_reset(uint8_t sw) //сброс текущей дозы
 {
   uint8_t cursor = 0; //курсор
   sleep_disable = 1; //запрещаем сон
+  power_manager = 0; //сбрасываем менеджер питания
 
   clrScr(); //очистка экрана
   switch (sw) {
