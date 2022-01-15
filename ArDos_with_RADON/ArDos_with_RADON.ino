@@ -3143,6 +3143,7 @@ void data_reset(uint8_t sw) //сброс текущей дозы
                   print(R_SUCC_CLEAR, CENTER, 24); //очищен!
                   break;
               }
+              showScr(); //вывод буфера на экран
               _wait(MASSEGE_TIME); //ждем
               break;
           }
@@ -3209,6 +3210,7 @@ void settings_save(uint8_t sw) //сохранить настройки
                 case 2: updateData((uint8_t*)&bookSettings, sizeof(bookSettings), EEPROM_BLOCK_SETTINGS_BOOK, EEPROM_BLOCK_CRC_BOOK); break; //обновляем настройки
 #endif
               }
+              showScr(); //вывод буфера на экран
               _wait(MASSEGE_TIME); //ждем
               break;
 
