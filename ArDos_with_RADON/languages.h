@@ -1,7 +1,7 @@
 #include <avr/pgmspace.h>
 
 //Языки для локализации
-const char VERSION[] PROGMEM = "3.8.4"; //версия по
+const char VERSION[] PROGMEM = "3.9.0"; //версия по
 
 //---------------------------------------------//
 #ifdef RUSSIAN //если выбран язык "русский"
