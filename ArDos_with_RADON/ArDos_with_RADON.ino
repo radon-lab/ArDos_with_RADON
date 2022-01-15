@@ -708,8 +708,8 @@ boolean _data_update(void) //преобразование данных
         if (puls_total >= 5) {
           float puls_per_tick = (float)(time_on_pulse / puls_total);
           if (puls_per_tick_old) {
-            float percent = (float)(mainSettings.account_sensitivity / 100.00) + 1;
-            if (puls_per_tick > (puls_per_tick_old * percent) || puls_per_tick < (puls_per_tick_old / percent)) back_reset = 1;
+            float puls_per_percent = puls_per_tick_old * (float)(mainSettings.account_sensitivity / 100.00);
+            if (puls_per_tick > (puls_per_tick_old + puls_per_percent) || puls_per_tick < (puls_per_tick_old - puls_per_percent)) back_reset = 1;
           }
           puls_per_tick_old = puls_per_tick;
           time_on_pulse = 0;
