@@ -659,7 +659,7 @@ boolean _data_update(void) //преобразование данных
     uint16_t temp_main_puls = main_buff; //копируем количество импульсов
     main_buff = 0; //очищаем основной буфер
 
-    if (65535 - scan_buff >= temp_main_puls) scan_buff = 65535; //если переполнение установили максимум
+    if (65535 - scan_buff <= temp_main_puls) scan_buff = 65535; //если переполнение установили максимум
     else scan_buff += temp_main_puls; //иначе прибавляем импульсы в буфер сканирования
     if (!measur && !search) puls_total += temp_main_puls; //прибавили импульсы к буферу сравнения
 
@@ -977,13 +977,13 @@ boolean _data_update(void) //преобразование данных
 
           case TIME_FACT_16: //разностный замер
             switch (measur) { //выбираем режим замера
-              case 1: if (time_switch < (pgm_read_byte(&diff_measuring[mainSettings.measur_pos]) * 60)) time_switch ++; //прибавляем секунду
+              case 1: if (time_switch < (pgm_read_byte(&diff_measuring[mainSettings.measur_pos]) * 60)) time_switch++; //прибавляем секунду
                 else next_measur = 1; //иначе время вышло
                 if (!next_measur) first_froze += scan_buff; //если идет замер, заполняем буфер первого замера
                 rad_buff[0] = scan_buff; //смещаем 0-й элемент в 1-й для дальнейшей работы с ним
                 scan_buff = 0; //сбрасывает счетчик частиц
                 break;
-              case 2: if (time_switch < (pgm_read_byte(&diff_measuring[mainSettings.measur_pos]) * 60)) time_switch ++; //прибавляем секунду
+              case 2: if (time_switch < (pgm_read_byte(&diff_measuring[mainSettings.measur_pos]) * 60)) time_switch++; //прибавляем секунду
                 else next_measur = 1; //иначе время вышло
                 if (!next_measur) second_froze += scan_buff; //если идет замер, заполняем буфер второго замера
                 rad_buff[0] = scan_buff; //смещаем 0-й элемент в 1-й для дальнейшей работы с ним
