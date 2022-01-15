@@ -661,7 +661,7 @@ boolean _data_update(void) //преобразование данных
 
     if (65535 - scan_buff >= temp_main_puls) scan_buff = 65535; //если переполнение установили максимум
     else scan_buff += temp_main_puls; //иначе прибавляем импульсы в буфер сканирования
-    puls_total += temp_main_puls; //прибавили импульсы к буферу сравнения
+    if (!measur && !search) puls_total += temp_main_puls; //прибавили импульсы к буферу сравнения
 
     if (!TIMSK0) { //если индикация не включена
       switch (mainSettings.rad_flash) { //в зависимости от режима
