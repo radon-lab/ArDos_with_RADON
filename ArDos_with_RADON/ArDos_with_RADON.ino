@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.13
-  Версия программы RADON v3.8.4 low_pwr release 14.01.22 специально для проекта ArDos
+  Версия программы RADON v3.9.0 low_pwr release 15.01.22 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/ardos-dozimetr-prodolzhenie-temy-chast-%E2%84%962 и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -122,15 +122,9 @@
 const float ALARM_AUTO_GISTERESIS = (1.00 - (ALARM_AUTO_GIST / 100.00)); //инвертируем проценты
 const float IMP_PWR_GISTERESIS = (1.00 - (IMP_PWR_GIST / 100.00)); //инвертируем проценты
 
-const uint8_t MASS_TIME_FACT = (MASS_TIME - 1); //фактический номер элемента массивов секунд
-const uint8_t MASS_BACK_FACT = (MASS_BACK - 1); //фактический номер элемента массивов фона
-
 const uint16_t buzz_time = ((uint32_t)FREQ_BUZZ * (uint32_t)TIME_BUZZ) / 1000; //пересчитываем частоту и время щелчков в циклы таймера
 const uint16_t buzz_freq = (F_CPU / SOUND_PRESCALER) / FREQ_BUZZ; //устанавливаем частоту таймера щелчков
 uint16_t buzz_vol; //устанавливаем громкость щелчков
-
-uint8_t GEIGER_CYCLE; //минимум секунд для начала расчетов
-uint8_t GEIGER_MASS; //максимум секунд для окончания смещения коэффициентов
 
 //пищалка старт/стоп
 #define BUZZ_START        cnt_puls = buzz_time; PRR &= ~(1 << 3); ICR1 = buzz_freq; OCR1A = buzz_vol; TCNT1 = 0; TIMSK1 = 0b00000011
@@ -148,7 +142,8 @@ uint8_t GEIGER_MASS; //максимум секунд для окончания �
 #define MIN_BAT (uint8_t)((DEFAULT_REFERENCE * 255.0) / MIN_BAT_V)
 #define MAX_BAT (uint8_t)((DEFAULT_REFERENCE * 255.0) / MAX_BAT_V)
 
-volatile uint16_t scan_buff; //переменная для счета импульсов от датчика
+volatile uint16_t main_buff; //основная переменная для счета импульсов от датчика
+uint16_t scan_buff; //переменная сканирования импульсов
 uint16_t rad_buff[BUFF_LENGTHY]; //массив секундных замеров для расчета фона
 uint32_t rad_mid_buff[MID_BUFF_LENGTHY]; //массив секундных замеров для усреднения фона
 uint16_t search_buff[76]; //буфер поиска
@@ -213,6 +208,7 @@ struct Settings_1 {
   uint8_t rad_flash = DEFAULT_RAD_FLASH; //индикация попадания частиц
   uint8_t sigma_pos = DEFAULT_SIGMA_POS; //указатель сигмы
   uint8_t search_pos = DEFAULT_SEARCH_POS; //указатель на время время обновления графика в массиве
+  uint8_t account_sensitivity = 100 - DEFAULT_SENSITIVITY; //чувствительность к перепаду фона
   uint16_t warn_level_back = DEFAULT_LEVEL_BACK_1; //уровень тревоги 1 фона
   uint16_t alarm_level_back = DEFAULT_LEVEL_BACK_2; //уровень тревоги 2 фона
   uint16_t warn_level_dose = DEFAULT_LEVEL_DOSE_1; //уровень тревоги 1 дозы
@@ -596,9 +592,6 @@ void _init_param(void) //инициализация параметров
   tick_buff = 0; //сбрасываем тики собаки
   setContrast(mainSettings.contrast); //установка контрастности
   BUZZ_VOL_SET(mainSettings.volume); //устанавливаем громкость щелчков
-
-  GEIGER_CYCLE = (pgm_read_byte(&time_mass[0][0]) + pgm_read_byte(&time_mass[0][1])); //минимум секунд для начала расчетов
-  GEIGER_MASS = (pgm_read_byte(&time_mass[MASS_TIME_FACT][0]) + pgm_read_byte(&time_mass[MASS_TIME_FACT][1])); //максимум секунд для окончания смещения коэффициентов
 }
 //-------------------------------Включение WDT----------------------------------------------------
 void _wdt_enable(void) //включение WDT
@@ -636,22 +629,7 @@ void _init_logo(void) //вывод логотипа
 //-------------------------------Детектирование частиц------------------------------------------------
 ISR(INT0_vect) //внешнее прерывание на пине INT0 - считаем импульсы от счетчика 1
 {
-  if (scan_buff != 65535) scan_buff++; //прибавляем импульс в буфер
-
-  switch (mainSettings.rad_flash) {
-    case 1: _RAD_FLASH_ON break; //индикация попадания частиц
-    case 2: if (!sleep) _RAD_FLASH_ON break; //индикация попадания частиц
-  }
-  if (!TIMSK1) {
-    switch (mainSettings.buzz_switch) {
-      case 1: BUZZ_START; break; //щелчок пищалкой
-      case 2:
-        if (rad_back >= mainSettings.warn_level_back) {
-          BUZZ_START; //щелчок пищалкой
-        }
-        break;
-    }
-  }
+  main_buff++; //прибавляем импульс в основной буфер
 }
 //-------------------------Прерывание по переполнению wdt - 17.5мс------------------------------------
 ISR(WDT_vect) //прерывание по переполнению wdt - 17.5мс
@@ -666,18 +644,42 @@ boolean _data_update(void) //преобразование данных
   static uint8_t tmr_upd_bat; //таймер обновления состояния акб
   static uint8_t tmr_low_bat; //таймер вывода сообщения об разряженой акб
   static uint8_t tmr_upd_err; //таймер вывода сообщения об ошибке
-  static uint8_t mass_switch; //переключатель массива
-  static uint8_t time_right; //секундные замеры второго плеча
-  static uint8_t time_left; //секундные замеры первого плеча
   static uint32_t time_total; //счетчик реального времени
-  static uint32_t temp_right; //буффер второго плеча
-  static uint32_t temp_left; //буффер первого плеча
   static uint32_t temp_buff; //общий буфер
-  static float coef_now; //коэффициент сравнения
-  static float coef_back; //коэффициент поправки на фон
+
+  static uint16_t puls_total; //счетчик импульсов
+  static uint16_t time_on_pulse; //счетчик тиков
+  static float puls_per_tick_old; //предыдущий коэффициент
+  static boolean back_reset; //флаг сброса фона
 
   _low_pwr(); //отключение дисплея и подсветки, уход в сон для экономии энергии
   _pump_converter(); //накачка по обратной связи с АЦП
+
+  if (main_buff) { //если есть импульс в основном буфере
+    uint16_t temp_main_puls = main_buff; //копируем количество импульсов
+    main_buff = 0; //очищаем основной буфер
+
+    if (65535 - scan_buff >= temp_main_puls) scan_buff = 65535; //если переполнение установили максимум
+    else scan_buff += temp_main_puls; //иначе прибавляем импульсы в буфер сканирования
+    puls_total += temp_main_puls; //прибавили импульсы к буферу сравнения
+
+    if (!TIMSK0) { //если индикация не включена
+      switch (mainSettings.rad_flash) { //в зависимости от режима
+        case 1: _RAD_FLASH_ON break; //индикация попадания частиц
+        case 2: if (!sleep) _RAD_FLASH_ON break; //индикация попадания частиц
+      }
+    }
+    if (!TIMSK1) { //если бузер не включен
+      switch (mainSettings.buzz_switch) { //в зависимости от режима
+        case 1: BUZZ_START; break; //щелчок пищалкой
+        case 2:
+          if (rad_back >= mainSettings.warn_level_back) {
+            BUZZ_START; //щелчок пищалкой
+          }
+          break;
+      }
+    }
+  }
 
   if (tick_buff) { //если был тик
     while (tick_buff--) { //обрабатываем данные
@@ -699,6 +701,20 @@ boolean _data_update(void) //преобразование данных
       if (time_total > 100000UL) { //если прошла секунда
         time_total -= 100000UL; //оставляем остаток
         time_wdt = 0; //расчет времени один раз в секунду
+      }
+
+      if (!measur && !search) {
+        time_on_pulse++;
+        if (puls_total >= 5) {
+          float puls_per_tick = (float)(time_on_pulse / puls_total);
+          if (puls_per_tick_old) {
+            float percent = (float)(mainSettings.account_sensitivity / 100.00) + 1;
+            if (puls_per_tick > (puls_per_tick_old * percent) || puls_per_tick < (puls_per_tick_old / percent)) back_reset = 1;
+          }
+          puls_per_tick_old = puls_per_tick;
+          time_on_pulse = 0;
+          puls_total = 0;
+        }
       }
 
       if (time_wdt++ > TIME_FACT_13 || (!measur && !search)) {
@@ -734,7 +750,7 @@ boolean _data_update(void) //преобразование данных
             for (uint8_t i = 0; i < back_time_now; i++) temp_buff += rad_buff[i]; //суммирование всех импульсов для расчета фона
             break;
 
-          case TIME_FACT_3: //расчет текущего фона этап-2
+          case TIME_FACT_3: //копирование буфера усреднения
             if (back_time_now >= BUFF_LENGTHY) { //если основной буфер перезаписался
               for (uint8_t k = MID_BUFF_LENGTHY - 1; k > 0; k--) rad_mid_buff[k] = rad_mid_buff[k - 1]; //перезапись массива
               rad_mid_buff[0] = temp_buff; //записываем основной массив в массив усреднения
@@ -742,56 +758,17 @@ boolean _data_update(void) //преобразование данных
             for (uint8_t i = 0; i < mid_time_now; i++) temp_buff += rad_mid_buff[i]; //суммирование всех импульсов для расчета фона
             break;
 
-          case TIME_FACT_4: //расчет текущего фона этап-3
-            if (geiger_time_now >= GEIGER_CYCLE) { //если массив заполнен на минимум начала работы коэффициентов
-              if (geiger_time_now <= GEIGER_MASS) { //если не достигли предела массива сравнения
-                if (geiger_time_now >= (pgm_read_byte(&time_mass[mass_switch + 1][0]) + pgm_read_byte(&time_mass[mass_switch + 1][1]))) { //пересчитываем текущий номер элемента массива в зависимости от заполненности массива счета
-                  mass_switch++; //смещаем положение переключателя
-                  time_left = pgm_read_byte(&time_mass[mass_switch][0]); //получаем количество секундных замеров для первого плеча
-                  time_right = pgm_read_byte(&time_mass[mass_switch][1]); //получаем количество секундных замеров для второго плеча
-                }
-              }
-
-              coef_back = 1.00; //устанавливаем первичный коэффициент
-              for (uint8_t i = 0; i < MASS_BACK; i++) {
-                if (rad_back <= pgm_read_word(&back_mass[i])) {
-                  coef_back = pgm_read_float(&coef_back_mass[i]); //пересчитывем фон для коррекции по заданным коэффициентам в массиве
-                  break;
-                }
-              }
+          case TIME_FACT_5: //авто сброс при скачке/спаде
+            if (back_reset) {
+              back_reset = 0;
+              temp_buff = 0; //сбрасываем текущий буфер
+              for (uint8_t i = 0; i < 2; i++) temp_buff += rad_buff[i]; //запоняем буффер первого плеча
+              back_time_now = geiger_time_now = 2; //устанавливаем текущий размер буфера
+              mid_time_now = 0; //сбрасываем рассчет среднего
             }
             break;
 
-          case TIME_FACT_5: //расчет текущего фона этап-4
-            if (geiger_time_now >= GEIGER_CYCLE) { //если массив заполнен на минимум начала работы коэффициентов
-              coef_now = pgm_read_float(&coef_time_mass[mass_switch]) * coef_back; //получаем коэффициент из массива для сравнения на скачок/спад
-
-#if COEF_DEBUG //отладка коэффициента
-              debug_coef = coef_now;
-#endif
-
-              temp_left = 1; //сбрасываем буффер первого плеча
-              for (uint8_t i = 0; i < time_left; i++) temp_left += rad_buff[i]; //запоняем буффер первого плеча
-              temp_right = 1; //сбрасываем буффер второго плеча
-              for (uint8_t i = time_left; i < (time_left + time_right); i++) temp_right += rad_buff[i]; //запоняем буффер вторго плеча
-            }
-            break;
-
-          case TIME_FACT_6: //расчет текущего фона этап-5
-            if (geiger_time_now >= GEIGER_CYCLE) { //если массив заполнен на минимум начала работы коэффициентов
-              now = ((float)temp_left / time_left) / ((float)temp_right / time_right); //получаем текущее соотношение первого плеча ко второму
-
-              if (now > coef_now || now < (1.00 / coef_now)) { //если видим скачок или спад
-                temp_buff = 0; //сбрасываем текущий буфер
-                for (uint8_t i = 0; i < pgm_read_byte(&time_mass[0][0]); i++) temp_buff += rad_buff[i]; //запоняем буффер первого плеча
-                back_time_now = geiger_time_now = pgm_read_byte(&time_mass[0][0]); //устанавливаем текущий размер буфера
-                mid_time_now = 0; //сбрасываем рассчет среднего
-                mass_switch = 0; //сбрасываем позицию переключения
-              }
-            }
-            break;
-
-          case TIME_FACT_7: { //расчет текущего фона этап-6
+          case TIME_FACT_7: { //расчет текущего фона
 #if APPROX_BACK_SCORE
               float imp_per_sec = 0; //текущее количество имп/с
               if (geiger_time_now > 1) imp_per_sec = (float)temp_buff / ((uint16_t)mid_time_now * BUFF_LENGTHY + back_time_now); //расчет имп/с
@@ -2297,42 +2274,49 @@ void _settings_item_switch(boolean set, boolean inv, uint8_t num, uint8_t pos) /
       }
       break;
 
-    case 11: //Тревога Ф
+    case 11: //Чувств
+      switch (set) {
+        case 0: print(S_ITEM_SENSITIVITY, LEFT, pos_row); break; //Ед.измер:
+        case 1: printNumI(100 - mainSettings.account_sensitivity, RIGHT, pos_row); break;
+      }
+      break;
+
+    case 12: //Тревога Ф
       switch (set) {
         case 0: print(S_ITEM_ALARM_BACK, LEFT, pos_row); break; //Тревога Ф:
         case 1: if (!mainSettings.alarm_back) print(ALL_SWITCH_OFF, RIGHT, pos_row); else if (mainSettings.alarm_back == 1) print(S_SWITCH_SOUND, RIGHT, pos_row); else if (mainSettings.alarm_back == 2) print(S_SWITCH_VIBRO, RIGHT, pos_row); else print(S_SWITCH_SOUND_VIBRO, RIGHT, pos_row); break;
       }
       break;
 
-    case 12: //Порог Ф1
+    case 13: //Порог Ф1
       switch (set) {
         case 0: print(S_ITEM_ALARM_THRESHOLD_BACK_1, LEFT, pos_row); break; //Порог Ф1:
         case 1: printNumI(mainSettings.warn_level_back, RIGHT, pos_row); break;
       }
       break;
 
-    case 13: //Порог Ф2
+    case 14: //Порог Ф2
       switch (set) {
         case 0: print(S_ITEM_ALARM_THRESHOLD_BACK_2, LEFT, pos_row); break; //Порог Ф2:
         case 1: printNumI(mainSettings.alarm_level_back, RIGHT, pos_row); break;
       }
       break;
 
-    case 14: //Тревога Д
+    case 15: //Тревога Д
       switch (set) {
         case 0: print(S_ITEM_ALARM_DOSE, LEFT, pos_row); break; //Тревога Д:
         case 1: if (!mainSettings.alarm_dose) print(ALL_SWITCH_OFF, RIGHT, pos_row); else if (mainSettings.alarm_dose == 1) print(S_SWITCH_SOUND, RIGHT, pos_row); else if (mainSettings.alarm_dose == 2) print(S_SWITCH_VIBRO, RIGHT, pos_row); else print(S_SWITCH_SOUND_VIBRO, RIGHT, pos_row); break;
       }
       break;
 
-    case 15: //Порог Д1
+    case 16: //Порог Д1
       switch (set) {
         case 0: print(S_ITEM_ALARM_THRESHOLD_DOSE_1, LEFT, pos_row); break; //Порог Д1:
         case 1: printNumI(mainSettings.warn_level_dose, RIGHT, pos_row); break;
       }
       break;
 
-    case 16: //Порог Д2
+    case 17: //Порог Д2
       switch (set) {
         case 0: print(S_ITEM_ALARM_THRESHOLD_DOSE_2, LEFT, pos_row); break; //Порог Д2:
         case 1: printNumI(mainSettings.alarm_level_dose, RIGHT, pos_row); break;
@@ -2340,7 +2324,7 @@ void _settings_item_switch(boolean set, boolean inv, uint8_t num, uint8_t pos) /
       break;
 
 #if USE_UART
-    case 17:
+    case 18:
       switch (set) {
         case 0: print(S_ITEM_UART_SET, LEFT, pos_row); break; //Порт:
         case 1: if (!UCSR0B) print(ALL_SWITCH_OFF, RIGHT, pos_row); else printNumI(UART_BAUND, RIGHT, pos_row); break;
@@ -2380,15 +2364,16 @@ void _settings_data_up(uint8_t pos) //прибавление данных
     case 8: if (mainSettings.sigma_pos < 2) mainSettings.sigma_pos++; else mainSettings.sigma_pos = 0; break; //Сигма
     case 9: if (mainSettings.search_pos < 8) mainSettings.search_pos++; else mainSettings.search_pos = 0; break; //Поиск
     case 10: mainSettings.rad_mode = 1; break; //Ед.измер
+    case 11: if (mainSettings.account_sensitivity > 5) mainSettings.account_sensitivity -= 5; break; //Чувств
 
-    case 11: if (mainSettings.alarm_back < 3) mainSettings.alarm_back++; break; //Тревога Ф
-    case 12: if (mainSettings.warn_level_back < 300) mainSettings.warn_level_back += 5; else mainSettings.warn_level_back = 30; break; //Порог Ф1
-    case 13: if (mainSettings.alarm_level_back < 500) mainSettings.alarm_level_back += 10; else if (mainSettings.alarm_level_back < 1000) mainSettings.alarm_level_back += 50; else if (mainSettings.alarm_level_back < 65000) mainSettings.alarm_level_back += 100; else mainSettings.alarm_level_back = 300; break; //Порог Ф2
-    case 14: if (mainSettings.alarm_dose < 3) mainSettings.alarm_dose++; break; //Тревога Д
-    case 15: if (mainSettings.warn_level_dose < 300) mainSettings.warn_level_dose += 5; else mainSettings.warn_level_dose = 10; break; //Порог Д1
-    case 16: if (mainSettings.alarm_level_dose < 500) mainSettings.alarm_level_dose += 10; else if (mainSettings.alarm_level_dose < 1000) mainSettings.alarm_level_dose += 50; else if (mainSettings.alarm_level_dose < 65000) mainSettings.alarm_level_dose += 100; else mainSettings.alarm_level_dose = 300; break; //Порог Д2
+    case 12: if (mainSettings.alarm_back < 3) mainSettings.alarm_back++; break; //Тревога Ф
+    case 13: if (mainSettings.warn_level_back < 300) mainSettings.warn_level_back += 5; else mainSettings.warn_level_back = 30; break; //Порог Ф1
+    case 14: if (mainSettings.alarm_level_back < 500) mainSettings.alarm_level_back += 10; else if (mainSettings.alarm_level_back < 1000) mainSettings.alarm_level_back += 50; else if (mainSettings.alarm_level_back < 65000) mainSettings.alarm_level_back += 100; else mainSettings.alarm_level_back = 300; break; //Порог Ф2
+    case 15: if (mainSettings.alarm_dose < 3) mainSettings.alarm_dose++; break; //Тревога Д
+    case 16: if (mainSettings.warn_level_dose < 300) mainSettings.warn_level_dose += 5; else mainSettings.warn_level_dose = 10; break; //Порог Д1
+    case 17: if (mainSettings.alarm_level_dose < 500) mainSettings.alarm_level_dose += 10; else if (mainSettings.alarm_level_dose < 1000) mainSettings.alarm_level_dose += 50; else if (mainSettings.alarm_level_dose < 65000) mainSettings.alarm_level_dose += 100; else mainSettings.alarm_level_dose = 300; break; //Порог Д2
 #if USE_UART
-    case 17: if (!UCSR0B) dataChannelInit(); else dataChannelEnd(); break; //uart
+    case 18: if (!UCSR0B) dataChannelInit(); else dataChannelEnd(); break; //uart
 #endif
   }
 }
@@ -2414,15 +2399,16 @@ void _settings_data_down(uint8_t pos) //убавление данных
     case 8: if (mainSettings.sigma_pos) mainSettings.sigma_pos--; else mainSettings.sigma_pos = 2; break; //Сигма
     case 9: if (mainSettings.search_pos) mainSettings.search_pos--; else mainSettings.search_pos = 8; break; //Поиск
     case 10: mainSettings.rad_mode = 0; break; //Ед.измер
+    case 11: if (mainSettings.account_sensitivity < 95) mainSettings.account_sensitivity += 5; break; //Чувств
 
-    case 11: if (mainSettings.alarm_back) mainSettings.alarm_back--; break; //Тревога Ф
-    case 12: if (mainSettings.warn_level_back > 30) mainSettings.warn_level_back -= 5; else mainSettings.warn_level_back = 300; break; //Порог Ф1
-    case 13: if (mainSettings.alarm_level_back > 1000) mainSettings.alarm_level_back -= 100; else if (mainSettings.alarm_level_back > 500) mainSettings.alarm_level_back -= 50; else if (mainSettings.alarm_level_back > 300) mainSettings.alarm_level_back -= 10; else mainSettings.alarm_level_back = 65000; break; //Порог Ф2
-    case 14: if (mainSettings.alarm_dose) mainSettings.alarm_dose--; break; //Тревога Д
-    case 15: if (mainSettings.warn_level_dose > 10) mainSettings.warn_level_dose -= 5; else mainSettings.warn_level_dose = 300; break; //Порог Д1
-    case 16: if (mainSettings.alarm_level_dose > 1000) mainSettings.alarm_level_dose -= 100; else if (mainSettings.alarm_level_dose > 500) mainSettings.alarm_level_dose -= 50; else if (mainSettings.alarm_level_dose > 300) mainSettings.alarm_level_dose -= 10; else mainSettings.alarm_level_dose = 65000; break; //Порог Д2
+    case 12: if (mainSettings.alarm_back) mainSettings.alarm_back--; break; //Тревога Ф
+    case 13: if (mainSettings.warn_level_back > 30) mainSettings.warn_level_back -= 5; else mainSettings.warn_level_back = 300; break; //Порог Ф1
+    case 14: if (mainSettings.alarm_level_back > 1000) mainSettings.alarm_level_back -= 100; else if (mainSettings.alarm_level_back > 500) mainSettings.alarm_level_back -= 50; else if (mainSettings.alarm_level_back > 300) mainSettings.alarm_level_back -= 10; else mainSettings.alarm_level_back = 65000; break; //Порог Ф2
+    case 15: if (mainSettings.alarm_dose) mainSettings.alarm_dose--; break; //Тревога Д
+    case 16: if (mainSettings.warn_level_dose > 10) mainSettings.warn_level_dose -= 5; else mainSettings.warn_level_dose = 300; break; //Порог Д1
+    case 17: if (mainSettings.alarm_level_dose > 1000) mainSettings.alarm_level_dose -= 100; else if (mainSettings.alarm_level_dose > 500) mainSettings.alarm_level_dose -= 50; else if (mainSettings.alarm_level_dose > 300) mainSettings.alarm_level_dose -= 10; else mainSettings.alarm_level_dose = 65000; break; //Порог Д2
 #if USE_UART
-    case 17: if (!UCSR0B) dataChannelInit(); else dataChannelEnd(); break; //uart
+    case 18: if (!UCSR0B) dataChannelInit(); else dataChannelEnd(); break; //uart
 #endif
   }
 }
@@ -2443,7 +2429,7 @@ uint8_t settings(void) //настройки
         case DOWN_KEY_PRESS: //вниз
           switch (set) {
             case 0:
-              if (pos < 16 + USE_UART) { //изменяем позицию
+              if (pos < 17 + USE_UART) { //изменяем позицию
                 pos++;
                 if (cursor < 4) cursor++; //изменяем положение курсора
               }
@@ -2464,7 +2450,7 @@ uint8_t settings(void) //настройки
                 if (cursor > 0) cursor--; //изменяем положение курсора
               }
               else { //иначе конец списка
-                pos = 16 + USE_UART;
+                pos = 17 + USE_UART;
                 cursor = 4;
               }
               break;
