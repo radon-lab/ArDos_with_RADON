@@ -659,8 +659,8 @@ boolean _data_update(void) //преобразование данных
     uint16_t temp_main_puls = main_buff; //копируем количество импульсов
     main_buff = 0; //очищаем основной буфер
 
-    if (65535 - scan_buff <= temp_main_puls) scan_buff = 65535; //если переполнение установили максимум
-    else scan_buff += temp_main_puls; //иначе прибавляем импульсы в буфер сканирования
+    if (65535 - scan_buff >= temp_main_puls) scan_buff += temp_main_puls; //если буфер сканирования не переполнен прибавляем импульсы
+    else scan_buff = 65535; //иначе установили максимум
     if (!measur && !search) puls_total += temp_main_puls; //прибавили импульсы к буферу сравнения
 
     if (!TIMSK0) { //если индикация не включена
