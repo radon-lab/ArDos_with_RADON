@@ -705,7 +705,7 @@ boolean _data_update(void) //преобразование данных
 
       if (!measur && !search) {
         time_on_pulse++;
-        if (puls_total >= 5) {
+        if (puls_total >= IMP_CALCULATION) {
           float puls_per_tick = (float)(time_on_pulse / puls_total);
           if (puls_per_tick_old) {
             float puls_per_percent = puls_per_tick_old * (float)(mainSettings.account_sensitivity / 100.00);
