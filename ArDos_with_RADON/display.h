@@ -54,6 +54,7 @@ void  initLcd(void);
 void  setContrast(uint8_t contrast);
 void  enableSleep(void);
 void  disableSleep(uint8_t contrast);
+void  showScr(void);
 void  clrScr(void);
 void  drawLine(uint8_t row, uint8_t start_x = 0, uint8_t end_x = 83, uint8_t line = 0);
 void  invert(bool mode);
@@ -132,17 +133,21 @@ void disableSleep(uint8_t contrast) //выключение режима сна
   _LCD_Write(PCD8544_SETTEMP | LCD_TEMP, LCD_COMMAND);
   _LCD_Write(PCD8544_SETBIAS | LCD_BIAS, LCD_COMMAND);
   _LCD_Write(PCD8544_FUNCTIONSET, LCD_COMMAND);
-  clrScr(); //очистка экрана
   _LCD_Write(PCD8544_DISPLAYCONTROL | PCD8544_DISPLAYNORMAL, LCD_COMMAND);
+  clrScr(); //очистка экрана
 }
 //----------------------Вывод буфера на экран-----------------------------------------------
 void showScr(void) //вывод буфера на экран
 {
 #if ROTATE_DISP
+  _LCD_Write(PCD8544_SETYADDR, LCD_COMMAND);
+  _LCD_Write(PCD8544_SETXADDR, LCD_COMMAND);
   for (uint16_t c = 504; c; c--) _LCD_Write(_lcd_buffer[c - 1], LCD_DATA);
   _LCD_Write(PCD8544_SETYADDR, LCD_COMMAND);
   _LCD_Write(PCD8544_SETXADDR, LCD_COMMAND);
 #else
+  _LCD_Write(PCD8544_SETYADDR, LCD_COMMAND);
+  _LCD_Write(PCD8544_SETXADDR, LCD_COMMAND);
   for (uint16_t c = 0; c < 504; c++) _LCD_Write(_lcd_buffer[c], LCD_DATA);
   _LCD_Write(PCD8544_SETYADDR, LCD_COMMAND);
   _LCD_Write(PCD8544_SETXADDR, LCD_COMMAND);

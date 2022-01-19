@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.13
-  Версия программы RADON v3.9.0 low_pwr release 15.01.22 специально для проекта ArDos
+  Версия программы RADON v3.9.0 low_pwr release 18.01.22 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/ardos-dozimetr-prodolzhenie-temy-chast-%E2%84%962 и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -167,8 +167,6 @@ uint16_t search_buff[76]; //буфер поиска
 #define TIME_FACT_16 33 //секундные интервалы 16
 #define TIME_FACT_17 35 //секундные интервалы 17
 #define TIME_FACT_18 37 //секундные интервалы 18
-#define TIME_FACT_19 39 //секундные интервалы 19
-#define TIME_FACT_20 41 //секундные интервалы 20
 
 enum {
   KEY_NULL,        //кнопка не нажата
@@ -717,11 +715,10 @@ boolean _data_update(void) //преобразование данных
         }
       }
 
-      if (time_wdt++ > TIME_FACT_13 || (!measur && !search)) {
+      if (time_wdt++ > TIME_FACT_11 || (!measur && !search)) {
         switch (time_wdt) {
           case TIME_FACT_0: //обновление секунд
             time_sec++; //прибавляем секунду
-            if (!sleep) scr = 0; //устанавливаем флаг для обновления экрана
             break;
 
           case TIME_FACT_1: //обновление статистики
@@ -758,7 +755,7 @@ boolean _data_update(void) //преобразование данных
             for (uint8_t i = 0; i < mid_time_now; i++) temp_buff += rad_mid_buff[i]; //суммирование всех импульсов для расчета фона
             break;
 
-          case TIME_FACT_5: //авто сброс при скачке/спаде
+          case TIME_FACT_4: //авто сброс при скачке/спаде
             if (back_reset) {
               back_reset = 0;
               temp_buff = 0; //сбрасываем текущий буфер
@@ -768,7 +765,7 @@ boolean _data_update(void) //преобразование данных
             }
             break;
 
-          case TIME_FACT_7: { //расчет текущего фона
+          case TIME_FACT_5: { //расчет текущего фона
 #if APPROX_BACK_SCORE
               float imp_per_sec = 0; //текущее количество имп/с
               if (geiger_time_now > 1) imp_per_sec = (float)temp_buff / ((uint16_t)mid_time_now * BUFF_LENGTHY + back_time_now); //расчет имп/с
@@ -794,15 +791,15 @@ boolean _data_update(void) //преобразование данных
             }
             break;
 
-          case TIME_FACT_8: //перезапись массива секундных замеров
+          case TIME_FACT_6: //перезапись массива секундных замеров
             for (uint8_t k = BUFF_LENGTHY - 1; k > 0; k--) rad_buff[k] = rad_buff[k - 1]; //перезапись массива
             break;
 
-          case TIME_FACT_9: //рассчитываем точность
+          case TIME_FACT_7: //рассчитываем точность
             accur_percent = _init_accur(temp_buff); //рассчет точности
             break;
 
-          case TIME_FACT_10: //минимальный и максимальный фон
+          case TIME_FACT_8: //минимальный и максимальный фон
             if (accur_percent <= RAD_ACCUR_START) { //если достаточно данных в массиве
               if (rad_back < rad_min) rad_min = rad_back; //фиксируем минимум фона
               if (rad_back > rad_max) rad_max = rad_back; //фиксируем максимум фона
@@ -810,7 +807,7 @@ boolean _data_update(void) //преобразование данных
             else rad_min = rad_back; //фиксируем минимум фона
             break;
 
-          case TIME_FACT_11: { //расчет текущей дозы
+          case TIME_FACT_9: { //расчет текущей дозы
 #if GEIGER_OWN_BACK
               if (rad_sum_timer != 65535) rad_sum_timer++;
               uint16_t puls_per_ur = (3600 / pumpSettings.geiger_time) + (rad_sum_timer * OWN_BACK);
@@ -829,7 +826,7 @@ boolean _data_update(void) //преобразование данных
             }
             break;
 
-          case TIME_FACT_12: { //расчет данных для графика
+          case TIME_FACT_10: { //расчет данных для графика
               uint16_t graf_max = 0; //максимальное значение графика
               for (uint8_t i = 0; i > 38; i--) if (rad_buff[i] > graf_max) graf_max = rad_buff[i]; //ищем максимум
 
@@ -838,7 +835,7 @@ boolean _data_update(void) //преобразование данных
             }
             break;
 
-          case TIME_FACT_13: //обработка тревоги
+          case TIME_FACT_11: //обработка тревоги
             if (mainSettings.alarm_dose && (rad_dose - alarm_dose_wait) >= mainSettings.alarm_level_dose) { //если тревога не запрещена и текущая(предыдущая) доза больше порога
 #if LOGBOOK_RETURN
               if (!alarm_switch && bookSettings.logbook_warn) _logbook_data_update(0, 2, rad_dose); //обновление журнала
@@ -911,7 +908,7 @@ boolean _data_update(void) //преобразование данных
             break;
 
 #if USE_UART
-          case TIME_FACT_14: //отправляем данные в порт
+          case TIME_FACT_12: //отправляем данные в порт
 #if UART_SEND_BACK
             sendNumI(rad_back);
 #endif
@@ -924,7 +921,7 @@ boolean _data_update(void) //преобразование данных
             break;
 #endif
 
-          case TIME_FACT_15: //обработка ошибок
+          case TIME_FACT_13: //обработка ошибок
             if (speed_pump >= HV_SPEED_ERROR) { //если текущая скорость накачки выше порога
 #if LOGBOOK_RETURN
               if (error_switch < 2) _logbook_data_update(3, 2, speed_pump); //обновление журнала устанавливаем ошибку 2 - перегрузка преобразователя
@@ -975,7 +972,7 @@ boolean _data_update(void) //преобразование данных
             else tmr_upd_err++;
             break;
 
-          case TIME_FACT_16: //разностный замер
+          case TIME_FACT_14: //разностный замер
             switch (measur) { //выбираем режим замера
               case 1: if (time_switch < (pgm_read_byte(&diff_measuring[mainSettings.measur_pos]) * 60)) time_switch++; //прибавляем секунду
                 else next_measur = 1; //иначе время вышло
@@ -992,7 +989,7 @@ boolean _data_update(void) //преобразование данных
             }
             break;
 
-          case TIME_FACT_17: //считаем время до ухода в сон
+          case TIME_FACT_15: //считаем время до ухода в сон
             switch (mainSettings.sleep_switch) { //выбераем счет времени
               case 1: if (cnt_pwr <= mainSettings.time_bright) cnt_pwr++; break; //счет выключения подсветки
               case 2: if (cnt_pwr <= mainSettings.time_sleep) cnt_pwr++; break; //счет ухода в сон
@@ -1009,7 +1006,7 @@ boolean _data_update(void) //преобразование данных
             }
             break;
 
-          case TIME_FACT_18: { //управление энергосбережением
+          case TIME_FACT_16: { //управление энергосбережением
               if (!sleep_disable) {
                 uint16_t _imp_per_second = rad_back / pumpSettings.geiger_time; //получили имп/с
                 switch (power_manager) {
@@ -1025,7 +1022,7 @@ boolean _data_update(void) //преобразование данных
             }
             break;
 
-          case TIME_FACT_19: //таймер обновления батареи
+          case TIME_FACT_17: //таймер обновления батареи
             if (tmr_upd_bat >= UPD_BAT_TIME) {
               tmr_upd_bat = 0; //сброс таймера
               _bat_check(); //опрос батареи
@@ -1040,7 +1037,8 @@ boolean _data_update(void) //преобразование данных
             else tmr_low_bat++;
             break;
 
-          case TIME_FACT_20: //таймер обновления экрана
+          case TIME_FACT_18: //таймер обновления экрана
+            if (!sleep) scr = 0; //устанавливаем флаг для обновления экрана
             if (search) rad_buff[0] = 0; //очищаем буфер
             break;
         }

@@ -32,7 +32,7 @@
 #define DEFAULT_SEARCH_POS     8   //указатель на время время обновления графика в массиве (0..9)
 #define DEFAULT_SIGMA_POS      1   //указатель сигмы (0 - 1 сигма | 1 - 2 сигмы | 2 - 3 сигмы)
 #define DEFAULT_RAD_MODE       0   //единицы измерения дозы/фона (0 - мкР | 1 - мкЗв)
-#define DEFAULT_SENSITIVITY    50  //чувствительность к перепаду фона(5..95)(%)
+#define DEFAULT_SENSITIVITY    35  //чувствительность к перепаду фона(5..95)(%)
 #define DEFAULT_ALARM_BACK     0   //режим тревоги фона (0 - выкл | 1 - звук | 2 - вибрация | 3 - звук+вибрация)
 #define DEFAULT_LEVEL_BACK_1   30  //уровень тревоги 1 фона (30..300)
 #define DEFAULT_LEVEL_BACK_2   300 //уровень тревоги 2 фона (300..65500)
