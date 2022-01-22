@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.13
-  Версия программы RADON v3.9.0 low_pwr release 22.01.22 специально для проекта ArDos
+  Версия программы RADON v3.9.1 low_pwr release 22.01.22 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/ardos-dozimetr-prodolzhenie-temy-chast-%E2%84%962 и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -366,16 +366,18 @@ float debug_coef = 0.00; //для  вывода общего коэффицие�
 #define EEPROM_BLOCK_CRC_PUMP (EEPROM_BLOCK_CRC_BOOK + 1) //ячейка контрольной суммы настроек преобразователя
 #define EEPROM_BLOCK_CRC_STRUCT (EEPROM_BLOCK_CRC_PUMP + 1) //ячейка контрольной суммы структур данных
 
-void _init_rads_unit(boolean type, uint32_t num, uint8_t divisor, uint8_t char_all, uint8_t num_x, uint8_t num_y, boolean unit, uint8_t unit_x, uint8_t unit_y, boolean dash = 0);
+void _init_rads_unit(boolean type, uint32_t num, uint8_t divisor, uint8_t char_all, uint8_t num_x, uint8_t num_y, boolean unit, uint8_t unit_x, uint8_t unit_y, boolean dash = 0); //отрисовка данных
+void (*_RESET_SYSTEM)() = 0x0000; //перезагрузка
 //--------------------------------------Главный цикл программ---------------------------------------------------
 int main(void) //главный цикл программ
 {
-  static uint8_t mainTask = INIT_PROGRAM; //переключать подпрограмм
-
+  static uint8_t mainTask = MAIN_PROGRAM; //переключать подпрограмм
+  _INIT_SYSTEM(); //инициализация
+  
   for (;;) {
     scr = 0; //разрешаем обновления экрана
     switch (mainTask) {
-      default: mainTask = startInit(); break; //инициализация
+      default: _RESET_SYSTEM(); break; //перезагрузка
       case MAIN_PROGRAM: mainTask = main_screen(); break; //основной экран
       case SEARCH_PROGRAM: mainTask = search_menu(); break; //режим поиск
       case MEASUR_PROGRAM: mainTask = measur_menu(); break; //режим замера
@@ -389,7 +391,7 @@ int main(void) //главный цикл программ
   return INIT_PROGRAM;
 }
 //--------------------------------------Инициализация---------------------------------------------------
-uint8_t startInit(void)  //инициализация
+void _INIT_SYSTEM(void) //инициализация
 {
   CONV_INIT; //инициализация преобразователя
   BUZZ_INIT; //инициализация бузера
@@ -437,7 +439,6 @@ uint8_t startInit(void)  //инициализация
   _wait(FONT_TIME); //ждем
 
   clrScr(); //очистка экрана
-  return MAIN_PROGRAM; //конец
 }
 //-------------------Проверка и чтение данных из памяти-------------------------------------------
 void _read_memory(void) //проверка и чтение данных из памяти
