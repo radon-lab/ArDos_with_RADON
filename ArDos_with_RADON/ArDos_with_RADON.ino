@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.13
-  Версия программы RADON v3.9.1 low_pwr release 22.01.22 специально для проекта ArDos
+  Версия программы RADON v3.9.0 low_pwr release 22.01.22 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/ardos-dozimetr-prodolzhenie-temy-chast-%E2%84%962 и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -375,10 +375,7 @@ int main(void) //главный цикл программ
   for (;;) {
     scr = 0; //разрешаем обновления экрана
     switch (mainTask) {
-      default:
-        *(uint16_t*)&SPL = RAMEND; //очистили стек
-        mainTask = startInit(); //инициализация
-        break;
+      default: mainTask = startInit(); break; //инициализация
       case MAIN_PROGRAM: mainTask = main_screen(); break; //основной экран
       case SEARCH_PROGRAM: mainTask = search_menu(); break; //режим поиск
       case MEASUR_PROGRAM: mainTask = measur_menu(); break; //режим замера
