@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.13
-  Версия программы RADON v3.9.0 low_pwr release 18.01.22 специально для проекта ArDos
+  Версия программы RADON v3.9.0 low_pwr release 22.01.22 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/ardos-dozimetr-prodolzhenie-temy-chast-%E2%84%962 и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -187,7 +187,32 @@ enum {
   SETTINGS_PROGRAM,  //настройки
   PARAMETRS_PROGRAM, //параметры
   MENU_PROGRAM,      //основное меню
-  DEBUG_PROGRAM,     //отладка
+  DEBUG_PROGRAM      //отладка
+};
+
+enum {
+  _SET_TIME_SLEEP,       //сон
+  _SET_TIME_BRIGHT,      //подсветка
+  _SET_CONTRAST,         //контраст
+  _SET_RAD_FLASH,        //вспышки
+  _SET_VOLUME,           //громкость
+  _SET_BUZZ_SWITCH,      //щелчки
+  _SET_KNOCK_DISABLE,    //звук кнопок
+  _SET_MEASUR_POS,       //разностный замер
+  _SET_SIGMA_POS,        //сигма
+  _SET_SEARCH_POS,       //поиск
+  _SET_RAD_MOD,          //единицы измерения
+  _SET_SENSITIVITY,      //чувствительность
+  _SET_ALARM_BACK,       //тревога фон
+  _SET_WARN_LEVEL_BACK,  //порог фон 1
+  _SET_ALARM_LEVEL_BACK, //порог фон 2
+  _SET_ALARM_DOSE,       //тревога доза
+  _SET_WARN_LEVEL_DOSE,  //порог доза 1
+  _SET_ALARM_LEVEL_DOSE, //порог доза 2
+#if USE_UART
+  _SET_UART_MOD,         //последовательный порт
+#endif
+  _SET_MENU_ALL          //всего пунктов меню
 };
 
 //настройки основные
@@ -659,7 +684,7 @@ boolean _data_update(void) //преобразование данных
 
     if (65535 - scan_buff >= temp_main_puls) scan_buff += temp_main_puls; //если буфер сканирования не переполнен прибавляем импульсы
     else scan_buff = 65535; //иначе установили максимум
-    if (!measur && !search) puls_total += temp_main_puls; //прибавили импульсы к буферу сравнения
+    if (!measur && !search) puls_total += temp_main_puls; //если не идет замер/поиск то прибавили импульсы к буферу сравнения
 
     if (!TIMSK0) { //если индикация не включена
       switch (mainSettings.rad_flash) { //в зависимости от режима
@@ -701,21 +726,21 @@ boolean _data_update(void) //преобразование данных
         time_wdt = 0; //расчет времени один раз в секунду
       }
 
-      if (!measur && !search) {
-        time_on_pulse++;
-        if (puls_total >= IMP_CALCULATION) {
-          float puls_per_tick = (float)(time_on_pulse / puls_total);
-          if (puls_per_tick_old) {
-            float puls_per_percent = puls_per_tick_old * (float)(mainSettings.account_sensitivity / 100.00);
-            if (puls_per_tick > (puls_per_tick_old + puls_per_percent) || puls_per_tick < (puls_per_tick_old - puls_per_percent)) back_reset = 1;
+      if (!measur && !search) { //если не идет замер/поиск
+        time_on_pulse++; //прибавляем тик
+        if (puls_total >= IMP_CALCULATION) { //если накопилось необходимое количество импульсов
+          float puls_per_tick = (float)(time_on_pulse / puls_total); //рассчитываем количество тиков на 1 импульс
+          if (puls_per_tick_old) { //если это не первый замер
+            float puls_per_percent = puls_per_tick_old * (float)(mainSettings.account_sensitivity / 100.00); //находим соотношение гистерезиса в процентах
+            if (puls_per_tick > (puls_per_tick_old + puls_per_percent) || puls_per_tick < (puls_per_tick_old - puls_per_percent)) back_reset = 1; //если вышли за рамки гистерезиса то ставим флаг сброса
           }
-          puls_per_tick_old = puls_per_tick;
-          time_on_pulse = 0;
-          puls_total = 0;
+          puls_per_tick_old = puls_per_tick; //запоминаем текущее количество тиков на 1 импульс
+          time_on_pulse = 0; //сбрасываем тики
+          puls_total = 0; //сбрасываем буфер сравнения
         }
       }
 
-      if (time_wdt++ > TIME_FACT_11 || (!measur && !search)) {
+      if (time_wdt++ > TIME_FACT_11 || (!measur && !search)) { //если в зоне постаянной обработке данных или не идет замер/поиск
         switch (time_wdt) {
           case TIME_FACT_0: //обновление секунд
             time_sec++; //прибавляем секунду
@@ -756,11 +781,11 @@ boolean _data_update(void) //преобразование данных
             break;
 
           case TIME_FACT_4: //авто сброс при скачке/спаде
-            if (back_reset) {
-              back_reset = 0;
+            if (back_reset) { //если был скачек/спад
+              back_reset = 0; //сбросили флаг
               temp_buff = 0; //сбрасываем текущий буфер
-              for (uint8_t i = 0; i < 2; i++) temp_buff += rad_buff[i]; //запоняем буффер первого плеча
-              back_time_now = geiger_time_now = 2; //устанавливаем текущий размер буфера
+              for (uint8_t i = 0; i < RESET_BUFF_TIME; i++) temp_buff += rad_buff[i]; //запоняем буффер
+              back_time_now = geiger_time_now = RESET_BUFF_TIME; //устанавливаем текущий размер буфера
               mid_time_now = 0; //сбрасываем рассчет среднего
             }
             break;
@@ -2195,126 +2220,126 @@ void _settings_item_switch(boolean set, boolean inv, uint8_t num, uint8_t pos) /
   if (inv) invertText(true); //включаем инверсию
 
   switch (num) {
-    case 0: //Сон
+    case _SET_TIME_SLEEP: //Сон
       switch (set) {
         case 0: print(S_ITEM_SLEEP, LEFT, pos_row); break; //Сон:
         case 1: if (mainSettings.sleep_switch < 2) print(ALL_SWITCH_OFF, RIGHT, pos_row); else printNumI(mainSettings.time_sleep, RIGHT, pos_row); break;
       }
       break;
 
-    case 1: //Подсветка
+    case _SET_TIME_BRIGHT: //Подсветка
       switch (set) {
         case 0: print(S_ITEM_LIGHT, LEFT, pos_row); break; //Подсветка:
         case 1: if (!mainSettings.sleep_switch) print(S_SWITCH_MANUAL, RIGHT, pos_row); else printNumI(mainSettings.time_bright, RIGHT, pos_row); break;
       }
       break;
 
-    case 2: //Контраст
+    case _SET_CONTRAST: //Контраст
       switch (set) {
         case 0: print(S_ITEM_CONTRAST, LEFT, pos_row); break; //Контраст:
         case 1: printNumI(mainSettings.contrast, RIGHT, pos_row); break;
       }
       break;
 
-    case 3: //Вспышки
+    case _SET_RAD_FLASH: //Вспышки
       switch (set) {
         case 0: print(S_ITEM_FLASHES, LEFT, pos_row); break; //Вспышки:
         case 1: if (!mainSettings.rad_flash) print(ALL_SWITCH_OFF, RIGHT, pos_row); else if (mainSettings.rad_flash == 2) print(S_SWITCH_MANUAL_EXCEPT_SLEEP, RIGHT, pos_row); else print(ALL_SWITCH_ON, RIGHT, pos_row); break;
       }
       break;
 
-    case 4: //Громкость
+    case _SET_VOLUME: //Громкость
       switch (set) {
         case 0: print(S_ITEM_VOLUME, LEFT, pos_row); break; //Громкость:
         case 1: printNumI(mainSettings.volume, RIGHT, pos_row); break;
       }
       break;
 
-    case 5: //Щелчки
+    case _SET_BUZZ_SWITCH: //Щелчки
       switch (set) {
         case 0: print(S_ITEM_CLICKS, LEFT, pos_row); break; //Щелчки:
         case 1: if (!mainSettings.buzz_switch) print(ALL_SWITCH_OFF, RIGHT, pos_row); else if (mainSettings.buzz_switch == 1) print(ALL_SWITCH_ON, RIGHT, pos_row); else print(S_SWITCH_BACK_1, RIGHT, pos_row); break;
       }
       break;
 
-    case 6: //Зв.Кнопок
+    case _SET_KNOCK_DISABLE: //Зв.Кнопок
       switch (set) {
         case 0: print(S_ITEM_BUTT_SOUND, LEFT, pos_row); break; //Зв.Кнопок:
         case 1: if (mainSettings.knock_disable) print(ALL_SWITCH_OFF, RIGHT, pos_row); else print(ALL_SWITCH_ON, RIGHT, pos_row); break;
       }
       break;
 
-    case 7: //Разн.зам
+    case _SET_MEASUR_POS: //Разн.зам
       switch (set) {
         case 0: print(S_ITEM_DIFF_MEASUR, LEFT, pos_row); break; //Разн.зам:
         case 1: printNumI(pgm_read_byte(&diff_measuring[mainSettings.measur_pos]), RIGHT, pos_row); break;
       }
       break;
 
-    case 8: //Сигма
+    case _SET_SIGMA_POS: //Сигма
       switch (set) {
         case 0: print(S_ITEM_SIGMA, LEFT, pos_row); break; //Сигма:
         case 1: printNumI(mainSettings.sigma_pos + 1, RIGHT, pos_row); break;
       }
       break;
 
-    case 9: //Поиск
+    case _SET_SEARCH_POS: //Поиск
       switch (set) {
         case 0: print(S_ITEM_SEARCH, LEFT, pos_row); break; //Поиск:
         case 1: if (mainSettings.search_pos != 8) printNumI(pgm_read_word(&search_time[mainSettings.search_pos]), RIGHT, pos_row); else print(S_SWITCH_AUTO, RIGHT, pos_row); break;
       }
       break;
 
-    case 10: //Ед.измер
+    case _SET_RAD_MOD: //Ед.измер
       switch (set) {
         case 0: print(S_ITEM_UNITS, LEFT, pos_row); break; //Ед.измер:
         case 1: if (!mainSettings.rad_mode) print(UNIT_UR, RIGHT, pos_row); else print(UNIT_USV, RIGHT, pos_row); break;
       }
       break;
 
-    case 11: //Чувств
+    case _SET_SENSITIVITY: //Чувств
       switch (set) {
         case 0: print(S_ITEM_SENSITIVITY, LEFT, pos_row); break; //Ед.измер:
         case 1: printNumI(100 - mainSettings.account_sensitivity, RIGHT, pos_row); break;
       }
       break;
 
-    case 12: //Тревога Ф
+    case _SET_ALARM_BACK: //Тревога Ф
       switch (set) {
         case 0: print(S_ITEM_ALARM_BACK, LEFT, pos_row); break; //Тревога Ф:
         case 1: if (!mainSettings.alarm_back) print(ALL_SWITCH_OFF, RIGHT, pos_row); else if (mainSettings.alarm_back == 1) print(S_SWITCH_SOUND, RIGHT, pos_row); else if (mainSettings.alarm_back == 2) print(S_SWITCH_VIBRO, RIGHT, pos_row); else print(S_SWITCH_SOUND_VIBRO, RIGHT, pos_row); break;
       }
       break;
 
-    case 13: //Порог Ф1
+    case _SET_WARN_LEVEL_BACK: //Порог Ф1
       switch (set) {
         case 0: print(S_ITEM_ALARM_THRESHOLD_BACK_1, LEFT, pos_row); break; //Порог Ф1:
         case 1: printNumI(mainSettings.warn_level_back, RIGHT, pos_row); break;
       }
       break;
 
-    case 14: //Порог Ф2
+    case _SET_ALARM_LEVEL_BACK: //Порог Ф2
       switch (set) {
         case 0: print(S_ITEM_ALARM_THRESHOLD_BACK_2, LEFT, pos_row); break; //Порог Ф2:
         case 1: printNumI(mainSettings.alarm_level_back, RIGHT, pos_row); break;
       }
       break;
 
-    case 15: //Тревога Д
+    case _SET_ALARM_DOSE: //Тревога Д
       switch (set) {
         case 0: print(S_ITEM_ALARM_DOSE, LEFT, pos_row); break; //Тревога Д:
         case 1: if (!mainSettings.alarm_dose) print(ALL_SWITCH_OFF, RIGHT, pos_row); else if (mainSettings.alarm_dose == 1) print(S_SWITCH_SOUND, RIGHT, pos_row); else if (mainSettings.alarm_dose == 2) print(S_SWITCH_VIBRO, RIGHT, pos_row); else print(S_SWITCH_SOUND_VIBRO, RIGHT, pos_row); break;
       }
       break;
 
-    case 16: //Порог Д1
+    case _SET_WARN_LEVEL_DOSE: //Порог Д1
       switch (set) {
         case 0: print(S_ITEM_ALARM_THRESHOLD_DOSE_1, LEFT, pos_row); break; //Порог Д1:
         case 1: printNumI(mainSettings.warn_level_dose, RIGHT, pos_row); break;
       }
       break;
 
-    case 17: //Порог Д2
+    case _SET_ALARM_LEVEL_DOSE: //Порог Д2
       switch (set) {
         case 0: print(S_ITEM_ALARM_THRESHOLD_DOSE_2, LEFT, pos_row); break; //Порог Д2:
         case 1: printNumI(mainSettings.alarm_level_dose, RIGHT, pos_row); break;
@@ -2322,7 +2347,7 @@ void _settings_item_switch(boolean set, boolean inv, uint8_t num, uint8_t pos) /
       break;
 
 #if USE_UART
-    case 18:
+    case _SET_UART_MOD:
       switch (set) {
         case 0: print(S_ITEM_UART_SET, LEFT, pos_row); break; //Порт:
         case 1: if (!UCSR0B) print(ALL_SWITCH_OFF, RIGHT, pos_row); else printNumI(UART_BAUND, RIGHT, pos_row); break;
@@ -2338,40 +2363,40 @@ void _settings_data_up(uint8_t pos) //прибавление данных
 {
   switch (pos)
   {
-    case 0: //Сон
+    case _SET_TIME_SLEEP: //Сон
       switch (mainSettings.sleep_switch) {
         case 0: mainSettings.sleep_switch = 2; _LIGHT_ON(); break;
         case 1: mainSettings.sleep_switch = 2; mainSettings.time_bright = 5; break;
         case 2: if (mainSettings.time_sleep < 250) mainSettings.time_sleep += 5; break;
       }
       break;
-    case 1: //Подсветка
+    case _SET_TIME_BRIGHT: //Подсветка
       switch (mainSettings.sleep_switch) {
         case 0: mainSettings.sleep_switch = 1; LIGHT_ON; break;
         case 1: if (mainSettings.time_bright < 250) mainSettings.time_bright += 5; break;
         case 2: if (mainSettings.time_bright < mainSettings.time_sleep - 5) mainSettings.time_bright += 5; break;
       }
       break;
-    case 2: if (mainSettings.contrast < 127) setContrast(++mainSettings.contrast); break; //Контраст
-    case 3: if (mainSettings.rad_flash < 2) mainSettings.rad_flash++; break; //Вспышки
-    case 4: if (mainSettings.volume < 10) mainSettings.volume++; break; //Громкость
-    case 5: if (mainSettings.buzz_switch < 2) mainSettings.buzz_switch++; break; //Щелчки
-    case 6: mainSettings.knock_disable = 0; break; //Зв.кнопок
+    case _SET_CONTRAST: if (mainSettings.contrast < 127) setContrast(++mainSettings.contrast); break; //Контраст
+    case _SET_RAD_FLASH: if (mainSettings.rad_flash < 2) mainSettings.rad_flash++; break; //Вспышки
+    case _SET_VOLUME: if (mainSettings.volume < 10) mainSettings.volume++; break; //Громкость
+    case _SET_BUZZ_SWITCH: if (mainSettings.buzz_switch < 2) mainSettings.buzz_switch++; break; //Щелчки
+    case _SET_KNOCK_DISABLE: mainSettings.knock_disable = 0; break; //Зв.кнопок
 
-    case 7: if (mainSettings.measur_pos < 9) mainSettings.measur_pos++; break; //Разн.зам
-    case 8: if (mainSettings.sigma_pos < 2) mainSettings.sigma_pos++; else mainSettings.sigma_pos = 0; break; //Сигма
-    case 9: if (mainSettings.search_pos < 8) mainSettings.search_pos++; else mainSettings.search_pos = 0; break; //Поиск
-    case 10: mainSettings.rad_mode = 1; break; //Ед.измер
-    case 11: if (mainSettings.account_sensitivity > 5) mainSettings.account_sensitivity -= 5; break; //Чувств
+    case _SET_MEASUR_POS: if (mainSettings.measur_pos < 9) mainSettings.measur_pos++; break; //Разн.зам
+    case _SET_SIGMA_POS: if (mainSettings.sigma_pos < 2) mainSettings.sigma_pos++; else mainSettings.sigma_pos = 0; break; //Сигма
+    case _SET_SEARCH_POS: if (mainSettings.search_pos < 8) mainSettings.search_pos++; else mainSettings.search_pos = 0; break; //Поиск
+    case _SET_RAD_MOD: mainSettings.rad_mode = 1; break; //Ед.измер
+    case _SET_SENSITIVITY: if (mainSettings.account_sensitivity > 5) mainSettings.account_sensitivity -= 5; break; //Чувств
 
-    case 12: if (mainSettings.alarm_back < 3) mainSettings.alarm_back++; break; //Тревога Ф
-    case 13: if (mainSettings.warn_level_back < 300) mainSettings.warn_level_back += 5; else mainSettings.warn_level_back = 30; break; //Порог Ф1
-    case 14: if (mainSettings.alarm_level_back < 500) mainSettings.alarm_level_back += 10; else if (mainSettings.alarm_level_back < 1000) mainSettings.alarm_level_back += 50; else if (mainSettings.alarm_level_back < 65000) mainSettings.alarm_level_back += 100; else mainSettings.alarm_level_back = 300; break; //Порог Ф2
-    case 15: if (mainSettings.alarm_dose < 3) mainSettings.alarm_dose++; break; //Тревога Д
-    case 16: if (mainSettings.warn_level_dose < 300) mainSettings.warn_level_dose += 5; else mainSettings.warn_level_dose = 10; break; //Порог Д1
-    case 17: if (mainSettings.alarm_level_dose < 500) mainSettings.alarm_level_dose += 10; else if (mainSettings.alarm_level_dose < 1000) mainSettings.alarm_level_dose += 50; else if (mainSettings.alarm_level_dose < 65000) mainSettings.alarm_level_dose += 100; else mainSettings.alarm_level_dose = 300; break; //Порог Д2
+    case _SET_ALARM_BACK: if (mainSettings.alarm_back < 3) mainSettings.alarm_back++; break; //Тревога Ф
+    case _SET_WARN_LEVEL_BACK: if (mainSettings.warn_level_back < 300) mainSettings.warn_level_back += 5; else mainSettings.warn_level_back = 30; break; //Порог Ф1
+    case _SET_ALARM_LEVEL_BACK: if (mainSettings.alarm_level_back < 500) mainSettings.alarm_level_back += 10; else if (mainSettings.alarm_level_back < 1000) mainSettings.alarm_level_back += 50; else if (mainSettings.alarm_level_back < 65000) mainSettings.alarm_level_back += 100; else mainSettings.alarm_level_back = 300; break; //Порог Ф2
+    case _SET_ALARM_DOSE: if (mainSettings.alarm_dose < 3) mainSettings.alarm_dose++; break; //Тревога Д
+    case _SET_WARN_LEVEL_DOSE: if (mainSettings.warn_level_dose < 300) mainSettings.warn_level_dose += 5; else mainSettings.warn_level_dose = 10; break; //Порог Д1
+    case _SET_ALARM_LEVEL_DOSE: if (mainSettings.alarm_level_dose < 500) mainSettings.alarm_level_dose += 10; else if (mainSettings.alarm_level_dose < 1000) mainSettings.alarm_level_dose += 50; else if (mainSettings.alarm_level_dose < 65000) mainSettings.alarm_level_dose += 100; else mainSettings.alarm_level_dose = 300; break; //Порог Д2
 #if USE_UART
-    case 18: if (!UCSR0B) dataChannelInit(); else dataChannelEnd(); break; //uart
+    case _SET_UART_MOD: if (!UCSR0B) dataChannelInit(); else dataChannelEnd(); break; //Порт
 #endif
   }
 }
@@ -2380,33 +2405,32 @@ void _settings_data_down(uint8_t pos) //убавление данных
 {
   switch (pos)
   {
-    case 0: if (mainSettings.time_sleep > 10) { //Сон
+    case _SET_TIME_SLEEP: if (mainSettings.time_sleep > 10) { //Сон
         mainSettings.time_sleep -= 5;
         if (mainSettings.time_bright == mainSettings.time_sleep) mainSettings.time_bright -= 5;
       }
       else if (mainSettings.sleep_switch == 2) mainSettings.sleep_switch = 1; break;
-    case 1:
-      if (mainSettings.time_bright > 5) mainSettings.time_bright -= 5; else mainSettings.sleep_switch = 0; break; //Подсветка
-    case 2: if (mainSettings.contrast) setContrast(--mainSettings.contrast); break; //Контраст
-    case 3: if (mainSettings.rad_flash) mainSettings.rad_flash--; break; //Вспышки
-    case 4: if (mainSettings.volume > 1) mainSettings.volume--; break; //Громкость
-    case 5: if (mainSettings.buzz_switch) mainSettings.buzz_switch--; break; //Щелчки
-    case 6: mainSettings.knock_disable = 1; break; //Зв.кнопок
+    case _SET_TIME_BRIGHT: if (mainSettings.time_bright > 5) mainSettings.time_bright -= 5; else mainSettings.sleep_switch = 0; break; //Подсветка
+    case _SET_CONTRAST: if (mainSettings.contrast) setContrast(--mainSettings.contrast); break; //Контраст
+    case _SET_RAD_FLASH: if (mainSettings.rad_flash) mainSettings.rad_flash--; break; //Вспышки
+    case _SET_VOLUME: if (mainSettings.volume > 1) mainSettings.volume--; break; //Громкость
+    case _SET_BUZZ_SWITCH: if (mainSettings.buzz_switch) mainSettings.buzz_switch--; break; //Щелчки
+    case _SET_KNOCK_DISABLE: mainSettings.knock_disable = 1; break; //Зв.кнопок
 
-    case 7: if (mainSettings.measur_pos) mainSettings.measur_pos--;  break; //Разн.зам
-    case 8: if (mainSettings.sigma_pos) mainSettings.sigma_pos--; else mainSettings.sigma_pos = 2; break; //Сигма
-    case 9: if (mainSettings.search_pos) mainSettings.search_pos--; else mainSettings.search_pos = 8; break; //Поиск
-    case 10: mainSettings.rad_mode = 0; break; //Ед.измер
-    case 11: if (mainSettings.account_sensitivity < 95) mainSettings.account_sensitivity += 5; break; //Чувств
+    case _SET_MEASUR_POS: if (mainSettings.measur_pos) mainSettings.measur_pos--;  break; //Разн.зам
+    case _SET_SIGMA_POS: if (mainSettings.sigma_pos) mainSettings.sigma_pos--; else mainSettings.sigma_pos = 2; break; //Сигма
+    case _SET_SEARCH_POS: if (mainSettings.search_pos) mainSettings.search_pos--; else mainSettings.search_pos = 8; break; //Поиск
+    case _SET_RAD_MOD: mainSettings.rad_mode = 0; break; //Ед.измер
+    case _SET_SENSITIVITY: if (mainSettings.account_sensitivity < 95) mainSettings.account_sensitivity += 5; break; //Чувств
 
-    case 12: if (mainSettings.alarm_back) mainSettings.alarm_back--; break; //Тревога Ф
-    case 13: if (mainSettings.warn_level_back > 30) mainSettings.warn_level_back -= 5; else mainSettings.warn_level_back = 300; break; //Порог Ф1
-    case 14: if (mainSettings.alarm_level_back > 1000) mainSettings.alarm_level_back -= 100; else if (mainSettings.alarm_level_back > 500) mainSettings.alarm_level_back -= 50; else if (mainSettings.alarm_level_back > 300) mainSettings.alarm_level_back -= 10; else mainSettings.alarm_level_back = 65000; break; //Порог Ф2
-    case 15: if (mainSettings.alarm_dose) mainSettings.alarm_dose--; break; //Тревога Д
-    case 16: if (mainSettings.warn_level_dose > 10) mainSettings.warn_level_dose -= 5; else mainSettings.warn_level_dose = 300; break; //Порог Д1
-    case 17: if (mainSettings.alarm_level_dose > 1000) mainSettings.alarm_level_dose -= 100; else if (mainSettings.alarm_level_dose > 500) mainSettings.alarm_level_dose -= 50; else if (mainSettings.alarm_level_dose > 300) mainSettings.alarm_level_dose -= 10; else mainSettings.alarm_level_dose = 65000; break; //Порог Д2
+    case _SET_ALARM_BACK: if (mainSettings.alarm_back) mainSettings.alarm_back--; break; //Тревога Ф
+    case _SET_WARN_LEVEL_BACK: if (mainSettings.warn_level_back > 30) mainSettings.warn_level_back -= 5; else mainSettings.warn_level_back = 300; break; //Порог Ф1
+    case _SET_ALARM_LEVEL_BACK: if (mainSettings.alarm_level_back > 1000) mainSettings.alarm_level_back -= 100; else if (mainSettings.alarm_level_back > 500) mainSettings.alarm_level_back -= 50; else if (mainSettings.alarm_level_back > 300) mainSettings.alarm_level_back -= 10; else mainSettings.alarm_level_back = 65000; break; //Порог Ф2
+    case _SET_ALARM_DOSE: if (mainSettings.alarm_dose) mainSettings.alarm_dose--; break; //Тревога Д
+    case _SET_WARN_LEVEL_DOSE: if (mainSettings.warn_level_dose > 10) mainSettings.warn_level_dose -= 5; else mainSettings.warn_level_dose = 300; break; //Порог Д1
+    case _SET_ALARM_LEVEL_DOSE: if (mainSettings.alarm_level_dose > 1000) mainSettings.alarm_level_dose -= 100; else if (mainSettings.alarm_level_dose > 500) mainSettings.alarm_level_dose -= 50; else if (mainSettings.alarm_level_dose > 300) mainSettings.alarm_level_dose -= 10; else mainSettings.alarm_level_dose = 65000; break; //Порог Д2
 #if USE_UART
-    case 18: if (!UCSR0B) dataChannelInit(); else dataChannelEnd(); break; //uart
+    case _SET_UART_MOD: if (!UCSR0B) dataChannelInit(); else dataChannelEnd(); break; //Порт
 #endif
   }
 }
@@ -2427,7 +2451,7 @@ uint8_t settings(void) //настройки
         case DOWN_KEY_PRESS: //вниз
           switch (set) {
             case 0:
-              if (pos < 17 + USE_UART) { //изменяем позицию
+              if (pos < _SET_MENU_ALL - 1) { //изменяем позицию
                 pos++;
                 if (cursor < 4) cursor++; //изменяем положение курсора
               }
@@ -2448,7 +2472,7 @@ uint8_t settings(void) //настройки
                 if (cursor > 0) cursor--; //изменяем положение курсора
               }
               else { //иначе конец списка
-                pos = 17 + USE_UART;
+                pos = _SET_MENU_ALL - 1;
                 cursor = 4;
               }
               break;
