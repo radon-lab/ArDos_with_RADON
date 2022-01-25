@@ -1,7 +1,7 @@
 #include <avr/pgmspace.h>
 
 //Языки для локализации
-const char VERSION[] PROGMEM = "3.9.1"; //версия по
+const char VERSION[] PROGMEM = "3.9.2"; //версия по
 
 //---------------------------------------------//
 #ifdef RUSSIAN //если выбран язык "русский"
@@ -90,6 +90,7 @@ const char S_SETTINGS[] PROGMEM = "Yfcnhjqrb"; //Настройки
 const char S_ITEM_SLEEP[] PROGMEM = "Cjy&"; //Сон:
 const char S_ITEM_LIGHT[] PROGMEM = "Gjlcdtnrf&"; //Подсветка:
 const char S_ITEM_CONTRAST[] PROGMEM = "Rjynhfcn&"; //Контраст:
+const char S_ITEM_ROTATION[] PROGMEM = "Hfpdjhjn&"; //Разворот:
 const char S_ITEM_FLASHES[] PROGMEM = "Dcgsirb&"; //Вспышки:
 const char S_ITEM_VOLUME[] PROGMEM = "Uhjvrjcnm&"; //Громкость:
 const char S_ITEM_CLICKS[] PROGMEM = "Otkxrb&"; //Щелчки:
@@ -311,6 +312,7 @@ const char S_SETTINGS[] PROGMEM = "Settings"; //Настройки
 const char S_ITEM_SLEEP[] PROGMEM = "Sleep:"; //Сон:
 const char S_ITEM_LIGHT[] PROGMEM = "Light:"; //Подсветка:
 const char S_ITEM_CONTRAST[] PROGMEM = "Contrast:"; //Контраст:
+const char S_ITEM_ROTATION[] PROGMEM = "Rotate&"; //Разворот:
 const char S_ITEM_FLASHES[] PROGMEM = "Flashes:"; //Вспышки:
 const char S_ITEM_VOLUME[] PROGMEM = "Volume:"; //Громкость:
 const char S_ITEM_CLICKS[] PROGMEM = "Clicks:"; //Щелчки:

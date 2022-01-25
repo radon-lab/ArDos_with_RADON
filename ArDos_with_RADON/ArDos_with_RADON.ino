@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.13
-  Версия программы RADON v3.9.1 low_pwr release 22.01.22 специально для проекта ArDos
+  Версия программы RADON v3.9.2 low_pwr release 25.01.22 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/ardos-dozimetr-prodolzhenie-temy-chast-%E2%84%962 и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -113,6 +113,7 @@
 //---------------Конфигурации---------------
 #include "EEPROM.h"
 #include "config.h"
+#include "settings.h"
 #include "display.h"
 #include "resources.c"
 #include "connection.h"
@@ -185,7 +186,7 @@ enum {
   MEASUR_PROGRAM,    //режим замер
   LOGBOOK_PROGRAM,   //режим журнал
   SETTINGS_PROGRAM,  //настройки
-  PARAMETRS_PROGRAM, //параметры
+  PARAMETERS_PROGRAM, //параметры
   MENU_PROGRAM,      //основное меню
   DEBUG_PROGRAM      //отладка
 };
@@ -194,6 +195,9 @@ enum {
   _SET_TIME_SLEEP,       //сон
   _SET_TIME_BRIGHT,      //подсветка
   _SET_CONTRAST,         //контраст
+#if ROTATE_DISP_RETURN
+  _SET_ROTATION,         //разворот
+#endif
   _SET_RAD_FLASH,        //вспышки
   _SET_VOLUME,           //громкость
   _SET_BUZZ_SWITCH,      //щелчки
@@ -214,46 +218,6 @@ enum {
 #endif
   _SET_MENU_ALL          //всего пунктов меню
 };
-
-//настройки основные
-struct Settings_1 {
-  uint8_t contrast = DEFAULT_CONTRAST; //контрастность дисплея
-  uint8_t volume = DEFAULT_VOLUME; //громкость всех звуков
-  uint8_t alarm_back = DEFAULT_ALARM_BACK; //переключатель режимов тревоги фона
-  uint8_t buzz_switch = DEFAULT_BUZ_SWITCH; //указатель на тип треска пищалкой
-  boolean knock_disable = DEFAULT_KNOCK_DISABLE; //флаг запрет треска кнопками
-  uint8_t measur_pos = DEFAULT_MEASUR_POS; //указатель на время разностного замера в массиве
-  uint8_t alarm_dose = DEFAULT_ALARM_DOSE; //переключатель режимов тревоги дозы
-  uint8_t sleep_switch = DEFAULT_SLEEP_MODE; //переключатель режимов сна
-  uint8_t time_bright = DEFAULT_TIME_BRIGHT; //время до отключения подсветки (5..250)(s)
-  uint8_t time_sleep = DEFAULT_TIME_SLEEP; //время до ухода в сон(должно быть больше чем время подсветки) (10..250)(s)
-  boolean rad_mode = DEFAULT_RAD_MODE; //единицы измерения дозы/фона(мкР/мкЗв)
-  uint8_t rad_flash = DEFAULT_RAD_FLASH; //индикация попадания частиц
-  uint8_t sigma_pos = DEFAULT_SIGMA_POS; //указатель сигмы
-  uint8_t search_pos = DEFAULT_SEARCH_POS; //указатель на время время обновления графика в массиве
-  uint8_t account_sensitivity = 100 - DEFAULT_SENSITIVITY; //чувствительность к перепаду фона
-  uint16_t warn_level_back = DEFAULT_LEVEL_BACK_1; //уровень тревоги 1 фона
-  uint16_t alarm_level_back = DEFAULT_LEVEL_BACK_2; //уровень тревоги 2 фона
-  uint16_t warn_level_dose = DEFAULT_LEVEL_DOSE_1; //уровень тревоги 1 дозы
-  uint16_t alarm_level_dose = DEFAULT_LEVEL_DOSE_2; //уровень тревоги 2 дозы
-} mainSettings;
-
-//настройки преобразователя
-struct Settings_2 {
-  uint8_t ADC_value = DEFAULT_ADC_VALUE; //значение АЦП при котором 400В
-  uint16_t k_delitel = DEFAULT_DIV_FACTOR; //коефициент делителя напряжения
-  uint8_t puls = DEFAULT_PULS; //длинна импульса высоковольтного транса
-  float reference = DEFAULT_REFERENCE; //опорное напряжение
-  float geiger_time = DEFAULT_GEIGER_TIME; //время измерения
-  uint16_t wdt_period = DEF_WDT_PERIOD; //период тика wdt
-} pumpSettings;
-
-//настройки журнала
-struct Settings_3 {
-  uint8_t logbook_alarm = DEFAULT_LOGBOOK_ALARM; //указатель на активность журнала тревоги
-  uint8_t logbook_warn = DEFAULT_LOGBOOK_WARN; //указатель на активность журнала предупреждений
-  uint8_t logbook_measur = DEFAULT_LOGBOOK_MEASUR; //указатель на активность журнала замеров
-} bookSettings;
 
 uint16_t stat_upd_tmr; //таймер записи статистики в память
 
@@ -294,8 +258,8 @@ uint8_t search_time_now = 0; //текущий номер набранной се
 
 volatile uint8_t tick_buff; //счетчик тиков для обработки данных
 uint8_t cnt_pwr; //счетчик ухода в сон
-uint32_t timer_millis; //таймер отсчета миллисекунд
-uint32_t timer_melody; //таймер отсчета миллисекунд для мелодий
+uint16_t timer_millis; //таймер отсчета миллисекунд
+uint16_t timer_melody; //таймер отсчета миллисекунд для мелодий
 
 //флаги режимов
 boolean scr_mode = 0; //текущий режим(фон/доза)
@@ -373,7 +337,7 @@ int main(void) //главный цикл программ
 {
   static uint8_t mainTask = MAIN_PROGRAM; //переключать подпрограмм
   INIT_SYSTEM(); //инициализация
-  
+
   for (;;) {
     scr = 0; //разрешаем обновления экрана
     switch (mainTask) {
@@ -383,7 +347,7 @@ int main(void) //главный цикл программ
       case MEASUR_PROGRAM: mainTask = measur_menu(); break; //режим замера
       case LOGBOOK_PROGRAM: mainTask = logbook(); break; //журнал
       case SETTINGS_PROGRAM: mainTask = settings(); break; //настройки
-      case PARAMETRS_PROGRAM: mainTask = parameters(); break; //параметры
+      case PARAMETERS_PROGRAM: mainTask = parameters(); break; //параметры
       case MENU_PROGRAM: mainTask = menu(); break; //меню
       case DEBUG_PROGRAM: mainTask = debug(); break; //отладка
     }
@@ -416,7 +380,7 @@ void INIT_SYSTEM(void) //инициализация
   PRR = 0b11101110; //отключаем все лишнее (I2C | TIMER2 | TIMER0 | TIMER1 | SPI | UART)
   ACSR |= 0b10000000; //отключаем компаратор
 
-  initLcd(); //инициализируем дисплей
+  _init_lcd(); //инициализируем дисплей
   _LIGHT_ON(); //включаем подсветку
   _wdt_enable(); //запускаем WatchDog
 
@@ -517,6 +481,7 @@ void _read_memory(void) //проверка и чтение данных из п�
         case 3: statistic_read(); break; //считываем статистику
       }
     }
+    tick_buff = 0; //очищаем буфер тиков
     drawLine(5, 10, map(i, 0, 4, 0, 64), 0xFF); //прогресс бар загрузки данных
     showScr(); //вывод буфера на экран
     _delay_ms(LOAD_TIME); //ждем
@@ -612,15 +577,13 @@ void _init_timers(void) //инициализация таймеров
   TCCR2A = 0b00000000; //отключаем OC2A/OC2B
   TCCR2B = 0b00000101; //пределитель 256
   TIMSK2 = 0b00000000; //отключаем прерывания Таймера2
-
-  sei(); //разрешаем прерывания глобально
 }
 //-----------------------------Инициализация параметров----------------------------------------------
 void _init_param(void) //инициализация параметров
 {
-  tick_buff = 0; //сбрасываем тики собаки
   setContrast(mainSettings.contrast); //установка контрастности
   BUZZ_VOL_SET(mainSettings.volume); //устанавливаем громкость щелчков
+  main_buff = 0; //очищаем основной буфер
 }
 //----------------------------------Включение WDT----------------------------------------------------
 void _wdt_enable(void) //включение WDT
@@ -633,10 +596,8 @@ void _wdt_enable(void) //включение WDT
 //----------------------------------Выключение WDT---------------------------------------------------
 void _wdt_disable(void) //выключение WDT
 {
-  cli(); //запрещаем глобальные прерывания
   WDTCSR = ((0x01 << WDCE) | (0x01 << WDE)); //сбрасываем собаку
   WDTCSR = 0x00; //выключаем собаку
-  sei(); //восстанавливаем глобальные прерывания
 }
 //----------------------------------Включение ADC----------------------------------------------------
 void _adc_enable(void) //включение ADC
@@ -1161,7 +1122,7 @@ void power_down(void) //выключение устройства
   sei(); //разрешаем прерывания
 
 #if PWR_ON_RETURN
-  EIMSK = 0b00000010; //разрешаем внешнее прерывание INT2
+  EIMSK = 0b00000010; //разрешаем внешнее прерывание INT1
 
   while (1) { //цикл выключенного питания
     _sleep_pwr(); //спим
@@ -1178,9 +1139,9 @@ void power_down(void) //выключение устройства
         disableSleep(mainSettings.contrast); //включаем дисплей
         if (bat_adc < LOW_BAT_POWER) { //если батарея не разряжена
           LIGHT_ON; //включаем подсветку, если была включена настройками
+          _wdt_enable(); //запускаем WDT
           _init_logo(); //вывод логотипа
           _start_pump(); //первая накачка преобразователя
-          _wdt_enable(); //запускаем WatchDog с пределителем 2
           btn_check = 0; //запрещем проврку кнопки
           EIMSK = 0b00000001; //разрешаем внешнее прерывание INT0
           return; //выходим
@@ -1297,7 +1258,9 @@ void _start_pump(void) //первая накачка
   for (hv_adc = Read_HV(); hv_adc < pumpSettings.ADC_value; hv_adc = Read_HV()) { //значение АЦП при котором на выходе 400В
     _pump_puls(pumpSettings.puls); //ипульс на преобразователь
 
-    if (++timer >= START_PUMP_IMP) break; //если время вышло, останавливаем накачку
+    if (++timer >= START_PUMP_IMP) break; //если время вышло то останавливаем накачку
+    tick_buff = 0; //очищаем буфер тиков
+
     drawLine(5, 10, map(hv_adc, 0, pumpSettings.ADC_value, 0, 64), 0xFF); //прогресс бар накачки преобразователя
     showScr(); //вывод буфера на экран
   }
@@ -2241,6 +2204,15 @@ void _settings_item_switch(boolean set, boolean inv, uint8_t num, uint8_t pos) /
       }
       break;
 
+#if ROTATE_DISP_RETURN
+    case _SET_ROTATION: //Разворот
+      switch (set) {
+        case 0: print(S_ITEM_ROTATION, LEFT, pos_row); break; //Контраст:
+        case 1: printNumI((mainSettings.rotation) ? 180 : 0, RIGHT, pos_row); break;
+      }
+      break;
+#endif
+
     case _SET_RAD_FLASH: //Вспышки
       switch (set) {
         case 0: print(S_ITEM_FLASHES, LEFT, pos_row); break; //Вспышки:
@@ -2378,6 +2350,9 @@ void _settings_data_up(uint8_t pos) //прибавление данных
       }
       break;
     case _SET_CONTRAST: if (mainSettings.contrast < 127) setContrast(++mainSettings.contrast); break; //Контраст
+#if ROTATE_DISP_RETURN
+    case _SET_ROTATION: mainSettings.rotation = 1; break; //Разворот
+#endif
     case _SET_RAD_FLASH: if (mainSettings.rad_flash < 2) mainSettings.rad_flash++; break; //Вспышки
     case _SET_VOLUME: if (mainSettings.volume < 10) mainSettings.volume++; break; //Громкость
     case _SET_BUZZ_SWITCH: if (mainSettings.buzz_switch < 2) mainSettings.buzz_switch++; break; //Щелчки
@@ -2412,6 +2387,9 @@ void _settings_data_down(uint8_t pos) //убавление данных
       else if (mainSettings.sleep_switch == 2) mainSettings.sleep_switch = 1; break;
     case _SET_TIME_BRIGHT: if (mainSettings.time_bright > 5) mainSettings.time_bright -= 5; else mainSettings.sleep_switch = 0; break; //Подсветка
     case _SET_CONTRAST: if (mainSettings.contrast) setContrast(--mainSettings.contrast); break; //Контраст
+#if ROTATE_DISP_RETURN
+    case _SET_ROTATION: mainSettings.rotation = 0; break; //Разворот
+#endif
     case _SET_RAD_FLASH: if (mainSettings.rad_flash) mainSettings.rad_flash--; break; //Вспышки
     case _SET_VOLUME: if (mainSettings.volume > 1) mainSettings.volume--; break; //Громкость
     case _SET_BUZZ_SWITCH: if (mainSettings.buzz_switch) mainSettings.buzz_switch--; break; //Щелчки
