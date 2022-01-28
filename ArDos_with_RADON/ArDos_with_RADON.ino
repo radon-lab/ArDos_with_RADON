@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.13
-  Версия программы RADON v3.9.2 low_pwr release 27.01.22 специально для проекта ArDos
+  Версия программы RADON v3.9.2 low_pwr release 28.01.22 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/ardos-dozimetr-prodolzhenie-temy-chast-%E2%84%962 и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -587,10 +587,10 @@ void _init_param(void) //инициализация параметров
 //----------------------------------Включение WDT----------------------------------------------------
 void _wdt_enable(void) //включение WDT
 {
-  cli(); //запрещаем глобальные прерывания
-  WDTCSR = ((0x01 << WDCE) | (0x01 << WDE)); //сбрасываем собаку
+  cli(); //запрещаем прерывания
+  WDTCSR = ((0x01 << WDCE) | (0x01 << WDE)); //разрешаем изменения
   WDTCSR = 0x40; //устанавливаем пределитель 2(режим прерываний)
-  sei(); //восстанавливаем глобальные прерывания
+  sei(); //разрешаем прерывания
 }
 //----------------------------------Выключение WDT---------------------------------------------------
 void _wdt_disable(void) //выключение WDT
@@ -665,372 +665,369 @@ boolean _data_update(void) //преобразование данных
     }
   }
 
-  if (tick_buff) { //если был тик
-    while (tick_buff--) { //обрабатываем данные
+  while (tick_buff) { //если был тик то обрабатываем данные
+    switch (btn_state) { //таймер опроса кнопок
+      case 0: if (btn_check) btn_tmr++; break; //считаем циклы
+      case 1: if (btn_tmr) btn_tmr--; break; //убираем дребезг
+    }
 
-      switch (btn_state) { //таймер опроса кнопок
-        case 0: if (btn_check) btn_tmr++; break; //считаем циклы
-        case 1: if (btn_tmr) btn_tmr--; break; //убираем дребезг
-      }
+    _bat_massege(); //обработка сообщения разряженой батареи
 
-      _bat_massege(); //обработка сообщения разряженой батареи
+    if (timer_millis > 17) timer_millis -= 17; //если таймер больше 17мс
+    else if (timer_millis) timer_millis = 0; //иначе сбрасываем таймер
 
-      if (timer_millis > 17) timer_millis -= 17; //если таймер больше 17мс
-      else if (timer_millis) timer_millis = 0; //иначе сбрасываем таймер
+    if (timer_melody > 17) timer_melody -= 17; //если таймер больше 17мс
+    else if (timer_melody) timer_melody = 0; //иначе сбрасываем таймер
 
-      if (timer_melody > 17) timer_melody -= 17; //если таймер больше 17мс
-      else if (timer_melody) timer_melody = 0; //иначе сбрасываем таймер
+    time_total += pumpSettings.wdt_period; //добавляем ко времени период таймера
+    if (time_total > 100000UL) { //если прошла секунда
+      time_total -= 100000UL; //оставляем остаток
+      time_wdt = 0; //расчет времени один раз в секунду
+    }
 
-      time_total += pumpSettings.wdt_period; //добавляем ко времени период таймера
-      if (time_total > 100000UL) { //если прошла секунда
-        time_total -= 100000UL; //оставляем остаток
-        time_wdt = 0; //расчет времени один раз в секунду
-      }
-
-      if (!measur && !search) { //если не идет замер/поиск
-        time_on_pulse++; //прибавляем тик
-        if (puls_total >= IMP_CALCULATION) { //если накопилось необходимое количество импульсов
-          float puls_per_tick = (float)(time_on_pulse / puls_total); //рассчитываем количество тиков на 1 импульс
-          if (puls_per_tick_old) { //если это не первый замер
-            float puls_per_percent = puls_per_tick_old * (float)(mainSettings.account_sensitivity / 100.00); //находим соотношение гистерезиса в процентах
-            if (puls_per_tick > (puls_per_tick_old + puls_per_percent) || puls_per_tick < (puls_per_tick_old - puls_per_percent)) back_reset = 1; //если вышли за рамки гистерезиса то ставим флаг сброса
-          }
-          puls_per_tick_old = puls_per_tick; //запоминаем текущее количество тиков на 1 импульс
-          time_on_pulse = 0; //сбрасываем тики
-          puls_total = 0; //сбрасываем буфер сравнения
+    if (!measur && !search) { //если не идет замер/поиск
+      time_on_pulse++; //прибавляем тик
+      if (puls_total >= IMP_CALCULATION) { //если накопилось необходимое количество импульсов
+        float puls_per_tick = (float)(time_on_pulse / puls_total); //рассчитываем количество тиков на 1 импульс
+        if (puls_per_tick_old) { //если это не первый замер
+          float puls_per_percent = puls_per_tick_old * (float)(mainSettings.account_sensitivity / 100.00); //находим соотношение гистерезиса в процентах
+          if (puls_per_tick > (puls_per_tick_old + puls_per_percent) || puls_per_tick < (puls_per_tick_old - puls_per_percent)) back_reset = 1; //если вышли за рамки гистерезиса то ставим флаг сброса
         }
+        puls_per_tick_old = puls_per_tick; //запоминаем текущее количество тиков на 1 импульс
+        time_on_pulse = 0; //сбрасываем тики
+        puls_total = 0; //сбрасываем буфер сравнения
       }
+    }
 
-      if (time_wdt++ > TIME_FACT_11 || (!measur && !search)) { //если в зоне постаянной обработке данных или не идет замер/поиск
-        switch (time_wdt) {
-          case TIME_FACT_0: //обновление секунд
-            time_sec++; //прибавляем секунду
-            break;
+    if (time_wdt++ > TIME_FACT_11 || (!measur && !search)) { //если в зоне постаянной обработки данных или не идет замер/поиск
+      switch (time_wdt) {
+        case TIME_FACT_0: //обновление секунд
+          time_sec++; //прибавляем секунду
+          break;
 
-          case TIME_FACT_1: //обновление статистики
-            if (++stat_upd_tmr >= STAT_UPD_TIME) { //если пришло время, обновляем статистику
-              stat_upd_tmr = 0; //сбрасываем таймер
-              statistic_update(); //обновление статистики
-            }
-            break;
+        case TIME_FACT_1: //обновление статистики
+          if (++stat_upd_tmr >= STAT_UPD_TIME) { //если пришло время, обновляем статистику
+            stat_upd_tmr = 0; //сбрасываем таймер
+            statistic_update(); //обновление статистики
+          }
+          break;
 
-          case TIME_FACT_2: //расчет текущего фона этап-1
-            rad_buff[0] = scan_buff; //смещаем 0-й элемент в 1-й для дальнейшей работы с ним
-            scan_buff = 0; //сбрасываем счетчик импульсов
-            temp_buff = 0; //сбрасываем временный буфер
+        case TIME_FACT_2: //расчет текущего фона этап-1
+          rad_buff[0] = scan_buff; //смещаем 0-й элемент в 1-й для дальнейшей работы с ним
+          scan_buff = 0; //сбрасываем счетчик импульсов
+          temp_buff = 0; //сбрасываем временный буфер
 
-            if (geiger_time_now < BUFF_LENGTHY) geiger_time_now++; //прибавляем указатель заполненности буффера
-            if (back_time_now < BUFF_LENGTHY) back_time_now++; //прибавляем указатель заполненности буффера для рассчета фона
-            else {
-              back_time_now = 1; //иначе сбрасываем в начало
-              if (mid_time_now < MID_BUFF_LENGTHY) mid_time_now++; //прибавляем указатель заполненности буффера
-            }
+          if (geiger_time_now < BUFF_LENGTHY) geiger_time_now++; //прибавляем указатель заполненности буффера
+          if (back_time_now < BUFF_LENGTHY) back_time_now++; //прибавляем указатель заполненности буффера для рассчета фона
+          else {
+            back_time_now = 1; //иначе сбрасываем в начало
+            if (mid_time_now < MID_BUFF_LENGTHY) mid_time_now++; //прибавляем указатель заполненности буффера
+          }
 
 #if GEIGER_DEAD_TIME
-            if (rad_buff[0] >= COUNT_RATE) rad_buff[0] = rad_buff[0] / (1 - rad_buff[0] * DEAD_TIME); //если скорость счета больше 100имп/с, учитываем мертвое время счетчика
+          if (rad_buff[0] >= COUNT_RATE) rad_buff[0] = rad_buff[0] / (1 - rad_buff[0] * DEAD_TIME); //если скорость счета больше 100имп/с, учитываем мертвое время счетчика
 #endif
 
-            for (uint8_t i = 0; i < back_time_now; i++) temp_buff += rad_buff[i]; //суммирование всех импульсов для расчета фона
-            break;
+          for (uint8_t i = 0; i < back_time_now; i++) temp_buff += rad_buff[i]; //суммирование всех импульсов для расчета фона
+          break;
 
-          case TIME_FACT_3: //копирование буфера усреднения
-            if (back_time_now >= BUFF_LENGTHY) { //если основной буфер перезаписался
-              for (uint8_t k = MID_BUFF_LENGTHY - 1; k > 0; k--) rad_mid_buff[k] = rad_mid_buff[k - 1]; //перезапись массива
-              rad_mid_buff[0] = temp_buff; //записываем основной массив в массив усреднения
-            }
-            for (uint8_t i = 0; i < mid_time_now; i++) temp_buff += rad_mid_buff[i]; //суммирование всех импульсов для расчета фона
-            break;
+        case TIME_FACT_3: //копирование буфера усреднения
+          if (back_time_now >= BUFF_LENGTHY) { //если основной буфер перезаписался
+            for (uint8_t k = MID_BUFF_LENGTHY - 1; k > 0; k--) rad_mid_buff[k] = rad_mid_buff[k - 1]; //перезапись массива
+            rad_mid_buff[0] = temp_buff; //записываем основной массив в массив усреднения
+          }
+          for (uint8_t i = 0; i < mid_time_now; i++) temp_buff += rad_mid_buff[i]; //суммирование всех импульсов для расчета фона
+          break;
 
-          case TIME_FACT_4: //авто сброс при скачке/спаде
-            if (back_reset) { //если был скачек/спад
-              back_reset = 0; //сбросили флаг
-              temp_buff = 0; //сбрасываем текущий буфер
-              for (uint8_t i = 0; i < RESET_BUFF_TIME; i++) temp_buff += rad_buff[i]; //запоняем буффер
-              back_time_now = geiger_time_now = RESET_BUFF_TIME; //устанавливаем текущий размер буфера
-              mid_time_now = 0; //сбрасываем рассчет среднего
-            }
-            break;
+        case TIME_FACT_4: //авто сброс при скачке/спаде
+          if (back_reset) { //если был скачек/спад
+            back_reset = 0; //сбросили флаг
+            temp_buff = 0; //сбрасываем текущий буфер
+            for (uint8_t i = 0; i < RESET_BUFF_TIME; i++) temp_buff += rad_buff[i]; //запоняем буффер
+            back_time_now = geiger_time_now = RESET_BUFF_TIME; //устанавливаем текущий размер буфера
+            mid_time_now = 0; //сбрасываем рассчет среднего
+          }
+          break;
 
-          case TIME_FACT_5: { //расчет текущего фона
+        case TIME_FACT_5: { //расчет текущего фона
 #if APPROX_BACK_SCORE
-              float imp_per_sec = 0; //текущее количество имп/с
-              if (geiger_time_now > 1) imp_per_sec = (float)temp_buff / ((uint16_t)mid_time_now * BUFF_LENGTHY + back_time_now); //расчет имп/с
+            float imp_per_sec = 0; //текущее количество имп/с
+            if (geiger_time_now > 1) imp_per_sec = (float)temp_buff / ((uint16_t)mid_time_now * BUFF_LENGTHY + back_time_now); //расчет имп/с
 #if GEIGER_OWN_BACK
-              if (imp_per_sec > OWN_BACK) imp_per_sec -= OWN_BACK; //убираем собственный фон счетчика
-              else imp_per_sec = temp_buff = 0; //иначе ничего кроме собственного фона нету
+            if (imp_per_sec > OWN_BACK) imp_per_sec -= OWN_BACK; //убираем собственный фон счетчика
+            else imp_per_sec = temp_buff = 0; //иначе ничего кроме собственного фона нету
 #endif
-              for (uint8_t i = 0; i < PATTERNS_APROX; i++) { //выбор паттерна
-                if (imp_per_sec <= pgm_read_word(&back_aprox[i][0])) { //если имп/с совпадают с паттерном
-                  rad_back = imp_per_sec * (pumpSettings.geiger_time + pgm_read_word(&back_aprox[i][1])) - pgm_read_word(&back_aprox[i][2]) * 10.0; //рассчитываем фон в мкр/ч
-                  break;
-                }
+            for (uint8_t i = 0; i < PATTERNS_APROX; i++) { //выбор паттерна
+              if (imp_per_sec <= pgm_read_word(&back_aprox[i][0])) { //если имп/с совпадают с паттерном
+                rad_back = imp_per_sec * (pumpSettings.geiger_time + pgm_read_word(&back_aprox[i][1])) - pgm_read_word(&back_aprox[i][2]) * 10.0; //рассчитываем фон в мкр/ч
+                break;
               }
+            }
 #else
 #if GEIGER_OWN_BACK
-              float own_back_now = ((uint16_t)mid_time_now * BUFF_LENGTHY + back_time_now) * OWN_BACK; //рассчитываем количество импульсов собственного фона
-              if (temp_buff > own_back_now) temp_buff -= own_back_now; //убираем собственный фон счетчика
-              else temp_buff = 0; //иначе ничего кроме собственного фона нету
+            float own_back_now = ((uint16_t)mid_time_now * BUFF_LENGTHY + back_time_now) * OWN_BACK; //рассчитываем количество импульсов собственного фона
+            if (temp_buff > own_back_now) temp_buff -= own_back_now; //убираем собственный фон счетчика
+            else temp_buff = 0; //иначе ничего кроме собственного фона нету
 #endif
-              if (pumpSettings.geiger_time_now > 1) rad_back = temp_buff * (pumpSettings.geiger_time / ((uint16_t)mid_time_now * BUFF_LENGTHY + back_time_now)); //расчет фона мкР/ч
+            if (pumpSettings.geiger_time_now > 1) rad_back = temp_buff * (pumpSettings.geiger_time / ((uint16_t)mid_time_now * BUFF_LENGTHY + back_time_now)); //расчет фона мкР/ч
 #endif
 
-            }
-            break;
+          }
+          break;
 
-          case TIME_FACT_6: //перезапись массива секундных замеров
-            for (uint8_t k = BUFF_LENGTHY - 1; k > 0; k--) rad_buff[k] = rad_buff[k - 1]; //перезапись массива
-            break;
+        case TIME_FACT_6: //перезапись массива секундных замеров
+          for (uint8_t k = BUFF_LENGTHY - 1; k > 0; k--) rad_buff[k] = rad_buff[k - 1]; //перезапись массива
+          break;
 
-          case TIME_FACT_7: //рассчитываем точность
-            accur_percent = _init_accur(temp_buff); //рассчет точности
-            break;
+        case TIME_FACT_7: //рассчитываем точность
+          accur_percent = _init_accur(temp_buff); //рассчет точности
+          break;
 
-          case TIME_FACT_8: //минимальный и максимальный фон
-            if (accur_percent <= RAD_ACCUR_START) { //если достаточно данных в массиве
-              if (rad_back < rad_min) rad_min = rad_back; //фиксируем минимум фона
-              if (rad_back > rad_max) rad_max = rad_back; //фиксируем максимум фона
-            }
-            else rad_min = rad_back; //фиксируем минимум фона
-            break;
+        case TIME_FACT_8: //минимальный и максимальный фон
+          if (accur_percent <= RAD_ACCUR_START) { //если достаточно данных в массиве
+            if (rad_back < rad_min) rad_min = rad_back; //фиксируем минимум фона
+            if (rad_back > rad_max) rad_max = rad_back; //фиксируем максимум фона
+          }
+          else rad_min = rad_back; //фиксируем минимум фона
+          break;
 
-          case TIME_FACT_9: { //расчет текущей дозы
+        case TIME_FACT_9: { //расчет текущей дозы
 #if GEIGER_OWN_BACK
-              if (rad_sum_timer != 65535) rad_sum_timer++;
-              uint16_t puls_per_ur = (3600 / pumpSettings.geiger_time) + (rad_sum_timer * OWN_BACK);
-              if ((rad_sum += rad_buff[0]) >= puls_per_ur) {
-                rad_dose += rad_sum / puls_per_ur;
-                rad_sum = rad_sum % puls_per_ur;
-                rad_sum_timer = 0;
-              }
+            if (rad_sum_timer != 65535) rad_sum_timer++;
+            uint16_t puls_per_ur = (3600 / pumpSettings.geiger_time) + (rad_sum_timer * OWN_BACK);
+            if ((rad_sum += rad_buff[0]) >= puls_per_ur) {
+              rad_dose += rad_sum / puls_per_ur;
+              rad_sum = rad_sum % puls_per_ur;
+              rad_sum_timer = 0;
+            }
 #else
-              uint16_t puls_per_ur = 3600 / pumpSettings.geiger_time;
-              if ((rad_sum += rad_buff[0]) >= puls_per_ur) {
-                rad_dose += rad_sum / puls_per_ur;
-                rad_sum = rad_sum % puls_per_ur;
-              }
+            uint16_t puls_per_ur = 3600 / pumpSettings.geiger_time;
+            if ((rad_sum += rad_buff[0]) >= puls_per_ur) {
+              rad_dose += rad_sum / puls_per_ur;
+              rad_sum = rad_sum % puls_per_ur;
+            }
 #endif
-            }
-            break;
+          }
+          break;
 
-          case TIME_FACT_10: { //расчет данных для графика
-              uint16_t graf_max = 0; //максимальное значение графика
-              for (uint8_t i = 0; i > 38; i--) if (rad_buff[i] > graf_max) graf_max = rad_buff[i]; //ищем максимум
+        case TIME_FACT_10: { //расчет данных для графика
+            uint16_t graf_max = 0; //максимальное значение графика
+            for (uint8_t i = 0; i > 38; i--) if (rad_buff[i] > graf_max) graf_max = rad_buff[i]; //ищем максимум
 
-              if (graf_max > 15) maxLevel_back = graf_max * GRAF_COEF_MAX; //если текущий замер больше максимума
-              else maxLevel_back = 15; //иначе устанавливаем минимум
-            }
-            break;
+            if (graf_max > 15) maxLevel_back = graf_max * GRAF_COEF_MAX; //если текущий замер больше максимума
+            else maxLevel_back = 15; //иначе устанавливаем минимум
+          }
+          break;
 
-          case TIME_FACT_11: //обработка тревоги
-            if (mainSettings.alarm_dose && (rad_dose - alarm_dose_wait) >= mainSettings.alarm_level_dose) { //если тревога не запрещена и текущая(предыдущая) доза больше порога
+        case TIME_FACT_11: //обработка тревоги
+          if (mainSettings.alarm_dose && (rad_dose - alarm_dose_wait) >= mainSettings.alarm_level_dose) { //если тревога не запрещена и текущая(предыдущая) доза больше порога
 #if LOGBOOK_RETURN
-              if (!alarm_switch && bookSettings.logbook_warn) _logbook_data_update(0, 2, rad_dose); //обновление журнала
+            if (!alarm_switch && bookSettings.logbook_warn) _logbook_data_update(0, 2, rad_dose); //обновление журнала
 #endif
-              alarm_switch = 2;  //превышение дозы 2
+            alarm_switch = 2;  //превышение дозы 2
+            break;
+          }
+          else if (mainSettings.alarm_dose && (rad_dose - warn_dose_wait) >= mainSettings.warn_level_dose) { //если предупреждения не запрещены и текущая(предыдущая) доза больше порога
+            if (!alarm_switch) { //если это первая сработка тревоги
+              melody_switch = 0; //сбрасываем переключатель мелодии
+              _sleep_out(); //выход из сна
+              _buzz_disable(); //запрещаем щелчки
+#if LOGBOOK_RETURN
+              if (bookSettings.logbook_alarm) _logbook_data_update(1, 2, rad_dose); //обновление журнала
+#endif
+            }
+            alarm_switch = 4;  //превышение дозы 1
+            break;
+          }
+
+          if (accur_percent <= RAD_ACCUR_WARN) {
+            if (mainSettings.alarm_back && !alarm_back_wait && rad_back >= mainSettings.alarm_level_back) { //если тревога не запрещена и текущий фон больше порога
+#if LOGBOOK_RETURN
+              if (!alarm_switch && bookSettings.logbook_warn) _logbook_data_update(0, 1, rad_back); //обновление журнала
+#endif
+              alarm_switch = 1;  //превышение фона 2
               break;
             }
-            else if (mainSettings.alarm_dose && (rad_dose - warn_dose_wait) >= mainSettings.warn_level_dose) { //если предупреждения не запрещены и текущая(предыдущая) доза больше порога
+            else if (mainSettings.alarm_back && !warn_back_wait && rad_back >= mainSettings.warn_level_back) { //если предупреждения не запрещены и текущий фон больше порога
               if (!alarm_switch) { //если это первая сработка тревоги
                 melody_switch = 0; //сбрасываем переключатель мелодии
                 _sleep_out(); //выход из сна
                 _buzz_disable(); //запрещаем щелчки
 #if LOGBOOK_RETURN
-                if (bookSettings.logbook_alarm) _logbook_data_update(1, 2, rad_dose); //обновление журнала
+                if (bookSettings.logbook_alarm) _logbook_data_update(1, 1, rad_back); //обновление журнала
 #endif
               }
-              alarm_switch = 4;  //превышение дозы 1
+              alarm_switch = 3;  //превышение фона 1
               break;
             }
+          }
 
-            if (accur_percent <= RAD_ACCUR_WARN) {
-              if (mainSettings.alarm_back && !alarm_back_wait && rad_back >= mainSettings.alarm_level_back) { //если тревога не запрещена и текущий фон больше порога
+          if (warn_back_wait && rad_back < (mainSettings.warn_level_back * ALARM_AUTO_GISTERESIS)) { //если текущий фон упал ниже порога + гистерезис
+            warn_back_wait = 0; //сброс предупреждения
 #if LOGBOOK_RETURN
-                if (!alarm_switch && bookSettings.logbook_warn) _logbook_data_update(0, 1, rad_back); //обновление журнала
+            if (bookSettings.logbook_warn) bookSettings.logbook_warn = 2; //устанавливаем флаг пропущенного предупреждения
 #endif
-                alarm_switch = 1;  //превышение фона 2
-                break;
-              }
-              else if (mainSettings.alarm_back && !warn_back_wait && rad_back >= mainSettings.warn_level_back) { //если предупреждения не запрещены и текущий фон больше порога
-                if (!alarm_switch) { //если это первая сработка тревоги
-                  melody_switch = 0; //сбрасываем переключатель мелодии
-                  _sleep_out(); //выход из сна
-                  _buzz_disable(); //запрещаем щелчки
+          }
+          if (alarm_back_wait && rad_back < (mainSettings.alarm_level_back * ALARM_AUTO_GISTERESIS)) { //если текущий фон упал ниже порога + гистерезис
+            alarm_back_wait = 0; //сброс тревоги
 #if LOGBOOK_RETURN
-                  if (bookSettings.logbook_alarm) _logbook_data_update(1, 1, rad_back); //обновление журнала
+            if (bookSettings.logbook_alarm) bookSettings.logbook_alarm = 2; //устанавливаем флаг пропущенной тревоги
 #endif
-                }
-                alarm_switch = 3;  //превышение фона 1
-                break;
-              }
-            }
-
-            if (warn_back_wait && rad_back < (mainSettings.warn_level_back * ALARM_AUTO_GISTERESIS)) { //если текущий фон упал ниже порога + гистерезис
-              warn_back_wait = 0; //сброс предупреждения
-#if LOGBOOK_RETURN
-              if (bookSettings.logbook_warn) bookSettings.logbook_warn = 2; //устанавливаем флаг пропущенного предупреждения
-#endif
-            }
-            if (alarm_back_wait && rad_back < (mainSettings.alarm_level_back * ALARM_AUTO_GISTERESIS)) { //если текущий фон упал ниже порога + гистерезис
-              alarm_back_wait = 0; //сброс тревоги
-#if LOGBOOK_RETURN
-              if (bookSettings.logbook_alarm) bookSettings.logbook_alarm = 2; //устанавливаем флаг пропущенной тревоги
-#endif
-            }
+          }
 
 #if ALARM_AUTO_DISABLE
-            switch (alarm_switch) {
-              case 1:
-              case 3:
-                if (alarm_switch == 1 && rad_back < (mainSettings.alarm_level_back * ALARM_AUTO_GISTERESIS)) alarm_switch = 0;  //иначе ждем понижения фона тревоги 2
-                if (rad_back < (mainSettings.warn_level_back * ALARM_AUTO_GISTERESIS)) { //иначе ждем понижения фона тревоги 1
-                  _vibro_off(); //выключаем вибрацию
-                  _buzz_enable(); //чтение состояния щелчков
-                  melody_switch = 0; //сбрасываем переключатель мелодии
-                  alarm_switch = 0; //устанавливаем признак отсутствия тревоги
-                }
-                break;
-            }
+          switch (alarm_switch) {
+            case 1:
+            case 3:
+              if (alarm_switch == 1 && rad_back < (mainSettings.alarm_level_back * ALARM_AUTO_GISTERESIS)) alarm_switch = 0;  //иначе ждем понижения фона тревоги 2
+              if (rad_back < (mainSettings.warn_level_back * ALARM_AUTO_GISTERESIS)) { //иначе ждем понижения фона тревоги 1
+                _vibro_off(); //выключаем вибрацию
+                _buzz_enable(); //чтение состояния щелчков
+                melody_switch = 0; //сбрасываем переключатель мелодии
+                alarm_switch = 0; //устанавливаем признак отсутствия тревоги
+              }
+              break;
+          }
 #endif
-            break;
+          break;
 
 #if USE_UART
-          case TIME_FACT_12: //отправляем данные в порт
+        case TIME_FACT_12: //отправляем данные в порт
 #if UART_SEND_BACK
-            sendNumI(rad_back);
+          sendNumI(rad_back);
 #endif
 #if UART_SEND_DOSE
-            sendNumI(rad_dose);
+          sendNumI(rad_dose);
 #endif
 #if UART_SEND_IMP
-            sendNumI(rad_buff[0]);
+          sendNumI(rad_buff[0]);
 #endif
-            break;
+          break;
 #endif
 
-          case TIME_FACT_13: //обработка ошибок
-            if (speed_pump >= HV_SPEED_ERROR) { //если текущая скорость накачки выше порога
+        case TIME_FACT_13: //обработка ошибок
+          if (speed_pump >= HV_SPEED_ERROR) { //если текущая скорость накачки выше порога
 #if LOGBOOK_RETURN
-              if (error_switch < 2) _logbook_data_update(3, 2, speed_pump); //обновление журнала устанавливаем ошибку 2 - перегрузка преобразователя
+            if (error_switch < 2) _logbook_data_update(3, 2, speed_pump); //обновление журнала устанавливаем ошибку 2 - перегрузка преобразователя
+            error_switch = 2; //поднимаем флаг ошибки
+#else
+            error_switch = 2; //поднимаем флаг ошибки
+#endif
+          }
+          speed_hv = speed_pump; //текущая скорость накачки
+          speed_pump = 0; //сбрасываем скорость накачки
+
+          if (hv_adc < pumpSettings.ADC_value - HV_ADC_MIN) { //если значение АЦП преобразователя ниже на установленное значение
+#if LOGBOOK_RETURN
+            if (error_switch < 2) _logbook_data_update(3, 4, hv_adc); //обновление журнала устанавливаем ошибку 4 - низкое напряжение
+            error_switch = 2; //поднимаем флаг ошибки
+#else
+            error_switch = 4; //поднимаем флаг ошибки
+#endif
+          }
+          if (hv_adc < HV_ADC_ERROR) { //если значение АЦП преобразователя ниже порога
+#if LOGBOOK_RETURN
+            if (error_switch < 2) _logbook_data_update(3, 3, hv_adc); //обновление журнала устанавливаем ошибку 3 - кз преобразователя
+            error_switch = 2; //поднимаем флаг ошибки
+#else
+            error_switch = 3; //поднимаем флаг ошибки
+#endif
+          }
+
+          if (!rad_buff[0]) { //если нету импульсов в обменном буфере
+            if (++tmr_nop_imp >= IMP_ERROR_TIME) { //считаем время до вывода предупреждения
+#if LOGBOOK_RETURN
+              if (error_switch < 2) _logbook_data_update(3, 5, 5); //обновление журнала устанавливаем ошибку 5 - нет импульсов
               error_switch = 2; //поднимаем флаг ошибки
 #else
-              error_switch = 2; //поднимаем флаг ошибки
+              error_switch = 5; //поднимаем флаг ошибки
 #endif
+              tmr_nop_imp = 0; //сбрасываем таймер
             }
-            speed_hv = speed_pump; //текущая скорость накачки
-            speed_pump = 0; //сбрасываем скорость накачки
+          }
+          else tmr_nop_imp = 0; //иначе импульсы возобновились
 
-            if (hv_adc < pumpSettings.ADC_value - HV_ADC_MIN) { //если значение АЦП преобразователя ниже на установленное значение
-#if LOGBOOK_RETURN
-              if (error_switch < 2) _logbook_data_update(3, 4, hv_adc); //обновление журнала устанавливаем ошибку 4 - низкое напряжение
-              error_switch = 2; //поднимаем флаг ошибки
-#else
-              error_switch = 4; //поднимаем флаг ошибки
-#endif
+          if (tmr_upd_err >= ERROR_LENGTHY_TIME) {
+            if (error_massege) {
+              tmr_upd_err = 0; //сброс таймера
+              error_massege = 0; //устанавливаем флаг для обновления сообщения об ошибке
             }
-            if (hv_adc < HV_ADC_ERROR) { //если значение АЦП преобразователя ниже порога
-#if LOGBOOK_RETURN
-              if (error_switch < 2) _logbook_data_update(3, 3, hv_adc); //обновление журнала устанавливаем ошибку 3 - кз преобразователя
-              error_switch = 2; //поднимаем флаг ошибки
-#else
-              error_switch = 3; //поднимаем флаг ошибки
-#endif
-            }
+          }
+          else tmr_upd_err++;
+          break;
 
-            if (!rad_buff[0]) { //если нету импульсов в обменном буфере
-              if (++tmr_nop_imp >= IMP_ERROR_TIME) { //считаем время до вывода предупреждения
-#if LOGBOOK_RETURN
-                if (error_switch < 2) _logbook_data_update(3, 5, 5); //обновление журнала устанавливаем ошибку 5 - нет импульсов
-                error_switch = 2; //поднимаем флаг ошибки
-#else
-                error_switch = 5; //поднимаем флаг ошибки
-#endif
-                tmr_nop_imp = 0; //сбрасываем таймер
+        case TIME_FACT_14: //разностный замер
+          switch (measur) { //выбираем режим замера
+            case 1: if (time_switch < (pgm_read_byte(&diff_measuring[mainSettings.measur_pos]) * 60)) time_switch++; //прибавляем секунду
+              else next_measur = 1; //иначе время вышло
+              if (!next_measur) first_froze += scan_buff; //если идет замер, заполняем буфер первого замера
+              rad_buff[0] = scan_buff; //смещаем 0-й элемент в 1-й для дальнейшей работы с ним
+              scan_buff = 0; //сбрасывает счетчик частиц
+              break;
+            case 2: if (time_switch < (pgm_read_byte(&diff_measuring[mainSettings.measur_pos]) * 60)) time_switch++; //прибавляем секунду
+              else next_measur = 1; //иначе время вышло
+              if (!next_measur) second_froze += scan_buff; //если идет замер, заполняем буфер второго замера
+              rad_buff[0] = scan_buff; //смещаем 0-й элемент в 1-й для дальнейшей работы с ним
+              scan_buff = 0; //сбрасывает счетчик частиц
+              break;
+          }
+          break;
+
+        case TIME_FACT_15: //считаем время до ухода в сон
+          switch (mainSettings.sleep_switch) { //выбераем счет времени
+            case 1: if (cnt_pwr <= mainSettings.time_bright) cnt_pwr++; break; //счет выключения подсветки
+            case 2: if (cnt_pwr <= mainSettings.time_sleep) cnt_pwr++; break; //счет ухода в сон
+          }
+          if (cnt_pwr == mainSettings.time_sleep && mainSettings.sleep_switch == 2 && !sleep_disable) { //если пришло время спать и сон не запрещен
+            enableSleep(); //уводим в сон дисплей
+            sleep = 1; //выставляем флаг сна
+            _buzz_disable(); //запрещаем щелчки
+
+          }
+          else if (cnt_pwr == mainSettings.time_bright) { //если пришло время выключить подсветку
+            _LIGHT_OFF(); //выключаем подсветку
+            light = 1; //выставляем флаг выключенной подсветки
+          }
+          break;
+
+        case TIME_FACT_16: { //управление энергосбережением
+            if (!sleep_disable) { //если сон разрешен
+              uint16_t _imp_per_second = rad_back / pumpSettings.geiger_time; //получили имп/с
+              switch (power_manager) {
+                case 0: if (_imp_per_second <= (IMP_PWR_MANAGER * IMP_PWR_GISTERESIS)) power_manager = 1; break; //если текущее количество импульсов меньше установленного порога включения энергосбережения
+                case 1:
+                  if (_imp_per_second > IMP_PWR_MANAGER) power_manager = 0; //если текущее количество импульсов больше установленного порога отключения энергосбережения
+                  else if (_imp_per_second <= (IMP_PWR_DOWN * IMP_PWR_GISTERESIS)) power_manager = 2; //если текущее количество импульсов меньше установленного порога включения глубокого энергосбережения
+                  break;
+                case 2: if (_imp_per_second > IMP_PWR_DOWN) power_manager = 1; break; //если текущее количество импульсов больше установленного порога отключения глубокого энергосбережения
               }
+              if (rad_back > RAD_SLEEP_OUT) _sleep_out(); //выход из сна
             }
-            else tmr_nop_imp = 0; //иначе импульсы возобновились
+          }
+          break;
 
-            if (tmr_upd_err >= ERROR_LENGTHY_TIME) {
-              if (error_massege) {
-                tmr_upd_err = 0; //сброс таймера
-                error_massege = 0; //устанавливаем флаг для обновления сообщения об ошибке
-              }
+        case TIME_FACT_17: //таймер обновления состояния батареи
+          if (tmr_upd_bat >= UPD_BAT_TIME) {
+            tmr_upd_bat = 0; //сброс таймера
+            _bat_check(); //опрос батареи
+          }
+          else tmr_upd_bat++;
+          if (tmr_low_bat >= LOW_BAT_TIME) {
+            if (low_bat_massege) {
+              tmr_low_bat = 0; //сброс таймера
+              low_bat_massege = 0; //устанавливаем флаг для обновления сообщения об разряженной акб
             }
-            else tmr_upd_err++;
-            break;
+          }
+          else tmr_low_bat++;
+          break;
 
-          case TIME_FACT_14: //разностный замер
-            switch (measur) { //выбираем режим замера
-              case 1: if (time_switch < (pgm_read_byte(&diff_measuring[mainSettings.measur_pos]) * 60)) time_switch++; //прибавляем секунду
-                else next_measur = 1; //иначе время вышло
-                if (!next_measur) first_froze += scan_buff; //если идет замер, заполняем буфер первого замера
-                rad_buff[0] = scan_buff; //смещаем 0-й элемент в 1-й для дальнейшей работы с ним
-                scan_buff = 0; //сбрасывает счетчик частиц
-                break;
-              case 2: if (time_switch < (pgm_read_byte(&diff_measuring[mainSettings.measur_pos]) * 60)) time_switch++; //прибавляем секунду
-                else next_measur = 1; //иначе время вышло
-                if (!next_measur) second_froze += scan_buff; //если идет замер, заполняем буфер второго замера
-                rad_buff[0] = scan_buff; //смещаем 0-й элемент в 1-й для дальнейшей работы с ним
-                scan_buff = 0; //сбрасывает счетчик частиц
-                break;
-            }
-            break;
-
-          case TIME_FACT_15: //считаем время до ухода в сон
-            switch (mainSettings.sleep_switch) { //выбераем счет времени
-              case 1: if (cnt_pwr <= mainSettings.time_bright) cnt_pwr++; break; //счет выключения подсветки
-              case 2: if (cnt_pwr <= mainSettings.time_sleep) cnt_pwr++; break; //счет ухода в сон
-            }
-            if (cnt_pwr == mainSettings.time_sleep && mainSettings.sleep_switch == 2 && !sleep_disable) { //если пришло время спать и сон не запрещен
-              enableSleep(); //уводим в сон дисплей
-              sleep = 1; //выставляем флаг сна
-              _buzz_disable(); //запрещаем щелчки
-
-            }
-            else if (cnt_pwr == mainSettings.time_bright) { //если пришло время выключить подсветку
-              _LIGHT_OFF(); //выключаем подсветку
-              light = 1; //выставляем флаг выключенной подсветки
-            }
-            break;
-
-          case TIME_FACT_16: { //управление энергосбережением
-              if (!sleep_disable) { //если сон разрешен
-                uint16_t _imp_per_second = rad_back / pumpSettings.geiger_time; //получили имп/с
-                switch (power_manager) {
-                  case 0: if (_imp_per_second <= (IMP_PWR_MANAGER * IMP_PWR_GISTERESIS)) power_manager = 1; break; //если текущее количество импульсов меньше установленного порога включения энергосбережения
-                  case 1:
-                    if (_imp_per_second > IMP_PWR_MANAGER) power_manager = 0; //если текущее количество импульсов больше установленного порога отключения энергосбережения
-                    else if (_imp_per_second <= (IMP_PWR_DOWN * IMP_PWR_GISTERESIS)) power_manager = 2; //если текущее количество импульсов меньше установленного порога включения глубокого энергосбережения
-                    break;
-                  case 2: if (_imp_per_second > IMP_PWR_DOWN) power_manager = 1; break; //если текущее количество импульсов больше установленного порога отключения глубокого энергосбережения
-                }
-                if (rad_back > RAD_SLEEP_OUT) _sleep_out(); //выход из сна
-              }
-            }
-            break;
-
-          case TIME_FACT_17: //таймер обновления состояния батареи
-            if (tmr_upd_bat >= UPD_BAT_TIME) {
-              tmr_upd_bat = 0; //сброс таймера
-              _bat_check(); //опрос батареи
-            }
-            else tmr_upd_bat++;
-            if (tmr_low_bat >= LOW_BAT_TIME) {
-              if (low_bat_massege) {
-                tmr_low_bat = 0; //сброс таймера
-                low_bat_massege = 0; //устанавливаем флаг для обновления сообщения об разряженной акб
-              }
-            }
-            else tmr_low_bat++;
-            break;
-
-          case TIME_FACT_18: //таймер обновления экрана
-            if (!sleep) scr = 0; //устанавливаем флаг для обновления экрана
-            if (search) rad_buff[0] = 0; //очищаем буфер
-            break;
-        }
+        case TIME_FACT_18: //таймер обновления экрана
+          if (!sleep) scr = 0; //устанавливаем флаг для обновления экрана
+          if (search) rad_buff[0] = 0; //очищаем буфер
+          break;
       }
-      return 1; //разрешаем обновить данные
     }
+    if (!--tick_buff) return 1; //разрешаем обновить данные
   }
   return 0; //запрещаем обновить данные
 }
