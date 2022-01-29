@@ -1018,7 +1018,7 @@ boolean _data_update(void) //преобразование данных
 
       case TIME_FACT_17: //таймер обновления экрана
         if (!sleep) scr = 0; //устанавливаем флаг для обновления экрана
-        if (mainTask != SEARCH_PROGRAM) rad_buff[0] = 0; //очищаем буфер
+        if (mainTask == SEARCH_PROGRAM) rad_buff[0] = 0; //очищаем буфер
         break;
     }
     if (!--tick_buff) return 1; //разрешаем обновить данные
