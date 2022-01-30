@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.13
-  Версия программы RADON v3.9.2 low_pwr release 29.01.22 специально для проекта ArDos
+  Версия программы RADON v3.9.2 low_pwr release 30.01.22 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/ardos-dozimetr-prodolzhenie-temy-chast-%E2%84%962 и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -236,7 +236,7 @@ float rad_imp_m; //импульсы в минуту
 uint16_t scan_ind; //шкала имп/с
 uint32_t rad_search; //фон в режиме поиск
 
-uint16_t graf_max = 0; //максимальный уровень маштабирования графика
+uint16_t graf_max = 15; //максимальный уровень маштабирования графика
 
 boolean search_disable = 0; //флаг запрета движения графика
 uint8_t cur_dose_cell = 0; //текущая ячейка хранения дозы
@@ -778,6 +778,7 @@ boolean _data_update(void) //преобразование данных
             rad_buff[i] = rad_buff[i - 1]; //смещаем ячейку
             if (i < 39 && rad_buff[i] > graf_max) graf_max = rad_buff[i]; //ищем максимум
           }
+          if (graf_max < 15) graf_max = 15; //устанавливаем минимум
           break;
 
         case TIME_FACT_7: //рассчитываем точность
@@ -884,7 +885,7 @@ boolean _data_update(void) //преобразование данных
           break;
       }
     }
-    
+
     switch (tick_switch) { //основной блок обрабоки данных
 #if USE_UART
       case TIME_FACT_11: //отправляем данные в порт
@@ -1852,6 +1853,7 @@ void _search_update(void) //обновление данных поиска
 
       if (search_buff[75] > graf_max) graf_max = search_buff[75];
 #endif
+      if (graf_max < 22) graf_max = 22; //устанавливаем минимум
     }
 
     rad_buff[0] += scan_buff; //смещаем 0-й элемент в 1-й для дальнейшей работы с ним
@@ -3503,7 +3505,7 @@ uint8_t main_screen(void)
             }
 
             switch (back_mode) {
-              case 0: for (uint8_t i = 4; i < 80; i++) graf_lcd(map(rad_buff[(i >> 1) - 1], 0, graf_max, 0, 15), i, 15, 2); break; //инициализируем график
+              case 0: for (uint8_t i = 4; i < 80; i++) graf_lcd(map(rad_buff[(i >> 1) - 1], 0, (graf_max < 15) ? 15 : graf_max, 0, 15), i, 15, 2); break; //инициализируем график
               case 1: //максимальный и средний фон
                 print(MAIN_SCREEN_BACK_MIN, 0, 32); //строка 2 мин:
                 _init_rads_unit(0, rad_min, 1, 4, RIGHT, 32, 0, RIGHT, 32, (accur_percent > RAD_ACCUR_START) ? 1 : 0); //строка 2 минимальный
