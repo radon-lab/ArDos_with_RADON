@@ -773,12 +773,11 @@ boolean _data_update(void) //преобразование данных
           break;
 
         case TIME_FACT_6: //перезапись массива секундных замеров и поиск максимума для графика
-          graf_max = 0; //сбрасываем максимум графика
+          graf_max = 15; //сбрасываем максимум графика
           for (uint8_t i = BUFF_LENGTHY - 1; i > 0; i--) { //перезапись массива
             rad_buff[i] = rad_buff[i - 1]; //смещаем ячейку
             if (i < 39 && rad_buff[i] > graf_max) graf_max = rad_buff[i]; //ищем максимум
           }
-          if (graf_max < 15) graf_max = 15; //устанавливаем минимум
           break;
 
         case TIME_FACT_7: //рассчитываем точность
@@ -1831,7 +1830,7 @@ void _search_update(void) //обновление данных поиска
 
   if (++cnt >= now_pos) { //расчет показаний
     uint32_t temp_buf = 0; //временный буфер расчета имп
-    graf_max = 0; //сбрасываем максимум графика
+    graf_max = 22; //сбрасываем максимум графика
 
     if (!search_disable) {
       if (search_time_now < SEARCH_BUF_SCORE) search_time_now++;
@@ -1853,7 +1852,6 @@ void _search_update(void) //обновление данных поиска
 
       if (search_buff[75] > graf_max) graf_max = search_buff[75];
 #endif
-      if (graf_max < 22) graf_max = 22; //устанавливаем минимум
     }
 
     rad_buff[0] += scan_buff; //смещаем 0-й элемент в 1-й для дальнейшей работы с ним
