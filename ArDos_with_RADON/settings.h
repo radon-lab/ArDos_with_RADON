@@ -17,7 +17,6 @@ struct Settings_1 {
   uint8_t rad_flash = DEFAULT_RAD_FLASH; //индикация попадания частиц
   uint8_t sigma_pos = DEFAULT_SIGMA_POS; //указатель сигмы
   uint8_t search_pos = DEFAULT_SEARCH_POS; //указатель на время время обновления графика в массиве
-  uint8_t account_sensitivity = 100 - DEFAULT_SENSITIVITY; //чувствительность к перепаду фона
   uint16_t warn_level_back = DEFAULT_LEVEL_BACK_1; //уровень тревоги 1 фона
   uint16_t alarm_level_back = DEFAULT_LEVEL_BACK_2; //уровень тревоги 2 фона
   uint16_t warn_level_dose = DEFAULT_LEVEL_DOSE_1; //уровень тревоги 1 дозы

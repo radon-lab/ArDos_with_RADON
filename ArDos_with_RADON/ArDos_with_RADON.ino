@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.13
-  Версия программы RADON v3.9.2 low_pwr release 30.01.22 специально для проекта ArDos
+  Версия программы RADON v3.9.3 low_pwr release 13.02.22 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/ardos-dozimetr-prodolzhenie-temy-chast-%E2%84%962 и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -127,6 +127,9 @@ const uint16_t buzz_time = ((uint32_t)FREQ_BUZZ * (uint32_t)TIME_BUZZ) / 1000; /
 const uint16_t buzz_freq = (F_CPU / SOUND_PRESCALER) / FREQ_BUZZ; //устанавливаем частоту таймера щелчков
 uint16_t buzz_vol; //устанавливаем громкость щелчков
 
+uint8_t GEIGER_CYCLE; //минимум секунд для начала расчетов
+uint8_t GEIGER_MASS; //максимум секунд для окончания смещения коэффициентов
+
 //пищалка старт/стоп
 #define BUZZ_START        cnt_puls = buzz_time; PRR &= ~(1 << 3); ICR1 = buzz_freq; OCR1A = buzz_vol; TCNT1 = 0; TIMSK1 = 0b00000011
 #define BUZZ_VOL_SET(vol) buzz_vol = (buzz_freq / 2) / 10 * vol;
@@ -167,6 +170,8 @@ uint32_t rad_mid_buff[MID_BUFF_LENGTHY]; //массив секундных за�
 #define TIME_FACT_15 31 //секундные интервалы 15
 #define TIME_FACT_16 33 //секундные интервалы 16
 #define TIME_FACT_17 35 //секундные интервалы 17
+#define TIME_FACT_18 37 //секундные интервалы 18
+#define TIME_FACT_19 39 //секундные интервалы 19
 
 enum {
   KEY_NULL,        //кнопка не нажата
@@ -205,7 +210,6 @@ enum {
   _SET_SIGMA_POS,        //сигма
   _SET_SEARCH_POS,       //поиск
   _SET_RAD_MOD,          //единицы измерения
-  _SET_SENSITIVITY,      //чувствительность
   _SET_ALARM_BACK,       //тревога фон
   _SET_WARN_LEVEL_BACK,  //порог фон 1
   _SET_ALARM_LEVEL_BACK, //порог фон 2
@@ -578,6 +582,9 @@ void _init_timers(void) //инициализация таймеров
 //-----------------------------Инициализация параметров----------------------------------------------
 void _init_param(void) //инициализация параметров
 {
+  GEIGER_CYCLE = (pgm_read_byte(&time_mass[0][0]) + pgm_read_byte(&time_mass[0][1])); //минимум секунд для начала расчетов
+  GEIGER_MASS = (pgm_read_byte(&time_mass[MASS_TIME - 1][0]) + pgm_read_byte(&time_mass[MASS_TIME - 1][1])); //максимум секунд для окончания смещения коэффициентов
+
   setContrast(mainSettings.contrast); //установка контрастности
   BUZZ_VOL_SET(mainSettings.volume); //устанавливаем громкость щелчков
   main_buff = 0; //очищаем основной буфер
@@ -629,10 +636,14 @@ boolean _data_update(void) //преобразование данных
   static uint32_t time_total; //счетчик реального времени
   static uint32_t temp_buff; //общий буфер
 
-  static uint16_t puls_total; //счетчик импульсов
-  static uint16_t time_on_pulse; //счетчик тиков
-  static float puls_per_tick_old; //предыдущий коэффициент
-  static boolean back_reset; //флаг сброса фона
+  static uint8_t mass_switch; //переключатель массива
+  static uint8_t time_right; //секундные замеры второго плеча
+  static uint8_t time_left; //секундные замеры первого плеча
+  static uint32_t temp_right; //буффер второго плеча
+  static uint32_t temp_left; //буффер первого плеча
+  static float coef_now; //коэффициент сравнения
+  static float coef_back; //коэффициент поправки на фон
+  static float coef_main; //основной коэффициент
 
   _low_pwr(); //отключение дисплея и подсветки, уход в сон для экономии энергии
   _pump_converter(); //накачка по обратной связи с АЦП
@@ -643,7 +654,6 @@ boolean _data_update(void) //преобразование данных
 
     if (65535 - scan_buff >= temp_main_puls) scan_buff += temp_main_puls; //если буфер сканирования не переполнен прибавляем импульсы
     else scan_buff = 65535; //иначе установили максимум
-    if (mainTask != MEASUR_PROGRAM && mainTask != SEARCH_PROGRAM) puls_total += temp_main_puls; //если не идет замер/поиск то прибавили импульсы к буферу сравнения
 
     if (!TIMSK0) { //если индикация не включена
       switch (mainSettings.rad_flash) { //в зависимости от режима
@@ -685,18 +695,6 @@ boolean _data_update(void) //преобразование данных
     tick_switch++; //прибавили тик обработки данных
 
     if (mainTask != MEASUR_PROGRAM && mainTask != SEARCH_PROGRAM) { //если не идет замер/поиск
-      time_on_pulse++; //прибавляем тик
-      if (puls_total >= IMP_CALCULATION) { //если накопилось необходимое количество импульсов
-        float puls_per_tick = (float)(time_on_pulse / puls_total); //рассчитываем количество тиков на 1 импульс
-        if (puls_per_tick_old) { //если это не первый замер
-          float puls_per_percent = puls_per_tick_old * (float)(mainSettings.account_sensitivity / 100.00); //находим соотношение гистерезиса в процентах
-          if (puls_per_tick > (puls_per_tick_old + puls_per_percent) || puls_per_tick < (puls_per_tick_old - puls_per_percent)) back_reset = 1; //если вышли за рамки гистерезиса то ставим флаг сброса
-        }
-        puls_per_tick_old = puls_per_tick; //запоминаем текущее количество тиков на 1 импульс
-        time_on_pulse = 0; //сбрасываем тики
-        puls_total = 0; //сбрасываем буфер сравнения
-      }
-
       switch (tick_switch) { //блок обработки данных режима фон/доза
         case TIME_FACT_0: //обновление секунд
           time_sec++; //прибавляем секунду
@@ -736,17 +734,50 @@ boolean _data_update(void) //преобразование данных
           for (uint8_t i = 0; i < mid_time_now; i++) temp_buff += rad_mid_buff[i]; //суммирование всех импульсов для расчета фона
           break;
 
-        case TIME_FACT_4: //авто сброс при скачке/спаде
-          if (back_reset) { //если был скачек/спад
-            back_reset = 0; //сбросили флаг
-            temp_buff = 0; //сбрасываем текущий буфер
-            for (uint8_t i = 0; i < RESET_BUFF_TIME; i++) temp_buff += rad_buff[i]; //запоняем буффер
-            back_time_now = geiger_time_now = RESET_BUFF_TIME; //устанавливаем текущий размер буфера
-            mid_time_now = 0; //сбрасываем рассчет среднего
+        case TIME_FACT_4: //расчет текущего фона этап-3
+          if (geiger_time_now >= GEIGER_CYCLE) { //если массив заполнен на минимум начала работы коэффициентов
+            if (geiger_time_now <= GEIGER_MASS) { //если не достигли предела массива сравнения
+              if (geiger_time_now >= (pgm_read_byte(&time_mass[mass_switch + 1][0]) + pgm_read_byte(&time_mass[mass_switch + 1][1]))) { //пересчитываем текущий номер элемента массива в зависимости от заполненности массива счета
+                mass_switch++; //смещаем положение переключателя
+                time_left = pgm_read_byte(&time_mass[mass_switch][0]); //получаем количество секундных замеров для первого плеча
+                time_right = pgm_read_byte(&time_mass[mass_switch][1]); //получаем количество секундных замеров для второго плеча
+              }
+            }
+
+            coef_back = 1.00; //устанавливаем первичный коэффициент
+            for (uint8_t i = 0; i < MASS_BACK; i++) {
+              if (rad_back <= pgm_read_word(&back_mass[i])) {
+                coef_back = pgm_read_float(&coef_back_mass[i]); //пересчитывем фон для коррекции по заданным коэффициентам в массиве
+                break;
+              }
+            }
           }
           break;
 
-        case TIME_FACT_5: { //расчет текущего фона
+        case TIME_FACT_5: //расчет текущего фона этап-4
+          if (geiger_time_now >= GEIGER_CYCLE) { //если массив заполнен на минимум начала работы коэффициентов
+            coef_now = pgm_read_float(&coef_time_mass[mass_switch]) * coef_back; //получаем коэффициент из массива для сравнения на скачок/спад
+            temp_left = 1; //сбрасываем буффер первого плеча
+            for (uint8_t i = 0; i < time_left; i++) temp_left += rad_buff[i]; //запоняем буффер первого плеча
+            temp_right = 1; //сбрасываем буффер второго плеча
+            for (uint8_t i = time_left; i < (time_left + time_right); i++) temp_right += rad_buff[i]; //запоняем буффер вторго плеча
+          }
+          break;
+
+        case TIME_FACT_6:  //расчет текущего фона этап-5
+          if (geiger_time_now >= GEIGER_CYCLE) { //если массив заполнен на минимум начала работы коэффициентов
+            coef_main = ((float)temp_left / time_left) / ((float)temp_right / time_right); //получаем текущее соотношение первого плеча ко второму
+
+            if (coef_main > coef_now || coef_main < (1.00 / coef_now)) { //если видим скачок или спад
+              temp_buff = 0; //сбрасываем текущий буфер
+              for (uint8_t i = 0; i < pgm_read_byte(&time_mass[0][0]); i++) temp_buff += rad_buff[i]; //запоняем буффер первого плеча
+              back_time_now = geiger_time_now = pgm_read_byte(&time_mass[0][0]); //устанавливаем текущий размер буфера
+              mid_time_now = 0; //сбрасываем рассчет среднего
+              mass_switch = 0; //сбрасываем позицию переключения
+            }
+          }
+          break;
+        case TIME_FACT_7: { //расчет текущего фона
 #if APPROX_BACK_SCORE
             float imp_per_sec = 0; //текущее количество имп/с
             if (geiger_time_now > 1) imp_per_sec = (float)temp_buff / ((uint16_t)mid_time_now * BUFF_LENGTHY + back_time_now); //расчет имп/с
@@ -772,7 +803,7 @@ boolean _data_update(void) //преобразование данных
           }
           break;
 
-        case TIME_FACT_6: //перезапись массива секундных замеров и поиск максимума для графика
+        case TIME_FACT_8: //перезапись массива секундных замеров и поиск максимума для графика
           graf_max = 15; //сбрасываем максимум графика
           for (uint8_t i = BUFF_LENGTHY - 1; i > 0; i--) { //перезапись массива
             rad_buff[i] = rad_buff[i - 1]; //смещаем ячейку
@@ -780,11 +811,11 @@ boolean _data_update(void) //преобразование данных
           }
           break;
 
-        case TIME_FACT_7: //рассчитываем точность
+        case TIME_FACT_9: //рассчитываем точность
           accur_percent = _init_accur(temp_buff); //рассчет точности
           break;
 
-        case TIME_FACT_8: //минимальный и максимальный фон
+        case TIME_FACT_10: //минимальный и максимальный фон
           if (accur_percent <= RAD_ACCUR_START) { //если достаточно данных в массиве
             if (rad_back < rad_min) rad_min = rad_back; //фиксируем минимум фона
             if (rad_back > rad_max) rad_max = rad_back; //фиксируем максимум фона
@@ -792,7 +823,7 @@ boolean _data_update(void) //преобразование данных
           else rad_min = rad_back; //фиксируем минимум фона
           break;
 
-        case TIME_FACT_9: { //расчет текущей дозы
+        case TIME_FACT_11: { //расчет текущей дозы
 #if GEIGER_OWN_BACK
             if (rad_sum_timer != 65535) rad_sum_timer++;
             uint16_t puls_per_ur = (3600 / pumpSettings.geiger_time) + (rad_sum_timer * OWN_BACK);
@@ -811,7 +842,7 @@ boolean _data_update(void) //преобразование данных
           }
           break;
 
-        case TIME_FACT_10: //обработка тревоги
+        case TIME_FACT_12: //обработка тревоги
           if (mainSettings.alarm_dose && (rad_dose - alarm_dose_wait) >= mainSettings.alarm_level_dose) { //если тревога не запрещена и текущая(предыдущая) доза больше порога
 #if LOGBOOK_RETURN
             if (!alarm_switch && bookSettings.logbook_warn) _logbook_data_update(0, 2, rad_dose); //обновление журнала
@@ -887,7 +918,7 @@ boolean _data_update(void) //преобразование данных
 
     switch (tick_switch) { //основной блок обрабоки данных
 #if USE_UART
-      case TIME_FACT_11: //отправляем данные в порт
+      case TIME_FACT_13: //отправляем данные в порт
 #if UART_SEND_BACK
         sendNumI(rad_back);
 #endif
@@ -900,7 +931,7 @@ boolean _data_update(void) //преобразование данных
         break;
 #endif
 
-      case TIME_FACT_12: //обработка ошибок
+      case TIME_FACT_14: //обработка ошибок
         if (speed_pump >= HV_SPEED_ERROR) { //если текущая скорость накачки выше порога
 #if LOGBOOK_RETURN
           if (error_switch < 2) _logbook_data_update(3, 2, speed_pump); //обновление журнала устанавливаем ошибку 2 - перегрузка преобразователя
@@ -951,7 +982,7 @@ boolean _data_update(void) //преобразование данных
         else tmr_upd_err++;
         break;
 
-      case TIME_FACT_13: //разностный замер
+      case TIME_FACT_15: //разностный замер
         switch (measur) { //выбираем режим замера
           case 1: if (time_switch < (pgm_read_byte(&diff_measuring[mainSettings.measur_pos]) * 60)) time_switch++; //прибавляем секунду
             else next_measur = 1; //иначе время вышло
@@ -968,7 +999,7 @@ boolean _data_update(void) //преобразование данных
         }
         break;
 
-      case TIME_FACT_14: //считаем время до ухода в сон
+      case TIME_FACT_16: //считаем время до ухода в сон
         switch (mainSettings.sleep_switch) { //выбераем счет времени
           case 1: if (cnt_pwr <= mainSettings.time_bright) cnt_pwr++; break; //счет выключения подсветки
           case 2: if (cnt_pwr <= mainSettings.time_sleep) cnt_pwr++; break; //счет ухода в сон
@@ -985,7 +1016,7 @@ boolean _data_update(void) //преобразование данных
         }
         break;
 
-      case TIME_FACT_15: { //управление энергосбережением
+      case TIME_FACT_17: { //управление энергосбережением
           if (!sleep_disable) { //если сон разрешен
             uint16_t _imp_per_second = rad_back / pumpSettings.geiger_time; //получили имп/с
             switch (power_manager) {
@@ -1001,7 +1032,7 @@ boolean _data_update(void) //преобразование данных
         }
         break;
 
-      case TIME_FACT_16: //таймер обновления состояния батареи
+      case TIME_FACT_18: //таймер обновления состояния батареи
         if (tmr_upd_bat >= UPD_BAT_TIME) {
           tmr_upd_bat = 0; //сброс таймера
           _bat_check(); //опрос батареи
@@ -1016,7 +1047,7 @@ boolean _data_update(void) //преобразование данных
         else tmr_low_bat++;
         break;
 
-      case TIME_FACT_17: //таймер обновления экрана
+      case TIME_FACT_19: //таймер обновления экрана
         if (!sleep) scr = 0; //устанавливаем флаг для обновления экрана
         if (mainTask == SEARCH_PROGRAM) rad_buff[0] = 0; //очищаем буфер
         break;
@@ -2254,13 +2285,6 @@ void _settings_item_switch(boolean set, boolean inv, uint8_t num, uint8_t pos) /
       }
       break;
 
-    case _SET_SENSITIVITY: //Чувств
-      switch (set) {
-        case 0: print(S_ITEM_SENSITIVITY, LEFT, pos_row); break; //Ед.измер:
-        case 1: printNumI(100 - mainSettings.account_sensitivity, RIGHT, pos_row); break;
-      }
-      break;
-
     case _SET_ALARM_BACK: //Тревога Ф
       switch (set) {
         case 0: print(S_ITEM_ALARM_BACK, LEFT, pos_row); break; //Тревога Ф:
@@ -2347,7 +2371,6 @@ void _settings_data_up(uint8_t pos) //прибавление данных
     case _SET_SIGMA_POS: if (mainSettings.sigma_pos < 2) mainSettings.sigma_pos++; else mainSettings.sigma_pos = 0; break; //Сигма
     case _SET_SEARCH_POS: if (mainSettings.search_pos < 8) mainSettings.search_pos++; else mainSettings.search_pos = 0; break; //Поиск
     case _SET_RAD_MOD: mainSettings.rad_mode = 1; break; //Ед.измер
-    case _SET_SENSITIVITY: if (mainSettings.account_sensitivity > 5) mainSettings.account_sensitivity -= 5; break; //Чувств
 
     case _SET_ALARM_BACK: if (mainSettings.alarm_back < 3) mainSettings.alarm_back++; break; //Тревога Ф
     case _SET_WARN_LEVEL_BACK: if (mainSettings.warn_level_back < 300) mainSettings.warn_level_back += 5; else mainSettings.warn_level_back = 30; break; //Порог Ф1
@@ -2384,7 +2407,6 @@ void _settings_data_down(uint8_t pos) //убавление данных
     case _SET_SIGMA_POS: if (mainSettings.sigma_pos) mainSettings.sigma_pos--; else mainSettings.sigma_pos = 2; break; //Сигма
     case _SET_SEARCH_POS: if (mainSettings.search_pos) mainSettings.search_pos--; else mainSettings.search_pos = 8; break; //Поиск
     case _SET_RAD_MOD: mainSettings.rad_mode = 0; break; //Ед.измер
-    case _SET_SENSITIVITY: if (mainSettings.account_sensitivity < 95) mainSettings.account_sensitivity += 5; break; //Чувств
 
     case _SET_ALARM_BACK: if (mainSettings.alarm_back) mainSettings.alarm_back--; break; //Тревога Ф
     case _SET_WARN_LEVEL_BACK: if (mainSettings.warn_level_back > 30) mainSettings.warn_level_back -= 5; else mainSettings.warn_level_back = 300; break; //Порог Ф1

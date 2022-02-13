@@ -1,7 +1,7 @@
 #include <avr/pgmspace.h>
 
 //Языки для локализации
-const char VERSION[] PROGMEM = "3.9.2"; //версия по
+const char VERSION[] PROGMEM = "3.9.3"; //версия по
 
 //---------------------------------------------//
 #ifdef RUSSIAN //если выбран язык "русский"
@@ -99,7 +99,6 @@ const char S_ITEM_DIFF_MEASUR[] PROGMEM = "Hfpy.pfv&"; //Разн.зам:
 const char S_ITEM_SIGMA[] PROGMEM = "Cbuvf&"; //Сигма:
 const char S_ITEM_SEARCH[] PROGMEM = "Gjbcr&"; //Поиск:
 const char S_ITEM_UNITS[] PROGMEM = "Tl.bpvth&"; //Ед.измер:
-const char S_ITEM_SENSITIVITY[] PROGMEM = "Xedcnd&"; //Чувств:
 const char S_ITEM_ALARM_BACK[] PROGMEM = "Nhtdjuf A&"; //Тревога Ф:
 const char S_ITEM_ALARM_THRESHOLD_BACK_1[] PROGMEM = "Gjhju A1&"; //Порог Ф1:
 const char S_ITEM_ALARM_THRESHOLD_BACK_2[] PROGMEM = "Gjhju A2&"; //Порог Ф2:
@@ -321,7 +320,6 @@ const char S_ITEM_DIFF_MEASUR[] PROGMEM = "Diff measur:"; //Разн.зам:
 const char S_ITEM_SIGMA[] PROGMEM = "Sigma:"; //Сигма:
 const char S_ITEM_SEARCH[] PROGMEM = "Search:"; //Поиск:
 const char S_ITEM_UNITS[] PROGMEM = "Units:"; //Ед.измер:
-const char S_ITEM_SENSITIVITY[] PROGMEM = "Sensiv:"; //Чувств:
 const char S_ITEM_ALARM_BACK[] PROGMEM = "Alarm B:"; //Тревога Ф:
 const char S_ITEM_ALARM_THRESHOLD_BACK_1[] PROGMEM = "Back 1:"; //Порог Ф1:
 const char S_ITEM_ALARM_THRESHOLD_BACK_2[] PROGMEM = "Back 2:"; //Порог Ф2:
