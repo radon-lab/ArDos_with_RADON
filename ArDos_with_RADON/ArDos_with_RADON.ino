@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.13
-  Версия программы RADON v3.9.3 low_pwr release 13.02.22 специально для проекта ArDos
+  Версия программы RADON v3.9.3 low_pwr release 17.02.22 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/ardos-dozimetr-prodolzhenie-temy-chast-%E2%84%962 и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -2957,8 +2957,6 @@ void _error_messege(void) //сообщение об ошибке
 #else
     clrScr(); //очистка экрана
 
-    melody_switch = 0; //сбрасываем переключатель мелодии
-
     invertText(true);
     print(E_ERROR, CENTER, 0); //- ОШИБКА -
     invertText(false);
@@ -2996,6 +2994,8 @@ void _error_messege(void) //сообщение об ошибке
     }
     showScr(); //вывод буфера на экран
 #endif
+
+    melody_switch = 0; //сбрасываем переключатель мелодии
 
     for (timer_millis = ERROR_MASSEGE_TIME; timer_millis;) { //ждем
       if (_data_update()) { //обработка данных
