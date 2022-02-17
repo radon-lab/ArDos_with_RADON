@@ -9,8 +9,8 @@ const char VERSION[] PROGMEM = "3.9.3"; //версия по
 const char INTRO[] PROGMEM = "-=HFLJY=-"; //-=РАДОН=-
 
 const char SETTINGS[] PROGMEM = "Yfcnhjqrb"; //Настройки
-const char DAMAGED[] PROGMEM = "gjdht;ltys,"; //повреждены,
-const char RESTORE[] PROGMEM = "djccnfyjdbnm?"; //восстановить?
+const char DAMAGED[] PROGMEM = "gjdht;ltys!"; //повреждены!
+const char RESTORE[] PROGMEM = "Djccnfyjdbnm?"; //восстановить?
 
 const char LOAD[] PROGMEM = "pfuheprf..."; //загрузка...
 const char READ[] PROGMEM = "xntybt..."; //чтение...
@@ -230,8 +230,8 @@ const char UNIT_DASH[] PROGMEM = "-"; //-
 const char INTRO[] PROGMEM = "-=RADON=-"; //-=РАДОН=-
 
 const char SETTINGS[] PROGMEM = "Settings"; //Настройки
-const char DAMAGED[] PROGMEM = "damaged,"; //повреждены,
-const char RESTORE[] PROGMEM = "restore?"; //восстановить?
+const char DAMAGED[] PROGMEM = "damaged!"; //повреждены!
+const char RESTORE[] PROGMEM = "Restore?"; //восстановить?
 
 const char LOAD[] PROGMEM = "load..."; //загрузка...
 const char READ[] PROGMEM = "read..."; //чтение...
