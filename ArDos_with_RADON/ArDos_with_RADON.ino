@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.13
-  Версия программы RADON v3.9.3 low_pwr release 17.02.22 специально для проекта ArDos
+  Версия программы RADON v3.9.4 low_pwr release 28.02.22 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/ardos-dozimetr-prodolzhenie-temy-chast-%E2%84%962 и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -184,15 +184,16 @@ enum {
 };
 
 enum {
-  INIT_PROGRAM,      //инициализация
-  MAIN_PROGRAM,      //основной экран
-  SEARCH_PROGRAM,    //режим поиск
-  MEASUR_PROGRAM,    //режим замер
-  LOGBOOK_PROGRAM,   //режим журнал
-  SETTINGS_PROGRAM,  //настройки
+  INIT_PROGRAM,       //инициализация
+  MAIN_PROGRAM,       //основной экран
+  SEARCH_PROGRAM,     //режим поиск
+  MEASUR_PROGRAM,     //режим замер
+  LOGBOOK_PROGRAM,    //режим журнал
+  SETTINGS_PROGRAM,   //настройки
   PARAMETERS_PROGRAM, //параметры
-  MENU_PROGRAM,      //основное меню
-  DEBUG_PROGRAM      //отладка
+  POWER_DOWN_PROGRAM, //отключение питания
+  MENU_PROGRAM,       //основное меню
+  DEBUG_PROGRAM       //отладка
 };
 
 enum {
@@ -349,6 +350,7 @@ int main(void) //главный цикл программ
       case LOGBOOK_PROGRAM: mainTask = logbook(); break; //журнал
       case SETTINGS_PROGRAM: mainTask = settings(); break; //настройки
       case PARAMETERS_PROGRAM: mainTask = parameters(); break; //параметры
+      case POWER_DOWN_PROGRAM: mainTask = power_down(); break; //отключение питания
       case MENU_PROGRAM: mainTask = menu(); break; //меню
       case DEBUG_PROGRAM: mainTask = debug(); break; //отладка
     }
@@ -628,6 +630,7 @@ ISR(WDT_vect) //cчет тиков WatchDog
 //----------------------------------Преобразование данных---------------------------------------------
 boolean _data_update(void) //преобразование данных
 {
+  static boolean puls_det; //флаг обнаружения импульсов со счетчика
   static uint8_t tick_switch; //счетчик тиков для обработки данных
   static uint8_t tmr_nop_imp; //таймер отсутствия импульсов
   static uint8_t tmr_upd_bat; //таймер обновления состояния акб
@@ -651,6 +654,7 @@ boolean _data_update(void) //преобразование данных
   if (main_buff) { //если есть импульс в основном буфере
     uint16_t temp_main_puls = main_buff; //копируем количество импульсов
     main_buff = 0; //очищаем основной буфер
+    puls_det = 1; //установили флаг обнаружения импульса
 
     if (65535 - scan_buff >= temp_main_puls) scan_buff += temp_main_puls; //если буфер сканирования не переполнен прибавляем импульсы
     else scan_buff = 65535; //иначе установили максимум
@@ -673,7 +677,9 @@ boolean _data_update(void) //преобразование данных
     }
   }
 
-  while (tick_buff) { //если был тик то обрабатываем данные
+  if (tick_buff) { //если был тик то обрабатываем данные
+    tick_buff--; //убавили тик
+
     switch (btn_state) { //таймер опроса кнопок
       case 0: if (btn_check) btn_tmr++; break; //считаем циклы
       case 1: if (btn_tmr) btn_tmr--; break; //убираем дребезг
@@ -913,24 +919,23 @@ boolean _data_update(void) //преобразование данных
           }
 #endif
           break;
+#if USE_UART
+        case TIME_FACT_13: //отправляем данные в порт
+#if UART_SEND_BACK
+          sendNumI(rad_back);
+#endif
+#if UART_SEND_DOSE
+          sendNumI(rad_dose);
+#endif
+#if UART_SEND_IMP
+          sendNumI(rad_buff[0]);
+#endif
+          break;
+#endif
       }
     }
 
     switch (tick_switch) { //основной блок обрабоки данных
-#if USE_UART
-      case TIME_FACT_13: //отправляем данные в порт
-#if UART_SEND_BACK
-        sendNumI(rad_back);
-#endif
-#if UART_SEND_DOSE
-        sendNumI(rad_dose);
-#endif
-#if UART_SEND_IMP
-        sendNumI(rad_buff[0]);
-#endif
-        break;
-#endif
-
       case TIME_FACT_14: //обработка ошибок
         if (speed_pump >= HV_SPEED_ERROR) { //если текущая скорость накачки выше порога
 #if LOGBOOK_RETURN
@@ -960,7 +965,7 @@ boolean _data_update(void) //преобразование данных
 #endif
         }
 
-        if (!rad_buff[0]) { //если нету импульсов в обменном буфере
+        if (!puls_det) { //если не было импульса со счетчика
           if (++tmr_nop_imp >= IMP_ERROR_TIME) { //считаем время до вывода предупреждения
 #if LOGBOOK_RETURN
             if (error_switch < 2) _logbook_data_update(3, 5, 5); //обновление журнала устанавливаем ошибку 5 - нет импульсов
@@ -968,10 +973,13 @@ boolean _data_update(void) //преобразование данных
 #else
             error_switch = 5; //поднимаем флаг ошибки
 #endif
-            tmr_nop_imp = 0; //сбрасываем таймер
+            tmr_nop_imp = 0; //сбросили таймер
           }
         }
-        else tmr_nop_imp = 0; //иначе импульсы возобновились
+        else { //иначе импульсы возобновились
+          puls_det = 0; //сбросили флаг обнаружения импульсов
+          tmr_nop_imp = 0; //сбросили таймер
+        }
 
         if (tmr_upd_err >= ERROR_LENGTHY_TIME) {
           if (error_massege) {
@@ -983,19 +991,18 @@ boolean _data_update(void) //преобразование данных
         break;
 
       case TIME_FACT_15: //разностный замер
-        switch (measur) { //выбираем режим замера
-          case 1: if (time_switch < (pgm_read_byte(&diff_measuring[mainSettings.measur_pos]) * 60)) time_switch++; //прибавляем секунду
-            else next_measur = 1; //иначе время вышло
-            if (!next_measur) first_froze += scan_buff; //если идет замер, заполняем буфер первого замера
-            rad_buff[0] = scan_buff; //смещаем 0-й элемент в 1-й для дальнейшей работы с ним
-            scan_buff = 0; //сбрасывает счетчик частиц
-            break;
-          case 2: if (time_switch < (pgm_read_byte(&diff_measuring[mainSettings.measur_pos]) * 60)) time_switch++; //прибавляем секунду
-            else next_measur = 1; //иначе время вышло
-            if (!next_measur) second_froze += scan_buff; //если идет замер, заполняем буфер второго замера
-            rad_buff[0] = scan_buff; //смещаем 0-й элемент в 1-й для дальнейшей работы с ним
-            scan_buff = 0; //сбрасывает счетчик частиц
-            break;
+        if (mainTask == MEASUR_PROGRAM) {
+          switch (measur) { //выбираем режим замера
+            case 1: if (time_switch < (pgm_read_byte(&diff_measuring[mainSettings.measur_pos]) * 60)) time_switch++; //прибавляем секунду
+              else next_measur = 1; //иначе время вышло
+              if (!next_measur) first_froze += scan_buff; //если идет замер, заполняем буфер первого замера
+              break;
+            case 2: if (time_switch < (pgm_read_byte(&diff_measuring[mainSettings.measur_pos]) * 60)) time_switch++; //прибавляем секунду
+              else next_measur = 1; //иначе время вышло
+              if (!next_measur) second_froze += scan_buff; //если идет замер, заполняем буфер второго замера
+              break;
+          }
+          scan_buff = 0; //сбрасывает счетчик частиц
         }
         break;
 
@@ -1049,10 +1056,9 @@ boolean _data_update(void) //преобразование данных
 
       case TIME_FACT_19: //таймер обновления экрана
         if (!sleep) scr = 0; //устанавливаем флаг для обновления экрана
-        if (mainTask == SEARCH_PROGRAM) rad_buff[0] = 0; //очищаем буфер
         break;
     }
-    if (!--tick_buff) return 1; //разрешаем обновить данные
+    return 1; //разрешаем обновить данные
   }
   return 0; //запрещаем обновить данные
 }
@@ -1123,7 +1129,7 @@ void _sleep_pwr(void) //энергосбережение
 EMPTY_INTERRUPT(INT1_vect); //внешнее прерывание на пине INT1 - включение питания
 #endif
 //-------------------------------------Выключение устройства----------------------------------------------------
-void power_down(void) //выключение устройства
+uint8_t power_down(void) //выключение устройства
 {
   cli(); //запрещаем прерывания
 
@@ -1165,7 +1171,7 @@ void power_down(void) //выключение устройства
           _start_pump(); //первая накачка преобразователя
           btn_check = 0; //запрещем проврку кнопки
           EIMSK = 0b00000001; //разрешаем внешнее прерывание INT0
-          return; //выходим
+          return MAIN_PROGRAM; //выходим
         }
         else { //иначе выводим предупреждение об разряженной батарее
           _adc_disable(); //выключаем питание ацп
@@ -1180,6 +1186,7 @@ void power_down(void) //выключение устройства
   EIMSK = 0b00000000; //запрещаем внешние прерывание
   _sleep_pwr(); //спим
 #endif
+  return INIT_PROGRAM;
 }
 //------------------------------Индикация попадания частиц---------------------------------
 ISR(TIMER0_OVF_vect) //индикация попадания частиц
@@ -1440,7 +1447,6 @@ void measur_stop(void) //остановка замера
               alarm_measur = 1; //разрешаем оповещение окончания замера
               first_froze = 0; //сбрасываем счетчик 1-го замера
               second_froze = 0; //сбрасываем счетчик 2-го замера
-              scan_buff = rad_buff[0] = 0; //очищаем 0-й и 1-й элемент буфера
               break;
           }
           return; //выход
@@ -1482,7 +1488,6 @@ void _measur_massege(void) //окончание замера
         measur = 0;
         time_switch = 0;
         alarm_measur = 1;
-        scan_buff = rad_buff[0] = 0; //очищаем 0-й и 1-й элемент буфера
 #if LOGBOOK_RETURN
         if (bookSettings.logbook_measur) {
           bookSettings.logbook_measur = 2; //устанавливаем признак новой записи
@@ -1533,7 +1538,6 @@ uint8_t measur_menu(void) //режим замера
             alarm_measur = 1; //разрешаем оповещение оканчания замера
             first_froze = 0; //сбрасываем счетчик 1-го замера
             second_froze = 0; //сбрасываем счетчик 2-го замера
-            scan_buff = rad_buff[0] = 0; //очищаем 0-й и 1-й элемент буфера
           }
           break;
 
@@ -1552,14 +1556,12 @@ uint8_t measur_menu(void) //режим замера
             alarm_measur = 0; //разрешаем оповещение оканчания замера
             first_froze = 0; //сбрасываем счетчик 1-го замера
             second_froze = 0; //сбрасываем счетчик 2-го замера
-            scan_buff = 0; //очищаем 0-й элемент буфера
           }
           else if (next_measur && measur == 1) {
             measur = 2;
             next_measur = 0;
             time_switch = 0;
             alarm_measur = 0;
-            scan_buff = 0; //очищаем 0-й элемент буфера
             anim = 0;
           }
           break;
@@ -1860,8 +1862,11 @@ void _search_update(void) //обновление данных поиска
   static uint32_t imp_s; //имп/с для расчетов
 
   if (++cnt >= now_pos) { //расчет показаний
-    uint32_t temp_buf = 0; //временный буфер расчета имп
+    uint32_t temp_buff = 0; //временный буфер расчета имп
     graf_max = 22; //сбрасываем максимум графика
+
+    uint16_t temp_data = scan_buff; //запомнили текущее количество импульсов
+    scan_buff = 0; //сбрасываем счетчик импульсов
 
     if (!search_disable) {
       if (search_time_now < SEARCH_BUF_SCORE) search_time_now++;
@@ -1871,7 +1876,7 @@ void _search_update(void) //обновление данных поиска
         search_buff[i] = search_buff[i - 1]; //сдвигаем массив
         if (search_buff[i] > graf_max) graf_max = search_buff[i];
       }
-      search_buff[0] = scan_buff; //новое значение в последнюю ячейку
+      search_buff[0] = temp_data; //новое значение в последнюю ячейку
 
       if (search_buff[0] > graf_max) graf_max = search_buff[0];
 #else //справа-налево
@@ -1879,22 +1884,19 @@ void _search_update(void) //обновление данных поиска
         search_buff[i] = search_buff[i + 1]; //сдвигаем массив
         if (search_buff[i] > graf_max) graf_max = search_buff[i];
       }
-      search_buff[75] = scan_buff; //новое значение в последнюю ячейку
+      search_buff[75] = temp_data; //новое значение в последнюю ячейку
 
       if (search_buff[75] > graf_max) graf_max = search_buff[75];
 #endif
     }
 
-    rad_buff[0] += scan_buff; //смещаем 0-й элемент в 1-й для дальнейшей работы с ним
-    scan_buff = 0; //сбрасываем счетчик импульсов
-
 #if TYPE_GRAF_MOVE //слева-направо
-    for (uint8_t i = 0; i < search_time_now; i++) temp_buf += search_buff[i]; //сдвигаем массив
+    for (uint8_t i = 0; i < search_time_now; i++) temp_buff += search_buff[i]; //сдвигаем массив
 #else //справа-налево
-    for (uint8_t i = 76 - search_time_now; i < 76; i++) temp_buf += search_buff[i]; //сдвигаем массив
+    for (uint8_t i = 76 - search_time_now; i < 76; i++) temp_buff += search_buff[i]; //сдвигаем массив
 #endif
 
-    rad_imp = ((float)temp_buf / search_time_now) * ((time_to_update) ? (1000.00 / time_to_update) : 1); //персчет имп/сек.
+    rad_imp = ((float)temp_buff / search_time_now) * ((time_to_update) ? (1000.00 / time_to_update) : 1); //персчет имп/сек.
     rad_imp_m = rad_imp * 60.0; //персчет импульсов в имп/мин.
     rad_search = rad_imp * pumpSettings.geiger_time; //считаем мкР/ч | мкЗ/ч
 
@@ -1933,8 +1935,6 @@ uint8_t search_menu(void) //инициализация режима поиск
           rad_imp_m = 0; //сбрасываем имп/м
           rad_search = 0; //сбрасываем счет импульсов
           search_time_now = 0; //сбрасываем время счета графика
-          scan_buff = 0; //сбрасываем буфер
-          rad_buff[0] = 0; //сбрасываем буфер
           search_disable = 0; //разрешаем обновление графика
           for (uint8_t i = 0; i < 76; i++) search_buff[i] = 0; //очищаем буфер графика
           graf = 0; //разрешаем обновления экрана
@@ -1956,7 +1956,6 @@ uint8_t search_menu(void) //инициализация режима поиск
 
         case SEL_KEY_HOLD: //настройки
           scan_buff = 0; //сбрасываем счетчик импульсов
-          rad_buff[0] = 0; //сбрасываем счетчик импульсов
           return MENU_PROGRAM;
       }
 
@@ -2514,21 +2513,21 @@ void _menu_item_switch(boolean inv, uint8_t num, uint8_t pos) //отрисовк
   }
 
   switch (num) {
-    case 0: print(MAIN_BACK_DOSE, CENTER, pos_row); break; //Фон / Доза
-    case 1: print(MAIN_SEARCH, CENTER, pos_row); break; //Режим поиска
-    case 2: print(MAIN_MEASUR, CENTER, pos_row); break; //Замер бета
-    case 3: print(MAIN_LOGBOOK, CENTER, pos_row); break; //Журнал
-    case 4: print(MAIN_SETTINGS, CENTER, pos_row); break; //Настройки
-    case 5: print(MAIN_PARAM, CENTER, pos_row); break; //Параметры
-    case 6: print(MAIN_POWER_DOWN, CENTER, pos_row); break; //Выключение
+    case MAIN_PROGRAM: print(MAIN_BACK_DOSE, CENTER, pos_row); break; //Фон / Доза
+    case SEARCH_PROGRAM: print(MAIN_SEARCH, CENTER, pos_row); break; //Режим поиска
+    case MEASUR_PROGRAM: print(MAIN_MEASUR, CENTER, pos_row); break; //Замер бета
+    case LOGBOOK_PROGRAM: print(MAIN_LOGBOOK, CENTER, pos_row); break; //Журнал
+    case SETTINGS_PROGRAM: print(MAIN_SETTINGS, CENTER, pos_row); break; //Настройки
+    case PARAMETERS_PROGRAM: print(MAIN_PARAM, CENTER, pos_row); break; //Параметры
+    case POWER_DOWN_PROGRAM: print(MAIN_POWER_DOWN, CENTER, pos_row); break; //Выключение
   }
   invertText(false); //выключаем инверсию
 }
 //------------------------------------Меню------------------------------------------------------
 uint8_t menu(void) //меню
 {
-  uint8_t pos = 0; //позиция
-  uint8_t cursor = 0; //курсор
+  static uint8_t pos; //позиция
+  static uint8_t cursor; //курсор
 
   sleep_disable = 1; //запрещаем сон
   power_manager = 0; //сбрасываем менеджер питания
@@ -2567,11 +2566,8 @@ uint8_t menu(void) //меню
           break;
 
         case SEL_KEY_PRESS: //выбор пункта
-          switch (pos) {
-            default: return pos + 1;
-            case 6: power_down(); return MAIN_PROGRAM;
-          }
-          break;
+          return pos + 1; //возвращаем выбранный пункт меню
+
 
         case SEL_KEY_HOLD: //выход к главным экранам
           return MAIN_PROGRAM;
@@ -2587,7 +2583,7 @@ uint8_t menu(void) //меню
         clrScr(); // Очистка экрана
         task_bar(MAIN_MENU); //отрисовываем фон
 
-        for (uint8_t i = 0; i < 5; i++) _menu_item_switch((i == cursor) ? 1 : 0, pos - cursor + i, i); //отрисовываем пункты настроек
+        for (uint8_t i = 0; i < 5; i++) _menu_item_switch((i == cursor) ? 1 : 0, pos - cursor + i + 1, i); //отрисовываем пункты настроек
         showScr(); //вывод буфера на экран
       }
     }
@@ -3413,7 +3409,6 @@ uint8_t main_screen(void)
               switch (scr_mode) { //основные экраны
                 case 0: //сбрасываем фон
                   for (uint8_t i = 0; i < BUFF_LENGTHY; i++) rad_buff[i] = 0; //очищаем буфер фона
-                  scan_buff = 0; //очищаем буфер счета
                   accur_percent = 99; //сбрасываем статистическую точность
                   back_time_now = geiger_time_now = 0; //сбрасываем счетчик накопления импульсов в буфере
                   mid_time_now = 0; //сбрасываем рассчет среднего
