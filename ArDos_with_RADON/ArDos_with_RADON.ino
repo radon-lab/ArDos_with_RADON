@@ -1291,8 +1291,8 @@ void melodyPlay(uint8_t melody, uint8_t replay) //запуск воспроиз�
 {
   sound.semp = 0; //сбросили позицию семпла
   sound.replay = replay; //установили повтор
-  sound.link = pgm_read_word(&general_sound + (melody << 2)); //установили ссылку
-  sound.size = pgm_read_word(&general_sound + (melody << 2) + 2); //установили размер
+  sound.link = pgm_read_word(&general_sound[melody][0]); //установили ссылку
+  sound.size = pgm_read_word(&general_sound[melody][1]); //установили размер
   timer_melody = 0; //сбросили таймер
   _buzz_disable(); //запрещаем щелчки
 }
