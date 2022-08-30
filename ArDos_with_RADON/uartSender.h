@@ -33,7 +33,7 @@ void sendNumI(uint32_t num) //отправка команды
   else buf[c++] = 48;
 
   while (c) {
-    while (!(UCSR0A & (1 << UDRE0)));
+    while (!(UCSR0A & (0x01 << UDRE0)));
     UDR0 = buf[--c];
   }
 }

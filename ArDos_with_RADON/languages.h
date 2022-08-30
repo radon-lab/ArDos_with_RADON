@@ -1,7 +1,7 @@
 #include <avr/pgmspace.h>
 
 //Языки для локализации
-const char VERSION[] PROGMEM = "3.9.5"; //версия программы
+const char VERSION[] PROGMEM = "3.9.6"; //версия программы
 
 //---------------------------------------------//
 #ifdef RUSSIAN //если выбран язык "русский"
@@ -197,7 +197,7 @@ const char ALL_NO[] PROGMEM = "  YTN  "; //НЕТ
 const char MAIN_SCREEN_BACK[] PROGMEM = "Ajy"; //Фон
 const char MAIN_SCREEN_DOSE[] PROGMEM = "Ljpf"; //Доза
 
-const char MAIN_SCREEN_BACK_MIN[] PROGMEM = "VBY&"; //МИН:
+const char MAIN_SCREEN_CURRENT_DOSE[] PROGMEM = "LJPF&"; //ДОЗА:
 const char MAIN_SCREEN_BACK_MAX[] PROGMEM = "VFRC&"; //МАКС:
 
 const char MAIN_SCREEN_CURRENT_DOSE_ALL[] PROGMEM = "DCTUJ&"; //ВСЕГО:
@@ -421,7 +421,7 @@ const char ALL_NO [] PROGMEM = "  NO  "; //НЕТ
 const char MAIN_SCREEN_BACK[] PROGMEM = "Back"; //Фон
 const char MAIN_SCREEN_DOSE[] PROGMEM = "Dose"; //Доза
 
-const char MAIN_SCREEN_BACK_MIN[] PROGMEM = "MIN:"; //МИН:
+const char MAIN_SCREEN_CURRENT_DOSE[] PROGMEM = "DOSE:"; //ДОЗА:
 const char MAIN_SCREEN_BACK_MAX[] PROGMEM = "MAX:"; //МАКС:
 
 const char MAIN_SCREEN_CURRENT_DOSE_ALL[] PROGMEM = "ALL:"; //ВСЕГО:
