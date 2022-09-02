@@ -162,6 +162,7 @@ const char E_DATA_VOLTAGE[] PROGMEM = "yfghz;tybt"; //напряжение
 
 const char E_DATA_SHOT_CIRCUIT[] PROGMEM = "Rjhjnrjt pfv."; //Короткое зам.
 const char E_DATA_NO_ACCOUNT[] PROGMEM = "Ytn cxtnf!"; //Нет счета!
+const char E_DATA_DETECTOR[] PROGMEM = "ltntrnjhf!"; //детектора!
 
 const char E_DATA_SPEED[] PROGMEM = "CRH&"; //СКР:
 const char E_DATA_HV[] PROGMEM = "YFG&"; //НАП:
@@ -378,14 +379,15 @@ const char L_SETTINGS_CLEAR[] PROGMEM = "Clear book"; //Очистить
 const char E_ERROR[] PROGMEM = " - ERROR - "; //- ОШИБКА -
 const char E_ERROR_NULL[] PROGMEM = "* null *"; //* пусто *
 
-const char E_DATA_OVERLOAD[] PROGMEM = "Converter"; //Перегрузка
-const char E_DATA_PUMP[] PROGMEM = "overload!"; //конвертера!
+const char E_DATA_OVERLOAD[] PROGMEM = "Overload"; //Перегрузка
+const char E_DATA_PUMP[] PROGMEM = "converter!"; //конвертера!
 
 const char E_DATA_LOW[] PROGMEM = "Low"; //Низкое
 const char E_DATA_VOLTAGE[] PROGMEM = "voltage"; //напряжение
 
 const char E_DATA_SHOT_CIRCUIT[] PROGMEM = "Short circuit"; //Короткое зам.
 const char E_DATA_NO_ACCOUNT[] PROGMEM = "No account!"; //Нет счета!
+const char E_DATA_DETECTOR[] PROGMEM = "detector!"; //детектора!
 
 const char E_DATA_SPEED[] PROGMEM = "SPD:"; //СКР:
 const char E_DATA_HV[] PROGMEM = " HV:"; //НАП:

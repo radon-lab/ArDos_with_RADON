@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.13
-  Версия программы RADON v3.9.6 low_pwr release 30.08.22 специально для проекта ArDos
+  Версия программы RADON v3.9.6 low_pwr release 02.09.22 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/ardos-dozimetr-prodolzhenie-temy-chast-%E2%84%962 и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -652,6 +652,7 @@ boolean _data_update(void) //преобразование данных
 {
   static boolean puls_det; //флаг обнаружения импульсов со счетчика
   static uint8_t tick_switch; //счетчик тиков для обработки данных
+  static uint8_t tmr_det_low; //таймер замыкания счетчика
   static uint8_t tmr_nop_imp; //таймер отсутствия импульсов
   static uint8_t tmr_upd_bat; //таймер обновления состояния акб
   static uint8_t tmr_low_bat; //таймер вывода сообщения об разряженой акб
@@ -962,57 +963,77 @@ boolean _data_update(void) //преобразование данных
 
     switch (tick_switch) { //основной блок обрабоки данных
       case TIME_FACT_14: //обработка ошибок
-        if (speed_pump >= HV_SPEED_ERROR) { //если текущая скорость накачки выше порога
-#if LOGBOOK_RETURN
-          if (error_switch < 2) _logbook_data_update(3, 2, speed_pump); //обновление журнала устанавливаем ошибку 2 - перегрузка преобразователя
-          error_switch = 2; //поднимаем флаг ошибки
-#else
-          error_switch = 2; //поднимаем флаг ошибки
-#endif
-        }
         speed_hv = speed_pump; //текущая скорость накачки
         speed_pump = 0; //сбрасываем скорость накачки
 
-        if (hv_adc < pumpSettings.ADC_value - HV_ADC_MIN) { //если значение АЦП преобразователя ниже на установленное значение
+        if (tmr_upd_err >= ERROR_LENGTHY_TIME) {
+          if (speed_hv >= HV_SPEED_ERROR) { //если текущая скорость накачки выше порога
 #if LOGBOOK_RETURN
-          if (error_switch < 2) _logbook_data_update(3, 4, hv_adc); //обновление журнала устанавливаем ошибку 4 - низкое напряжение
-          error_switch = 2; //поднимаем флаг ошибки
+            _logbook_data_update(3, 2, speed_hv); //обновление журнала устанавливаем ошибку 2 - перегрузка преобразователя
+            error_switch = 2; //поднимаем флаг ошибки
 #else
-          error_switch = 4; //поднимаем флаг ошибки
+            error_switch = 2; //поднимаем флаг ошибки
 #endif
-        }
-        if (hv_adc < HV_ADC_ERROR) { //если значение АЦП преобразователя ниже порога
+            tmr_upd_err = 0; //сброс таймера
+            error_massege = 0; //устанавливаем флаг для обновления сообщения об ошибке
+          }
+
+          if (hv_adc < pumpSettings.ADC_value - HV_ADC_MIN) { //если значение АЦП преобразователя ниже на установленное значение
 #if LOGBOOK_RETURN
-          if (error_switch < 2) _logbook_data_update(3, 3, hv_adc); //обновление журнала устанавливаем ошибку 3 - кз преобразователя
-          error_switch = 2; //поднимаем флаг ошибки
+            _logbook_data_update(3, 4, hv_adc); //обновление журнала устанавливаем ошибку 4 - низкое напряжение
+            error_switch = 2; //поднимаем флаг ошибки
 #else
-          error_switch = 3; //поднимаем флаг ошибки
+            error_switch = 4; //поднимаем флаг ошибки
 #endif
+            tmr_upd_err = 0; //сброс таймера
+            error_massege = 0; //устанавливаем флаг для обновления сообщения об ошибке
+          }
+
+          if (hv_adc < HV_ADC_ERROR) { //если значение АЦП преобразователя ниже порога
+#if LOGBOOK_RETURN
+            _logbook_data_update(3, 3, hv_adc); //обновление журнала устанавливаем ошибку 3 - кз преобразователя
+            error_switch = 2; //поднимаем флаг ошибки
+#else
+            error_switch = 3; //поднимаем флаг ошибки
+#endif
+            tmr_upd_err = 0; //сброс таймера
+            error_massege = 0; //устанавливаем флаг для обновления сообщения об ошибке
+          }
         }
+        else tmr_upd_err++;
 
         if (!puls_det) { //если не было импульса со счетчика
           if (++tmr_nop_imp >= IMP_ERROR_TIME) { //считаем время до вывода предупреждения
 #if LOGBOOK_RETURN
-            if (error_switch < 2) _logbook_data_update(3, 5, 5); //обновление журнала устанавливаем ошибку 5 - нет импульсов
+            _logbook_data_update(3, 5, 5); //обновление журнала устанавливаем ошибку 5 - нет импульсов
             error_switch = 2; //поднимаем флаг ошибки
 #else
             error_switch = 5; //поднимаем флаг ошибки
 #endif
             tmr_nop_imp = 0; //сбросили таймер
+            error_massege = 0; //устанавливаем флаг для обновления сообщения об ошибке
+          }
+
+          if (!DET_CHK) { //если счетчик в низком уровне
+            if (++tmr_det_low >= DET_ERROR_TIME) { //считаем время до вывода предупреждения
+#if LOGBOOK_RETURN
+              _logbook_data_update(3, 6, 6); //обновление журнала устанавливаем ошибку 5 - нет импульсов
+              error_switch = 2; //поднимаем флаг ошибки
+#else
+              error_switch = 6; //поднимаем флаг ошибки
+#endif
+              tmr_det_low = 0; //сбросили таймер
+              error_massege = 0; //устанавливаем флаг для обновления сообщения об ошибке
+            }
+          }
+          else { //иначе счетчик в высоком уровне
+            tmr_det_low = 0; //сбросили таймер
           }
         }
         else { //иначе импульсы возобновились
           puls_det = 0; //сбросили флаг обнаружения импульсов
           tmr_nop_imp = 0; //сбросили таймер
         }
-
-        if (tmr_upd_err >= ERROR_LENGTHY_TIME) {
-          if (error_massege) {
-            tmr_upd_err = 0; //сброс таймера
-            error_massege = 0; //устанавливаем флаг для обновления сообщения об ошибке
-          }
-        }
-        else tmr_upd_err++;
         break;
 
       case TIME_FACT_15: //разностный замер
@@ -2952,6 +2973,11 @@ void _init_error_messege(uint8_t err, uint32_t data) //отрисовка соо
     case 5:
       print(E_DATA_NO_ACCOUNT, CENTER, 24); //Нет счета!
       break;
+
+    case 6:
+      print(E_DATA_SHOT_CIRCUIT, CENTER, 16); //Короткое зам.
+      print(E_DATA_DETECTOR, CENTER, 24); //детектора!
+      break;
   }
   showScr(); //вывод буфера на экран
 }
@@ -3005,6 +3031,11 @@ void _error_messege(void) //сообщение об ошибке
 
       case 5:
         print(E_DATA_NO_ACCOUNT, CENTER, 24); //Нет счета!
+        break;
+
+      case 6:
+        print(E_DATA_SHOT_CIRCUIT, CENTER, 16); //Короткое зам.
+        print(E_DATA_DETECTOR, CENTER, 24); //детектора!
         break;
     }
     showScr(); //вывод буфера на экран
