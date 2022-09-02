@@ -275,7 +275,6 @@ uint16_t speed_hv; //текущая скорость накачки преобр
 uint16_t speed_pump; //скорость накачки преобразователя
 
 boolean low_bat_massege = 0; //флаг разрешения вывода сообщения об разряженой акб
-boolean error_massege = 0; //флаг разрешения вывода сообщения об ошибке
 
 //флаги обновления информации
 boolean scr = 0; //флаг обновления экрана
@@ -975,7 +974,6 @@ boolean _data_update(void) //преобразование данных
             error_switch = 2; //поднимаем флаг ошибки
 #endif
             tmr_upd_err = 0; //сброс таймера
-            error_massege = 0; //устанавливаем флаг для обновления сообщения об ошибке
           }
 
           if (hv_adc < pumpSettings.ADC_value - HV_ADC_MIN) { //если значение АЦП преобразователя ниже на установленное значение
@@ -986,7 +984,6 @@ boolean _data_update(void) //преобразование данных
             error_switch = 4; //поднимаем флаг ошибки
 #endif
             tmr_upd_err = 0; //сброс таймера
-            error_massege = 0; //устанавливаем флаг для обновления сообщения об ошибке
           }
 
           if (hv_adc < HV_ADC_ERROR) { //если значение АЦП преобразователя ниже порога
@@ -997,7 +994,6 @@ boolean _data_update(void) //преобразование данных
             error_switch = 3; //поднимаем флаг ошибки
 #endif
             tmr_upd_err = 0; //сброс таймера
-            error_massege = 0; //устанавливаем флаг для обновления сообщения об ошибке
           }
         }
         else tmr_upd_err++;
@@ -1011,7 +1007,6 @@ boolean _data_update(void) //преобразование данных
             error_switch = 5; //поднимаем флаг ошибки
 #endif
             tmr_nop_imp = 0; //сбросили таймер
-            error_massege = 0; //устанавливаем флаг для обновления сообщения об ошибке
           }
 
           if (!DET_CHK) { //если счетчик в низком уровне
@@ -1023,7 +1018,6 @@ boolean _data_update(void) //преобразование данных
               error_switch = 6; //поднимаем флаг ошибки
 #endif
               tmr_det_low = 0; //сбросили таймер
-              error_massege = 0; //устанавливаем флаг для обновления сообщения об ошибке
             }
           }
           else { //иначе счетчик в высоком уровне
@@ -2977,7 +2971,8 @@ void _init_error_messege(uint8_t err, uint32_t data) //отрисовка соо
 
     case 6:
       print(E_DATA_SHOT_CIRCUIT, CENTER, 16); //Короткое зам.
-      print(E_DATA_DETECTOR, CENTER, 24); //детектора!
+      print(E_DATA_OFF_SCALE, CENTER, 24); //или зашкал!
+      print(E_DATA_DETECTOR, CENTER, 32); //детектора!
       break;
   }
   showScr(); //вывод буфера на экран
@@ -2986,11 +2981,10 @@ void _init_error_messege(uint8_t err, uint32_t data) //отрисовка соо
 void _error_messege(void) //сообщение об ошибке
 {
 #if LOGBOOK_RETURN
-  if (error_switch == 2 && !alarm_switch && !error_massege) { //если время вышло, выводим ошибку
+  if (error_switch == 2 && !alarm_switch) { //если время вышло, выводим ошибку
 #else
-  if (error_switch && !alarm_switch && !error_massege) { //если время вышло, выводим ошибку
+  if (error_switch && !alarm_switch) { //если время вышло, выводим ошибку
 #endif
-    error_massege = 1; //сбрасываем флаг отображения ошибки
 
     _disable_sleep(); //просыпаемся если спали
 
@@ -3036,7 +3030,8 @@ void _error_messege(void) //сообщение об ошибке
 
       case 6:
         print(E_DATA_SHOT_CIRCUIT, CENTER, 16); //Короткое зам.
-        print(E_DATA_DETECTOR, CENTER, 24); //детектора!
+        print(E_DATA_OFF_SCALE, CENTER, 24); //или зашкал!
+        print(E_DATA_DETECTOR, CENTER, 32); //детектора!
         break;
     }
     showScr(); //вывод буфера на экран

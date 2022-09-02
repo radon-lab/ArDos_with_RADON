@@ -162,6 +162,8 @@ const char E_DATA_VOLTAGE[] PROGMEM = "yfghz;tybt"; //напряжение
 
 const char E_DATA_SHOT_CIRCUIT[] PROGMEM = "Rjhjnrjt pfv."; //Короткое зам.
 const char E_DATA_NO_ACCOUNT[] PROGMEM = "Ytn cxtnf!"; //Нет счета!
+
+const char E_DATA_OFF_SCALE[] PROGMEM = "bkb pfirfk"; //или зашкал!
 const char E_DATA_DETECTOR[] PROGMEM = "ltntrnjhf!"; //детектора!
 
 const char E_DATA_SPEED[] PROGMEM = "CRH&"; //СКР:
@@ -387,6 +389,8 @@ const char E_DATA_VOLTAGE[] PROGMEM = "voltage"; //напряжение
 
 const char E_DATA_SHOT_CIRCUIT[] PROGMEM = "Short circuit"; //Короткое зам.
 const char E_DATA_NO_ACCOUNT[] PROGMEM = "No account!"; //Нет счета!
+
+const char E_DATA_OFF_SCALE[] PROGMEM = "or off scale"; //или зашкал!
 const char E_DATA_DETECTOR[] PROGMEM = "detector!"; //детектора!
 
 const char E_DATA_SPEED[] PROGMEM = "SPD:"; //СКР:
