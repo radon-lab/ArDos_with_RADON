@@ -3567,7 +3567,7 @@ uint8_t main_screen(void)
                 drawLine(5, 61, 83, 0xFF);
                 invertText(true);
                 printNumI(60, 66, 32); //строка 1
-                print((back_mode) ? MAIN_SCREEN_GRAF_MIN : MAIN_SCREEN_GRAF_SEC, 63, 40, 1); //строка 2
+                print((back_mode) ? MAIN_SCREEN_GRAF_MIN : MAIN_SCREEN_GRAF_SEC, 63, 40); //строка 2
                 invertText(false);
                 break;
               case 2: //максимальный и средний фон
