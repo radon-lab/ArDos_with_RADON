@@ -815,7 +815,7 @@ boolean _data_update(void) //преобразование данных
 
         case TASK_CALC_BACK_6:  //расчет текущего фона этап-6
           if (geiger_time_now >= GEIGER_CYCLE) { //если массив заполнен на минимум начала работы коэффициентов
-            coef_main = ((temp_left) ? (((float)temp_left / time_left)) : 0.1) / ((temp_right ) ? ((float)temp_right / time_right) : 0.1); //получаем текущее соотношение первого плеча ко второму
+            coef_now = ((temp_left) ? (((float)temp_left / time_left)) : 0.1) / ((temp_right ) ? ((float)temp_right / time_right) : 0.1); //получаем текущее соотношение первого плеча ко второму
 
 #if COEF_DEBUG //отладка коэффициента
             debug_now = coef_now; //текущее соотношение ячеек сравнения
