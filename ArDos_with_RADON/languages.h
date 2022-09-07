@@ -1,7 +1,7 @@
 #include <avr/pgmspace.h>
 
 //Языки для локализации
-const char VERSION[] PROGMEM = "3.9.6"; //версия программы
+const char VERSION[] PROGMEM = "3.9.7"; //версия программы
 
 //---------------------------------------------//
 #ifdef RUSSIAN //если выбран язык "русский"
@@ -99,8 +99,10 @@ const char S_ITEM_VOLUME[] PROGMEM = "Uhjvrjcnm&"; //Громкость:
 const char S_ITEM_CLICKS[] PROGMEM = "Otkxrb&"; //Щелчки:
 const char S_ITEM_BUTT_SOUND[] PROGMEM = "Pd.Ryjgjr&"; //Зв.кнопок:
 const char S_ITEM_DIFF_MEASUR[] PROGMEM = "Hfpy.pfv&"; //Разн.зам:
+const char S_ITEM_AVERAG[] PROGMEM = "Echtlytybt&"; //Усреденение:
 const char S_ITEM_SIGMA[] PROGMEM = "Cbuvf&"; //Сигма:
 const char S_ITEM_SEARCH[] PROGMEM = "Gjbcr&"; //Поиск:
+const char S_ITEM_SPEED[] PROGMEM = "Crjhjcnm&"; //Скорость:
 const char S_ITEM_UNITS[] PROGMEM = "Tl.bpvth&"; //Ед.измер:
 const char S_ITEM_ALARM_BACK[] PROGMEM = "Nhtdjuf A&"; //Тревога Ф:
 const char S_ITEM_ALARM_THRESHOLD_BACK_1[] PROGMEM = "Gjhju A1&"; //Порог Ф1:
@@ -204,6 +206,9 @@ const char MAIN_SCREEN_CURRENT_DOSE[] PROGMEM = "LJPF&"; //ДОЗА:
 const char MAIN_SCREEN_BACK_MAX[] PROGMEM = "VFRC&"; //МАКС:
 
 const char MAIN_SCREEN_CURRENT_DOSE_ALL[] PROGMEM = "DCTUJ&"; //ВСЕГО:
+
+const char MAIN_SCREEN_GRAF_SEC[] PROGMEM = "CTR"; //СЕК
+const char MAIN_SCREEN_GRAF_MIN[] PROGMEM = "VBY"; //МИН
 
 const char MAIN_SCREEN_DOSE_DAYS[] PROGMEM = "l"; //д
 const char MAIN_SCREEN_DOSE_HOURSE[] PROGMEM = "x"; //ч
@@ -326,8 +331,10 @@ const char S_ITEM_VOLUME[] PROGMEM = "Volume:"; //Громкость:
 const char S_ITEM_CLICKS[] PROGMEM = "Clicks:"; //Щелчки:
 const char S_ITEM_BUTT_SOUND[] PROGMEM = "Butt sound:"; //Зв.кнопок:
 const char S_ITEM_DIFF_MEASUR[] PROGMEM = "Diff measur:"; //Разн.зам:
+const char S_ITEM_AVERAG[] PROGMEM = "Averag:"; //Усреденение:
 const char S_ITEM_SIGMA[] PROGMEM = "Sigma:"; //Сигма:
 const char S_ITEM_SEARCH[] PROGMEM = "Search:"; //Поиск:
+const char S_ITEM_SPEED[] PROGMEM = "Speed:"; //Скорость:
 const char S_ITEM_UNITS[] PROGMEM = "Units:"; //Ед.измер:
 const char S_ITEM_ALARM_BACK[] PROGMEM = "Alarm B:"; //Тревога Ф:
 const char S_ITEM_ALARM_THRESHOLD_BACK_1[] PROGMEM = "Back 1:"; //Порог Ф1:
@@ -435,6 +442,9 @@ const char MAIN_SCREEN_CURRENT_DOSE_ALL[] PROGMEM = "ALL:"; //ВСЕГО:
 const char MAIN_SCREEN_DOSE_DAYS[] PROGMEM = "d"; //д
 const char MAIN_SCREEN_DOSE_HOURSE[] PROGMEM = "h"; //ч
 const char MAIN_SCREEN_DOSE_MINS[] PROGMEM = "m"; //м
+
+const char MAIN_SCREEN_GRAF_SEC[] PROGMEM = "SEC"; //СЕК
+const char MAIN_SCREEN_GRAF_MIN[] PROGMEM = "MIN"; //МИН
 
 const char MAIN_SCREEN_DOSE_ACCUM[] PROGMEM = "accum"; //накоплено
 const char MAIN_SCREEN_DOSE_JUST_OVER[] PROGMEM = "just over:"; //всего за:

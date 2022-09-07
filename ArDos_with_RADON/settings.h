@@ -11,11 +11,13 @@ struct Settings_1 {
   uint8_t measur_pos = DEFAULT_MEASUR_POS; //указатель на время разностного замера в массиве
   uint8_t alarm_dose = DEFAULT_ALARM_DOSE; //переключатель режимов тревоги дозы
   uint8_t sleep_switch = DEFAULT_SLEEP_MODE; //переключатель режимов сна
-  uint8_t time_bright = DEFAULT_TIME_BRIGHT; //время до отключения подсветки (5..250)(s)
-  uint8_t time_sleep = DEFAULT_TIME_SLEEP; //время до ухода в сон(должно быть больше чем время подсветки) (10..250)(s)
+  uint8_t time_bright = DEFAULT_TIME_BRIGHT; //время до отключения подсветки
+  uint8_t time_sleep = DEFAULT_TIME_SLEEP; //время до ухода в сон
   boolean rad_mode = DEFAULT_RAD_MODE; //единицы измерения дозы/фона(мкР/мкЗв)
   uint8_t rad_flash = DEFAULT_RAD_FLASH; //индикация попадания частиц
+  uint8_t averag_time = DEFAULT_AVERAG; //длинна буфера усреднения замеров
   uint8_t sigma_pos = DEFAULT_SIGMA_POS; //указатель сигмы
+  uint8_t search_score = DEFAULT_SEARCH_BUF; //количество ячеек буфера режима "поиск"
   uint8_t search_pos = DEFAULT_SEARCH_POS; //указатель на время время обновления графика в массиве
   uint16_t warn_level_back = DEFAULT_LEVEL_BACK_1; //уровень тревоги 1 фона
   uint16_t alarm_level_back = DEFAULT_LEVEL_BACK_2; //уровень тревоги 2 фона

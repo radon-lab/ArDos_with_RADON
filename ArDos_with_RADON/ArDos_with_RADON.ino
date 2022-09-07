@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.13
-  Версия программы RADON v3.9.6 low_pwr release 02.09.22 специально для проекта ArDos
+  Версия программы RADON v3.9.7 low_pwr release 07.09.22 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/ardos-dozimetr-prodolzhenie-temy-chast-%E2%84%962 и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -149,29 +149,30 @@ uint8_t GEIGER_MASS; //максимум секунд для окончания �
 volatile uint16_t main_buff; //основная переменная для счета импульсов от датчика
 uint16_t scan_buff; //переменная сканирования импульсов
 uint16_t search_buff[76]; //буфер поиска
-uint16_t rad_buff[BUFF_LENGTHY]; //массив секундных замеров для расчета фона
-uint32_t rad_mid_buff[MID_BUFF_LENGTHY]; //массив секундных замеров для усреднения фона
+uint16_t rad_buff[60]; //массив секундных замеров для расчета фона
+uint32_t rad_mid_buff[60]; //массив секундных замеров для усреднения фона
 
-#define TIME_FACT_0  1 //секундные интервалы 0
-#define TIME_FACT_1  3 //секундные интервалы 1
-#define TIME_FACT_2  5 //секундные интервалы 2
-#define TIME_FACT_3  7 //секундные интервалы 3
-#define TIME_FACT_4  9 //секундные интервалы 4
-#define TIME_FACT_5  11 //секундные интервалы 5
-#define TIME_FACT_6  13 //секундные интервалы 6
-#define TIME_FACT_7  15 //секундные интервалы 7
-#define TIME_FACT_8  17 //секундные интервалы 8
-#define TIME_FACT_9  19 //секундные интервалы 9
-#define TIME_FACT_10 21 //секундные интервалы 10
-#define TIME_FACT_11 23 //секундные интервалы 11
-#define TIME_FACT_12 25 //секундные интервалы 12
-#define TIME_FACT_13 27 //секундные интервалы 13
-#define TIME_FACT_14 29 //секундные интервалы 14
-#define TIME_FACT_15 31 //секундные интервалы 15
-#define TIME_FACT_16 33 //секундные интервалы 16
-#define TIME_FACT_17 35 //секундные интервалы 17
-#define TIME_FACT_18 37 //секундные интервалы 18
-#define TIME_FACT_19 39 //секундные интервалы 19
+#define TASK_UPDATE_TIME   1  //обновление времени
+#define TASK_UPDATE_STAT   3  //обновление статистики
+#define TASK_ARRAY_SHIFT   5  //сдвиг массива фона
+#define TASK_CALC_BACK_1   7  //расчет текущего фона этап-1
+#define TASK_CALC_BACK_2   9  //расчет текущего фона этап-2
+#define TASK_CALC_BACK_3   11 //расчет текущего фона этап-3
+#define TASK_CALC_BACK_4   13 //расчет текущего фона этап-4
+#define TASK_CALC_BACK_5   15 //расчет текущего фона этап-5
+#define TASK_CALC_BACK_6   17 //расчет текущего фона этап-6
+#define TASK_CALC_BACK_7   19 //расчет текущего фона этап-7
+#define TASK_UPDATE_ACCUR  21 //обновление статистической точности
+#define TASK_MAX_BACK      23 //поиск максимального фона
+#define TASK_CALC_DOSE     25 //расчет дозы
+#define TASK_UPDATE_ALARM  27 //обновление тревоги
+#define TASK_UPDATE_UART   29 //обновление отправки данных в порт
+#define TASK_UPDATE_ERROR  31 //обновление ошибок
+#define TASK_UPDATE_MEASUR 33 //обновление режима замера
+#define TASK_UPDATE_SLEEP  35 //обновление режима сна
+#define TASK_UPDATE_POWER  37 //обновление состояния энергосбережения
+#define TASK_UPDATE_BAT    39 //обновление состояния батареи
+#define TASK_UPDATE_SCREEN 41 //обновление экрана
 
 enum {
   KEY_NULL,        //кнопка не нажата
@@ -208,8 +209,10 @@ enum {
   _SET_BUZZ_SWITCH,      //щелчки
   _SET_KNOCK_DISABLE,    //звук кнопок
   _SET_MEASUR_POS,       //разностный замер
+  _SET_AVERAG_POS,       //усреднение фона
   _SET_SIGMA_POS,        //сигма
   _SET_SEARCH_POS,       //поиск
+  _SET_SPEED_POS,        //скорость
   _SET_RAD_MOD,          //единицы измерения
   _SET_ALARM_BACK,       //тревога фон
   _SET_WARN_LEVEL_BACK,  //порог фон 1
@@ -240,11 +243,13 @@ float rad_imp_m; //импульсы в минуту
 uint16_t scan_ind; //шкала имп/с
 uint32_t rad_search; //фон в режиме поиск
 
-uint16_t graf_max = 15; //максимальный уровень маштабирования графика
+uint16_t graf_max = 3; //максимальный уровень маштабирования графика
 
 boolean search_disable = 0; //флаг запрета движения графика
-uint8_t cur_dose_cell = 0; //текущая ячейка хранения дозы
+uint8_t search_time_now = 0; //установленное время поиска
+uint8_t search_score_now = 0; //текущий номер набранной секунды графика
 
+uint8_t cur_dose_cell = 0; //текущая ячейка хранения дозы
 uint32_t time_save; //время из памяти
 uint32_t rad_dose_save; //доза из памяти
 uint32_t time_save_old; //предыдущее значение сохраненного времени
@@ -256,7 +261,6 @@ uint8_t time_out = 0; //счетчик авто-выхода
 uint8_t mid_time_now = 0; //текущий номер набранного массива усреднения
 uint8_t back_time_now = 0; //текущий номер набранной секунды счета фона
 uint8_t geiger_time_now = 0; //текущий номер набранной секунды счета
-uint8_t search_time_now = 0; //текущий номер набранной секунды графика
 
 volatile uint8_t tick_buff; //счетчик тиков для обработки данных
 uint8_t cnt_pwr; //счетчик ухода в сон
@@ -266,6 +270,7 @@ uint16_t timer_melody; //таймер отсчета миллисекунд дл
 //флаги режимов
 boolean scr_mode = 0; //текущий режим(фон/доза)
 boolean dose_mode = 0; //режим отображения дозы(текущая/общая)
+uint8_t back_mode = 0; //переключатель режима фон
 
 //переменные питания
 uint8_t bat = 5; //текущий заряд батареи
@@ -724,27 +729,35 @@ boolean _data_update(void) //преобразование данных
 
     if (mainTask != MEASUR_PROGRAM && mainTask != SEARCH_PROGRAM) { //если не идет замер/поиск
       switch (tick_switch) { //блок обработки данных режима фон/доза
-        case TIME_FACT_0: //обновление секунд
+        case TASK_UPDATE_TIME: //обновление секунд
           time_sec++; //прибавляем секунду
           break;
 
-        case TIME_FACT_1: //обновление статистики
+        case TASK_UPDATE_STAT: //обновление статистики
           if (++stat_upd_tmr >= STAT_UPD_TIME) { //если пришло время, обновляем статистику
             stat_upd_tmr = 0; //сбрасываем таймер
             statistic_update(); //обновление статистики
           }
           break;
 
-        case TIME_FACT_2: //расчет текущего фона этап-1
+        case TASK_ARRAY_SHIFT: //перезапись массива секундных замеров и поиск максимума для графика
+          if (back_mode != 1) graf_max = 3; //сбрасываем максимум графика
+          for (uint8_t i = 59; i > 0; i--) { //перезапись массива
+            rad_buff[i] = rad_buff[i - 1]; //смещаем ячейку
+            if ((back_mode != 1) && rad_buff[i] > graf_max) graf_max = rad_buff[i]; //ищем максимум
+          }
+          break;
+
+        case TASK_CALC_BACK_1: //расчет текущего фона этап-1
           rad_buff[0] = scan_buff; //смещаем 0-й элемент в 1-й для дальнейшей работы с ним
           scan_buff = 0; //сбрасываем счетчик импульсов
           temp_buff = 0; //сбрасываем временный буфер
 
-          if (geiger_time_now < BUFF_LENGTHY) geiger_time_now++; //прибавляем указатель заполненности буффера
-          if (back_time_now < BUFF_LENGTHY) back_time_now++; //прибавляем указатель заполненности буффера для рассчета фона
+          if (geiger_time_now < 60) geiger_time_now++; //прибавляем указатель заполненности буффера
+          if (back_time_now < 60) back_time_now++; //прибавляем указатель заполненности буффера для рассчета фона
           else {
             back_time_now = 1; //иначе сбрасываем в начало
-            if (mid_time_now < MID_BUFF_LENGTHY) mid_time_now++; //прибавляем указатель заполненности буффера
+            if (mid_time_now < mainSettings.averag_time) mid_time_now++; //прибавляем указатель заполненности буффера
           }
 
 #if GEIGER_DEAD_TIME
@@ -754,15 +767,22 @@ boolean _data_update(void) //преобразование данных
           for (uint8_t i = 0; i < back_time_now; i++) temp_buff += rad_buff[i]; //суммирование всех импульсов для расчета фона
           break;
 
-        case TIME_FACT_3: //копирование буфера усреднения
-          if (back_time_now >= BUFF_LENGTHY) { //если основной буфер перезаписался
-            for (uint8_t k = MID_BUFF_LENGTHY - 1; k > 0; k--) rad_mid_buff[k] = rad_mid_buff[k - 1]; //перезапись массива
+        case TASK_CALC_BACK_2: //перезапись массива буфера усреднения
+          if (back_time_now >= 60) { //если основной буфер перезаписался
+            if (back_mode == 1) graf_max = 3; //сбрасываем максимум графика
+            for (uint8_t i = 59; i > 0; i--) { //перезапись массива
+              rad_mid_buff[i] = rad_mid_buff[i - 1]; //смещаем ячейку
+              if ((back_mode == 1) && rad_mid_buff[i] > graf_max) graf_max = rad_mid_buff[i]; //ищем максимум
+            }
             rad_mid_buff[0] = temp_buff; //записываем основной массив в массив усреднения
           }
+          break;
+
+        case TASK_CALC_BACK_3: //копирование буфера усреднения этап-3
           for (uint8_t i = 0; i < mid_time_now; i++) temp_buff += rad_mid_buff[i]; //суммирование всех импульсов для расчета фона
           break;
 
-        case TIME_FACT_4: //расчет текущего фона этап-3
+        case TASK_CALC_BACK_4: //расчет текущего фона этап-4
           if (geiger_time_now >= GEIGER_CYCLE) { //если массив заполнен на минимум начала работы коэффициентов
             if (geiger_time_now <= GEIGER_MASS) { //если не достигли предела массива сравнения
               if (geiger_time_now >= (pgm_read_byte(&time_mass[mass_switch + 1][0]) + pgm_read_byte(&time_mass[mass_switch + 1][1]))) { //пересчитываем текущий номер элемента массива в зависимости от заполненности массива счета
@@ -782,7 +802,7 @@ boolean _data_update(void) //преобразование данных
           }
           break;
 
-        case TIME_FACT_5: //расчет текущего фона этап-4
+        case TASK_CALC_BACK_5: //расчет текущего фона этап-5
           if (geiger_time_now >= GEIGER_CYCLE) { //если массив заполнен на минимум начала работы коэффициентов
             coef_main = pgm_read_float(&coef_time_mass[mass_switch]) * coef_back; //получаем коэффициент из массива для сравнения на скачок/спад
             temp_left = 0; //сбрасываем буффер первого плеча
@@ -792,7 +812,7 @@ boolean _data_update(void) //преобразование данных
           }
           break;
 
-        case TIME_FACT_6:  //расчет текущего фона этап-5
+        case TASK_CALC_BACK_6:  //расчет текущего фона этап-6
           if (geiger_time_now >= GEIGER_CYCLE) { //если массив заполнен на минимум начала работы коэффициентов
             coef_main = ((temp_left) ? (((float)temp_left / time_left)) : 0.1) / ((temp_right ) ? ((float)temp_right / time_right) : 0.1); //получаем текущее соотношение первого плеча ко второму
 
@@ -810,10 +830,10 @@ boolean _data_update(void) //преобразование данных
             }
           }
           break;
-        case TIME_FACT_7: { //расчет текущего фона
+        case TASK_CALC_BACK_7: { //расчет текущего фона этап-7
 #if APPROX_BACK_SCORE
             float imp_per_sec = 0; //текущее количество имп/с
-            if (geiger_time_now > 1) imp_per_sec = (float)temp_buff / ((uint16_t)mid_time_now * BUFF_LENGTHY + back_time_now); //расчет имп/с
+            if (geiger_time_now > 1) imp_per_sec = (float)temp_buff / ((uint16_t)mid_time_now * 60 + back_time_now); //расчет имп/с
 #if GEIGER_OWN_BACK
             if (imp_per_sec > OWN_BACK) imp_per_sec -= OWN_BACK; //убираем собственный фон счетчика
             else imp_per_sec = temp_buff = 0; //иначе ничего кроме собственного фона нету
@@ -826,34 +846,26 @@ boolean _data_update(void) //преобразование данных
             }
 #else
 #if GEIGER_OWN_BACK
-            float own_back_now = ((uint16_t)mid_time_now * BUFF_LENGTHY + back_time_now) * OWN_BACK; //рассчитываем количество импульсов собственного фона
+            float own_back_now = ((uint16_t)mid_time_now * 60 + back_time_now) * OWN_BACK; //рассчитываем количество импульсов собственного фона
             if (temp_buff > own_back_now) temp_buff -= own_back_now; //убираем собственный фон счетчика
             else temp_buff = 0; //иначе ничего кроме собственного фона нету
 #endif
-            if (geiger_time_now > 1) rad_back = temp_buff * (pumpSettings.geiger_time / ((uint16_t)mid_time_now * BUFF_LENGTHY + back_time_now)); //расчет фона мкР/ч
+            if (geiger_time_now > 1) rad_back = temp_buff * (pumpSettings.geiger_time / ((uint16_t)mid_time_now * 60 + back_time_now)); //расчет фона мкР/ч
 #endif
           }
           break;
 
-        case TIME_FACT_8: //перезапись массива секундных замеров и поиск максимума для графика
-          graf_max = 15; //сбрасываем максимум графика
-          for (uint8_t i = BUFF_LENGTHY - 1; i > 0; i--) { //перезапись массива
-            rad_buff[i] = rad_buff[i - 1]; //смещаем ячейку
-            if (i < 39 && rad_buff[i] > graf_max) graf_max = rad_buff[i]; //ищем максимум
-          }
-          break;
-
-        case TIME_FACT_9: //рассчитываем точность
+        case TASK_UPDATE_ACCUR: //рассчитываем точность
           accur_percent = _init_accur(temp_buff); //рассчет точности
           break;
 
-        case TIME_FACT_10: //минимальный и максимальный фон
+        case TASK_MAX_BACK: //минимальный и максимальный фон
           if (accur_percent <= RAD_ACCUR_START) { //если достаточно данных в массиве
             if (rad_back > rad_max) rad_max = rad_back; //фиксируем максимум фона
           }
           break;
 
-        case TIME_FACT_11: { //расчет текущей дозы
+        case TASK_CALC_DOSE: { //расчет текущей дозы
 #if GEIGER_OWN_BACK
             if (rad_sum_timer != 65535) rad_sum_timer++;
             uint16_t puls_per_ur = (3600 / pumpSettings.geiger_time) + (rad_sum_timer * OWN_BACK);
@@ -872,7 +884,7 @@ boolean _data_update(void) //преобразование данных
           }
           break;
 
-        case TIME_FACT_12: //обработка тревоги
+        case TASK_UPDATE_ALARM: //обработка тревоги
           if (!sleep_disable) { //если сон разрешен
             if (mainSettings.alarm_dose && (rad_dose - alarm_dose_wait) >= mainSettings.alarm_level_dose) { //если тревога не запрещена и текущая(предыдущая) доза больше порога
               warn_messege(1, mainSettings.alarm_dose, SOUND_ALARM); //доза 2
@@ -945,7 +957,7 @@ boolean _data_update(void) //преобразование данных
 #endif
           break;
 #if USE_UART
-        case TIME_FACT_13: //отправляем данные в порт
+        case TASK_UPDATE_UART: //отправляем данные в порт
 #if UART_SEND_BACK
           sendNumI(rad_back);
 #endif
@@ -961,7 +973,7 @@ boolean _data_update(void) //преобразование данных
     }
 
     switch (tick_switch) { //основной блок обрабоки данных
-      case TIME_FACT_14: //обработка ошибок
+      case TASK_UPDATE_ERROR: //обработка ошибок
         speed_hv = speed_pump; //текущая скорость накачки
         speed_pump = 0; //сбрасываем скорость накачки
 
@@ -1031,7 +1043,7 @@ boolean _data_update(void) //преобразование данных
         }
         break;
 
-      case TIME_FACT_15: //разностный замер
+      case TASK_UPDATE_MEASUR: //разностный замер
         if (mainTask == MEASUR_PROGRAM) {
           switch (measur) { //выбираем режим замера
             case 1: if (time_switch < (pgm_read_byte(&diff_measuring[mainSettings.measur_pos]) * 60)) time_switch++; //прибавляем секунду
@@ -1047,7 +1059,7 @@ boolean _data_update(void) //преобразование данных
         }
         break;
 
-      case TIME_FACT_16: //считаем время до ухода в сон
+      case TASK_UPDATE_SLEEP: //считаем время до ухода в сон
         if (mainSettings.sleep_switch) { //если сон не выключен
           if (cnt_pwr <= (sleep_disable) ? mainSettings.time_bright : mainSettings.time_sleep) cnt_pwr++; //счет ухода в сон
         }
@@ -1062,7 +1074,7 @@ boolean _data_update(void) //преобразование данных
         }
         break;
 
-      case TIME_FACT_17: { //управление энергосбережением
+      case TASK_UPDATE_POWER: { //управление энергосбережением
           if (!sleep_disable) { //если сон разрешен
             uint16_t _imp_per_second = rad_back / pumpSettings.geiger_time; //получили имп/с
             switch (power_manager) {
@@ -1078,7 +1090,7 @@ boolean _data_update(void) //преобразование данных
         }
         break;
 
-      case TIME_FACT_18: //таймер обновления состояния батареи
+      case TASK_UPDATE_BAT: //таймер обновления состояния батареи
         if (tmr_upd_bat >= UPD_BAT_TIME) {
           tmr_upd_bat = 0; //сброс таймера
           _bat_check(); //опрос батареи
@@ -1093,7 +1105,7 @@ boolean _data_update(void) //преобразование данных
         else tmr_low_bat++;
         break;
 
-      case TIME_FACT_19: //таймер обновления экрана
+      case TASK_UPDATE_SCREEN: //таймер обновления экрана
         if (!sleep) scr = 0; //устанавливаем флаг для обновления экрана
         break;
     }
@@ -1897,19 +1909,19 @@ void _bat_massege(void) //сообщение об разряженной бат�
 //-------------------------Обновление данных поиска----------------------------------------------------
 void _search_update(void) //обновление данных поиска
 {
-  static uint8_t now_pos; //переключатель динамического изменения времени
-  static uint16_t cnt; //счетчик тиков графика
+  static uint8_t score_now; //текущее количество ячеек
+  static uint16_t score_cnt; //счетчик тиков графика
   static uint16_t scan_now; //имп/с за период
-  static uint16_t time_to_update; //текущее время обновления
   static uint32_t imp_s; //имп/с для расчетов
 
-  if (++cnt >= now_pos) { //расчет показаний
+  if (++score_cnt >= search_time_now) { //расчет показаний
     uint32_t temp_buff = 0; //временный буфер расчета имп
     uint16_t temp_data = scan_buff; //запомнили текущее количество импульсов
     scan_buff = 0; //сбрасываем счетчик импульсов
 
     if (!search_disable) {
-      if (search_time_now < SEARCH_BUF_SCORE) search_time_now++;
+      if (search_score_now < score_now) search_score_now++;
+      else search_score_now = score_now;
       graf_max = 22; //сбрасываем максимум графика
 
 #if TYPE_GRAF_MOVE //слева-направо
@@ -1932,21 +1944,21 @@ void _search_update(void) //обновление данных поиска
     }
 
 #if TYPE_GRAF_MOVE //слева-направо
-    for (uint8_t i = 0; i < search_time_now; i++) temp_buff += search_buff[i]; //сдвигаем массив
+    for (uint8_t i = 0; i < search_score_now; i++) temp_buff += search_buff[i]; //сдвигаем массив
 #else //справа-налево
-    for (uint8_t i = 76 - search_time_now; i < 76; i++) temp_buff += search_buff[i]; //сдвигаем массив
+    for (uint8_t i = 76 - search_score_now; i < 76; i++) temp_buff += search_buff[i]; //сдвигаем массив
 #endif
 
-    rad_imp = ((float)temp_buff / search_time_now) * ((time_to_update) ? (1000.00 / time_to_update) : 1); //персчет имп/сек.
+    rad_imp = ((float)temp_buff / search_score_now) * (1000.00 / pgm_read_word(&search_time[mainSettings.search_pos])); //персчет имп/сек.
     rad_imp_m = rad_imp * 60.0; //персчет импульсов в имп/мин.
     rad_search = rad_imp * pumpSettings.geiger_time; //считаем мкР/ч | мкЗ/ч
 
-    imp_s = search_buff[0] * (1000.00 / time_to_update); //персчет имп/сек.
-    time_to_update = (mainSettings.search_pos != 8) ? pgm_read_word(&search_time[mainSettings.search_pos]) : pgm_read_word(&search_time[map((imp_s > SEARCH_IND_MAX) ? SEARCH_IND_MAX : imp_s, 0, SEARCH_IND_MAX, 7, 0)]);
+    imp_s = search_buff[0] * (1000.00 / pgm_read_word(&search_time[mainSettings.search_pos])); //персчет имп/сек.
 
-    now_pos = (float)time_to_update / ((float)pumpSettings.wdt_period / 100.0);
+    score_now = (mainSettings.search_score != 8) ? mainSettings.search_score : map((imp_s > SEARCH_IND_MAX) ? SEARCH_IND_MAX : imp_s, 0, SEARCH_IND_MAX, 0, 7);
+    score_now = pgm_read_word(&search_score[score_now]);
 
-    cnt = 0; //сброс
+    score_cnt = 0; //сброс
     graf = 0; //разрешаем обновление графика
   }
 
@@ -1959,6 +1971,8 @@ void _search_update(void) //обновление данных поиска
 uint8_t search_menu(void) //инициализация режима поиск
 {
   uint8_t units = 0; //переключатель единиц графика
+
+  search_time_now = (float)pgm_read_word(&search_time[mainSettings.search_pos]) / ((float)pumpSettings.wdt_period / 100.0); //переключатель динамического изменения времени
   graf = 0; //разрешаем обновление экрана
 
   while (1) {
@@ -1975,7 +1989,7 @@ uint8_t search_menu(void) //инициализация режима поиск
           rad_imp = 0; //сбрасываем имп/с
           rad_imp_m = 0; //сбрасываем имп/м
           rad_search = 0; //сбрасываем счет импульсов
-          search_time_now = 0; //сбрасываем время счета графика
+          search_score_now = 0; //сбрасываем время счета графика
           search_disable = 0; //разрешаем обновление графика
           for (uint8_t i = 0; i < 76; i++) search_buff[i] = 0; //очищаем буфер графика
           graf = 0; //разрешаем обновления экрана
@@ -1986,7 +2000,7 @@ uint8_t search_menu(void) //инициализация режима поиск
           break;
 
         case UP_KEY_PRESS: //доп.действие
-          search_disable = (search_disable) ? 0 : 1; //запрещаем обновление графика
+          search_disable = !search_disable; //запрещаем обновление графика
           graf = 0; //разрешаем обновления экрана
           break;
 
@@ -2304,6 +2318,13 @@ void _settings_item_switch(boolean set, boolean inv, uint8_t num, uint8_t pos) /
       }
       break;
 
+    case _SET_AVERAG_POS: //Усреднение
+      switch (set) {
+        case 0: print(S_ITEM_AVERAG, LEFT, pos_row); break; //Усреднение:
+        case 1: printNumI(mainSettings.averag_time, RIGHT, pos_row); break;
+      }
+      break;
+
     case _SET_SIGMA_POS: //Сигма
       switch (set) {
         case 0: print(S_ITEM_SIGMA, LEFT, pos_row); break; //Сигма:
@@ -2314,7 +2335,14 @@ void _settings_item_switch(boolean set, boolean inv, uint8_t num, uint8_t pos) /
     case _SET_SEARCH_POS: //Поиск
       switch (set) {
         case 0: print(S_ITEM_SEARCH, LEFT, pos_row); break; //Поиск:
-        case 1: if (mainSettings.search_pos != 8) printNumI(pgm_read_word(&search_time[mainSettings.search_pos]), RIGHT, pos_row); else print(S_SWITCH_AUTO, RIGHT, pos_row); break;
+        case 1: if (mainSettings.search_score != 8) printNumI(pgm_read_word(&search_score[mainSettings.search_score]), RIGHT, pos_row); else print(S_SWITCH_AUTO, RIGHT, pos_row); break;
+      }
+      break;
+
+    case _SET_SPEED_POS: //Скорость
+      switch (set) {
+        case 0: print(S_ITEM_SPEED, LEFT, pos_row); break; //Скорость:
+        case 1: pgm_read_word(&search_time[mainSettings.search_pos]); break;
       }
       break;
 
@@ -2382,8 +2410,7 @@ void _settings_item_switch(boolean set, boolean inv, uint8_t num, uint8_t pos) /
 //------------------------------------Прибавление данных------------------------------------------------------
 void _settings_data_up(uint8_t pos) //прибавление данных
 {
-  switch (pos)
-  {
+  switch (pos) {
     case _SET_TIME_SLEEP: //Сон
       switch (mainSettings.sleep_switch) {
         case 0: mainSettings.sleep_switch = 2; _LIGHT_ON(); break;
@@ -2408,8 +2435,10 @@ void _settings_data_up(uint8_t pos) //прибавление данных
     case _SET_KNOCK_DISABLE: mainSettings.knock_disable = 0; break; //Зв.кнопок
 
     case _SET_MEASUR_POS: if (mainSettings.measur_pos < 9) mainSettings.measur_pos++; break; //Разн.зам
+    case _SET_AVERAG_POS: if (mainSettings.averag_time < 60) mainSettings.averag_time++; else mainSettings.averag_time = 1; break; //Усреднение
     case _SET_SIGMA_POS: if (mainSettings.sigma_pos < 2) mainSettings.sigma_pos++; else mainSettings.sigma_pos = 0; break; //Сигма
-    case _SET_SEARCH_POS: if (mainSettings.search_pos < 8) mainSettings.search_pos++; else mainSettings.search_pos = 0; break; //Поиск
+    case _SET_SEARCH_POS: if (mainSettings.search_score < 8) mainSettings.search_score++; else mainSettings.search_score = 0; break; //Поиск
+    case _SET_SPEED_POS: if (mainSettings.search_pos < 7) mainSettings.search_pos++; else mainSettings.search_pos = 0; break; //Скорость
     case _SET_RAD_MOD: mainSettings.rad_mode = 1; break; //Ед.измер
 
     case _SET_ALARM_BACK: if (mainSettings.alarm_back < 3) mainSettings.alarm_back++; break; //Тревога Ф
@@ -2426,8 +2455,7 @@ void _settings_data_up(uint8_t pos) //прибавление данных
 //------------------------------------Убавление данных------------------------------------------------------
 void _settings_data_down(uint8_t pos) //убавление данных
 {
-  switch (pos)
-  {
+  switch (pos) {
     case _SET_TIME_SLEEP: if (mainSettings.time_sleep > 10) { //Сон
         mainSettings.time_sleep -= 5;
         if (mainSettings.time_bright == mainSettings.time_sleep) mainSettings.time_bright -= 5;
@@ -2444,8 +2472,10 @@ void _settings_data_down(uint8_t pos) //убавление данных
     case _SET_KNOCK_DISABLE: mainSettings.knock_disable = 1; break; //Зв.кнопок
 
     case _SET_MEASUR_POS: if (mainSettings.measur_pos) mainSettings.measur_pos--;  break; //Разн.зам
+    case _SET_AVERAG_POS: if (mainSettings.averag_time > 1) mainSettings.averag_time--; else mainSettings.averag_time = 60; break; //Усреднение
     case _SET_SIGMA_POS: if (mainSettings.sigma_pos) mainSettings.sigma_pos--; else mainSettings.sigma_pos = 2; break; //Сигма
-    case _SET_SEARCH_POS: if (mainSettings.search_pos) mainSettings.search_pos--; else mainSettings.search_pos = 8; break; //Поиск
+    case _SET_SEARCH_POS: if (mainSettings.search_score) mainSettings.search_score--; else mainSettings.search_score = 8; break; //Поиск
+    case _SET_SPEED_POS: if (mainSettings.search_pos) mainSettings.search_pos--; else mainSettings.search_pos = 7; break; //Скорость
     case _SET_RAD_MOD: mainSettings.rad_mode = 0; break; //Ед.измер
 
     case _SET_ALARM_BACK: if (mainSettings.alarm_back) mainSettings.alarm_back--; break; //Тревога Ф
@@ -3426,7 +3456,6 @@ void _init_back_bar(uint32_t num) //отрисовка предела фона
 //----------------------------------Главные экраны------------------------------------------------------
 uint8_t main_screen(void)
 {
-  static uint8_t back_mode; //переключатель режима фон
   sleep_disable = 0; //разрешаем сон
 
   while (1) {
@@ -3443,13 +3472,16 @@ uint8_t main_screen(void)
           if (skip_warn_messege()) { //если нет предупреждения
             switch (scr_mode) { //основные экраны
               case 0: //сбрасываем фон
-                for (uint8_t i = 0; i < BUFF_LENGTHY; i++) rad_buff[i] = 0; //очищаем буфер фона
                 accur_percent = 99; //сбрасываем статистическую точность
                 back_time_now = geiger_time_now = 0; //сбрасываем счетчик накопления импульсов в буфере
                 mid_time_now = 0; //сбрасываем рассчет среднего
                 rad_back = 0; //сбрасываем фон
 
-                if (back_mode) rad_max = 0; //сбрасываем максимальное значение фона
+                switch (back_mode) {
+                  case 0: for (uint8_t i = 0; i < 60; i++) rad_buff[i] = 0; break; //очищаем буфер фона
+                  case 1: for (uint8_t i = 0; i < 60; i++) rad_mid_buff[i] = 0; break; //очищаем буфер усреденения
+                  case 2: rad_max = 0; break; //сбрасываем максимальное значение фона
+                }
                 break;
 
               case 1: data_reset(dose_mode); return MAIN_PROGRAM; //сбрасываем дозу и время
@@ -3460,7 +3492,7 @@ uint8_t main_screen(void)
         case UP_KEY_PRESS: //доп.действие
           if (skip_warn_messege()) { //если нет предупреждения
             switch (scr_mode) { //основные экраны
-              case 0: back_mode = !back_mode; break; //переключаем экраны фона
+              case 0: if (back_mode < 2) back_mode++; else back_mode = 0; break; //переключаем экраны фона
               case 1: dose_mode = !dose_mode; break; //переключаем экраны дозы
             }
           }
@@ -3517,8 +3549,8 @@ uint8_t main_screen(void)
             switch (alarm_switch) {
               case 0:
 #if BUFF_SCALE_RETURN || COEF_DEBUG
-                drawLine(3, 1, map(geiger_time_now, 0, BUFF_LENGTHY, 5, 82), 0x06); //шкала точности
-                drawLine(3, 1, map(mid_time_now, 0, MID_BUFF_LENGTHY, 5, 82), 0x30); //шкала усреднения
+                drawLine(3, 1, map(geiger_time_now, 0, 60, 5, 82), 0x06); //шкала точности
+                drawLine(3, 1, map(mid_time_now, 0, mainSettings.averag_time, 5, 82), 0x30); //шкала усреднения
 #else
                 _init_back_bar(rad_back);
 #endif
@@ -3527,8 +3559,17 @@ uint8_t main_screen(void)
             }
 
             switch (back_mode) {
-              case 0: for (uint8_t i = 4; i < 80; i++) graf_lcd(map(rad_buff[(i >> 1) - 1], 0, (graf_max < 15) ? 15 : graf_max, 0, 15), i, 15, 2); break; //инициализируем график
-              case 1: //максимальный и средний фон
+              default:
+                for (uint8_t i = 0; i < 60; i++) graf_lcd(map((back_mode) ? rad_mid_buff[i] : rad_buff[i], 0, graf_max, 1, 14), i + 4, 15, 2); //инициализируем график
+                drawDashLine(4, 6, 15, 2, 0x01);
+                drawLine(4, 61, 83, 0xFF);
+                drawLine(5, 61, 83, 0xFF);
+                invertText(true);
+                printNumI(60, 66, 32); //строка 1
+                print((back_mode) ? MAIN_SCREEN_GRAF_MIN : MAIN_SCREEN_GRAF_SEC, 63, 40, 1); //строка 2
+                invertText(false);
+                break;
+              case 2: //максимальный и средний фон
 #if COEF_DEBUG //отладка коэффициента
                 print(D_COEF_NOW, 0, 32); //строка 1 текущ:
                 printNumF(debug_now, 2, RIGHT, 32, 46, 5); //строка 1

@@ -13,6 +13,8 @@
 #define RIGHT 255
 #define CENTER 254
 
+#define drawCenter(x, max_x, line) (uint8_t)(x + (max_x - (cfont.x_size * (sizeof(line) - 1))) / 2)
+
 //основные команды
 #define PCD8544_POWERDOWN 0x04
 #define PCD8544_ENTRYMODE 0x02
@@ -42,7 +44,6 @@ struct _current_font {
   uint8_t x_size;
   uint8_t y_size;
   uint8_t offset;
-  uint8_t numchars;
   uint8_t inverted;
 } cfont;
 
@@ -219,11 +220,20 @@ void clrScr(void) //очистка экрана
 //-------------------------Очистка строки----------------------------------------------------
 void drawLine(uint8_t row, uint8_t start_x, uint8_t end_x, uint8_t line) //очистка строки
 {
-  uint16_t start = start_x + (uint16_t)(row * 84);
-  uint16_t end = end_x + (uint16_t)(row * 84);
+  uint16_t start = start_x + ((uint16_t)row * 84);
+  uint16_t end = end_x + ((uint16_t)row * 84);
   for (uint16_t c = start; c <= end; c++) {
     if (!line) _lcd_buffer[c] = 0;
     else _lcd_buffer[c] |= line;
+  }
+}
+//------------------------Отрисовка прочерков-------------------------------------------------
+void drawDashLine(uint8_t row, uint8_t start_x, uint8_t len_line, uint8_t len_dot, uint8_t line) //отрисовка прочерков
+{
+  uint16_t start = start_x + ((uint16_t)row * 84);
+  for (uint8_t i = 0; i < len_line; i++) {
+    for (uint8_t c = 0; c < len_dot; c++) _lcd_buffer[start++] |= line;
+    start += len_dot;
   }
 }
 //-------------------------Инверсия экрана----------------------------------------------------
@@ -249,7 +259,6 @@ void setFont(const uint8_t* font) //установка шрифта
   cfont.x_size = fontbyte(0);
   cfont.y_size = fontbyte(1);
   cfont.offset = fontbyte(2);
-  cfont.numchars = fontbyte(3);
 }
 //-------------------------Вывод текста----------------------------------------------------
 void print(const char *st, uint8_t x, uint8_t y, boolean mem) //вывод текста
@@ -330,7 +339,7 @@ void _print_char(uint8_t c, uint8_t x, uint8_t row, uint8_t steps) //отрис�
   if (((x + cfont.x_size) <= 84) and (row + (cfont.y_size / 8) <= 6)) {
     for (uint8_t rowcnt = 0; rowcnt < (cfont.y_size / 8); rowcnt++) {
       uint16_t cell = (row + rowcnt) * 84 + x;
-      uint16_t font_idx = ((c - cfont.offset) * (cfont.x_size * (cfont.y_size / 8))) + 4;
+      uint16_t font_idx = ((c - cfont.offset) * (cfont.x_size * (cfont.y_size / 8))) + 3;
 
       for (uint16_t cnt = 0; cnt < cfont.x_size; cnt++) {
         switch (cfont.inverted) {
