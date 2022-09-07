@@ -243,7 +243,8 @@ float rad_imp_m; //импульсы в минуту
 uint16_t scan_ind; //шкала имп/с
 uint32_t rad_search; //фон в режиме поиск
 
-uint16_t graf_max = 3; //максимальный уровень маштабирования графика
+uint16_t graf_max = 3; //максимальный уровень маштабирования секундного графика
+uint16_t graf_mid_max = 3; //максимальный уровень маштабирования минутного графика
 
 boolean search_disable = 0; //флаг запрета движения графика
 uint8_t search_time_now = 0; //установленное время поиска
@@ -741,10 +742,10 @@ boolean _data_update(void) //преобразование данных
           break;
 
         case TASK_ARRAY_SHIFT: //перезапись массива секундных замеров и поиск максимума для графика
-          if (back_mode != 1) graf_max = 3; //сбрасываем максимум графика
+          graf_max = 3; //сбрасываем максимум графика
           for (uint8_t i = 59; i > 0; i--) { //перезапись массива
             rad_buff[i] = rad_buff[i - 1]; //смещаем ячейку
-            if ((back_mode != 1) && rad_buff[i] > graf_max) graf_max = rad_buff[i]; //ищем максимум
+            if (rad_buff[i] > graf_max) graf_max = rad_buff[i]; //ищем максимум
           }
           break;
 
@@ -769,10 +770,10 @@ boolean _data_update(void) //преобразование данных
 
         case TASK_CALC_BACK_2: //перезапись массива буфера усреднения
           if (back_time_now >= 60) { //если основной буфер перезаписался
-            if (back_mode == 1) graf_max = 3; //сбрасываем максимум графика
+            graf_mid_max = 3; //сбрасываем максимум графика
             for (uint8_t i = 59; i > 0; i--) { //перезапись массива
               rad_mid_buff[i] = rad_mid_buff[i - 1]; //смещаем ячейку
-              if ((back_mode == 1) && rad_mid_buff[i] > graf_max) graf_max = rad_mid_buff[i]; //ищем максимум
+              if (rad_mid_buff[i] > graf_mid_max) graf_mid_max = rad_mid_buff[i]; //ищем максимум
             }
             rad_mid_buff[0] = temp_buff; //записываем основной массив в массив усреднения
           }
@@ -3560,7 +3561,7 @@ uint8_t main_screen(void)
 
             switch (back_mode) {
               default:
-                for (uint8_t i = 0; i < 60; i++) graf_lcd(map((back_mode) ? rad_mid_buff[i] : rad_buff[i], 0, graf_max, 1, 14), i + 4, 15, 2); //инициализируем график
+                for (uint8_t i = 0; i < 60; i++) graf_lcd(map((back_mode) ? rad_mid_buff[i] : rad_buff[i], 0, (back_mode) ? graf_mid_max : graf_max, 1, 14), i + 4, 15, 2); //инициализируем график
                 drawDashLine(4, 6, 15, 2, 0x01);
                 drawLine(4, 61, 83, 0xFF);
                 drawLine(5, 61, 83, 0xFF);
