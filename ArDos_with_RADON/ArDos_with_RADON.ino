@@ -2343,7 +2343,7 @@ void _settings_item_switch(boolean set, boolean inv, uint8_t num, uint8_t pos) /
     case _SET_SPEED_POS: //Скорость
       switch (set) {
         case 0: print(S_ITEM_SPEED, LEFT, pos_row); break; //Скорость:
-        case 1: pgm_read_word(&search_time[mainSettings.search_pos]); break;
+        case 1: printNumI(pgm_read_word(&search_time[mainSettings.search_pos]), RIGHT, pos_row); break;
       }
       break;
 
