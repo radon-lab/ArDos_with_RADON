@@ -3529,8 +3529,8 @@ uint8_t main_screen(void)
             switch (back_mode) {
               default:
                 drawBitmap(0, 32, scan_left_img, 4, 16); //рисуем левую шкалу
-                for (uint8_t x = 0; x < 60; x++) drawGraf(map((back_mode) ? rad_mid_buff[x] : rad_buff[x], 0, (back_mode) ? graf_mid_max : graf_max, 1, 14), x + 1, 2); //инициализируем график
-                drawDashLine(4, 5, 15, 2, 0x01);
+                for (uint8_t x = 0; x < 60; x++) drawGraf(map((back_mode) ? rad_mid_buff[x] : rad_buff[x], 0, (back_mode) ? graf_mid_max : graf_max, 1, 14), x, 2); //инициализируем график
+                drawDashLine(4, 6, 15, 2, 0x01);
                 drawLine(4, 65, 83, 0xFF);
                 drawLine(5, 65, 83, 0xFF);
                 invertText(true);
