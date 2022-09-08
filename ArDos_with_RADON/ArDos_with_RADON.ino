@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.13
-  Версия программы RADON v3.9.7 low_pwr release 07.09.22 специально для проекта ArDos
+  Версия программы RADON v3.9.7 low_pwr release 08.09.22 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/ardos-dozimetr-prodolzhenie-temy-chast-%E2%84%962 и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -114,10 +114,8 @@
 #include "EEPROM.h"
 #include "config.h"
 #include "settings.h"
-#include "display.h"
-#include "resources.c"
-#include "connection.h"
 #include "uartSender.h"
+#include "display.h"
 
 //-------------Для разработчиков-------------
 const float ALARM_AUTO_GISTERESIS = (1.00 - (ALARM_AUTO_GIST / 100.00)); //инвертируем проценты
@@ -244,7 +242,7 @@ uint16_t scan_ind; //шкала имп/с
 uint32_t rad_search; //фон в режиме поиск
 
 uint16_t graf_max = 3; //максимальный уровень маштабирования секундного графика
-uint16_t graf_mid_max = 3; //максимальный уровень маштабирования минутного графика
+uint32_t graf_mid_max = 3; //максимальный уровень маштабирования минутного графика
 
 boolean search_disable = 0; //флаг запрета движения графика
 uint8_t search_time_now = 0; //установленное время поиска
@@ -2049,15 +2047,16 @@ uint8_t search_menu(void) //инициализация режима поиск
             break;
         }
 
+        drawBitmap(0, 24, scan_alt_left_img, 4, 24); //рисуем левую шкалу
+        drawBitmap(80, 24, scan_alt_right_img, 4, 24); //рисуем правую шкалу
 #if TYPE_GRAF_MOVE //слева-направо
-        for (uint8_t i = 4; i < 80; i++) {
-          graf_lcd(map(search_buff[i - 4], 0, graf_max, 0, 22), i, 22, 3); //инициализируем график
-        }
+        for (uint8_t x = 0; x < 76; x++) {
 #else //справа-налево
-        for (uint8_t i = 79; i > 3; i--) {
-          graf_lcd(map(search_buff[i - 4], 0, graf_max, 0, 22), i, 22, 3); //инициализируем график
-        }
+        for (uint8_t x = 76; x;) {
+          x--;
 #endif
+          drawGraf(map(search_buff[x], 0, graf_max, 0, 22), x, 3); //инициализируем график
+        }
       }
 
       drawLine(2, scan_ind + 1, 54); //убираем лишнее
@@ -2066,38 +2065,6 @@ uint8_t search_menu(void) //инициализация режима поиск
     }
   }
   return INIT_PROGRAM;
-}
-//--------------------------------Отрисовка графика-------------------------------------
-void graf_lcd(uint8_t val, uint8_t pos, uint8_t max_val, uint8_t height) //отрисовка графика
-{
-  if (val > max_val) val = max_val; //ограничивываем максимум
-  switch (height) {
-    case 2:
-      if (pos == 4) drawBitmap(0, 32, scan_left_img, 4, 16); //рисуем левую шкалу
-      if (pos == 79) drawBitmap(80, 32, scan_right_img, 4, 16); //рисуем правую шкалу
-      break;
-
-    case 3:
-      if (pos == 4) drawBitmap(0, 24, scan_alt_left_img, 4, 24); //рисуем левую шкалу
-      if (pos == 79) drawBitmap(80, 24, scan_alt_right_img, 4, 24); //рисуем правую шкалу
-      break;
-  }
-
-  for (uint8_t i = 0; i < height; i++) { //отрисовываем 3 строки
-    uint8_t bits = 0; //буфер бит
-    if (val >= 8) { //если уровень больше 8
-      bits = 0xFF; //устанавливаем заполненный столбец
-      val -= 8; //отнимаем уровень
-    }
-    else { //если уровень меньше 8
-      while (val) { //пока есть уровень
-        bits >>= 0x01; //смещаем буфер бит
-        bits |= 0x80; //устанавливаем бит в буфер
-        val--; //отнимаем уровень
-      }
-    }
-    drawLine(5 - i, pos, pos, bits); //отрисовка
-  }
 }
 //-----------------------------------Параметры-----------------------------------------
 uint8_t parameters(void) //параметры
@@ -3561,13 +3528,14 @@ uint8_t main_screen(void)
 
             switch (back_mode) {
               default:
-                for (uint8_t i = 0; i < 60; i++) graf_lcd(map((back_mode) ? rad_mid_buff[i] : rad_buff[i], 0, (back_mode) ? graf_mid_max : graf_max, 1, 14), i + 4, 15, 2); //инициализируем график
-                drawDashLine(4, 6, 15, 2, 0x01);
-                drawLine(4, 61, 83, 0xFF);
-                drawLine(5, 61, 83, 0xFF);
+                drawBitmap(0, 32, scan_left_img, 4, 16); //рисуем левую шкалу
+                for (uint8_t x = 0; x < 60; x++) drawGraf(map((back_mode) ? rad_mid_buff[x] : rad_buff[x], 0, (back_mode) ? graf_mid_max : graf_max, 1, 14), x + 1, 2); //инициализируем график
+                drawDashLine(4, 5, 15, 2, 0x01);
+                drawLine(4, 65, 83, 0xFF);
+                drawLine(5, 65, 83, 0xFF);
                 invertText(true);
-                printNumI(60, 66, 32); //строка 1
-                print((back_mode) ? MAIN_SCREEN_GRAF_MIN : MAIN_SCREEN_GRAF_SEC, 63, 40); //строка 2
+                printNumI(60, 68, 32); //строка 1
+                print((back_mode) ? MAIN_SCREEN_GRAF_MIN : MAIN_SCREEN_GRAF_SEC, 65, 40); //строка 2
                 invertText(false);
                 break;
               case 2: //максимальный и средний фон

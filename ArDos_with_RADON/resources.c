@@ -170,6 +170,9 @@ const uint8_t percent_img[] PROGMEM = { //%
 const uint8_t plus_minus_img[] PROGMEM = { //±
   0x48, 0x5C, 0x48
 };
+const uint8_t graf_line[] PROGMEM = { //полоски графика
+  0x00, 0x80, 0xC0, 0xE0, 0xF0, 0xF8, 0xFC, 0xFE, 0xFF
+};
 
 #ifdef RUSSIAN //если выбран язык "русский"
 const uint8_t day_img[] PROGMEM = { //дн

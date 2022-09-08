@@ -1,3 +1,4 @@
+#include "resources.c"
 #include "languages.h"
 #include "connection.h"
 #include "DefaultFonts.c"
@@ -217,6 +218,21 @@ void clrScr(void) //очистка экрана
 {
   for (uint16_t c = 0; c < 504; c++) _lcd_buffer[c] = 0;
 }
+//-------------------------Отрисовка изображений-----------------------------------------------
+void drawBitmap(uint8_t x, uint8_t y, const uint8_t* bitmap, uint8_t size_x, uint8_t size_y) //отрисовка изображений
+{
+  uint8_t start_y, rows;
+
+  start_y = y / 8;
+
+  if (size_y % 8 == 0) rows = size_y / 8;
+  else rows = (size_y / 8) + 1;
+
+  for (uint8_t cy = 0; cy < rows; cy++) {
+    uint16_t cell = (start_y + cy) * 84 + x;
+    for (uint8_t cx = 0; cx < size_x; cx++) _lcd_buffer[cell + cx] = bitmapbyte(cx + (cy * size_x));
+  }
+}
 //-------------------------Очистка строки----------------------------------------------------
 void drawLine(uint8_t row, uint8_t start_x, uint8_t end_x, uint8_t line) //очистка строки
 {
@@ -234,6 +250,15 @@ void drawDashLine(uint8_t row, uint8_t start_x, uint8_t len_line, uint8_t len_do
   for (uint8_t i = 0; i < len_line; i++) {
     for (uint8_t c = 0; c < len_dot; c++) _lcd_buffer[start++] |= line;
     start += len_dot;
+  }
+}
+//--------------------------------Отрисовка графика-------------------------------------
+void drawGraf(uint8_t val, uint8_t pos_x, uint8_t height) //отрисовка графика
+{
+  for (uint8_t y = 0; y < height; y++) { //отрисовываем строки
+    _lcd_buffer[424 - (84 * y) + pos_x] |= pgm_read_byte(&graf_line[(val > 8) ? 8 : val]);
+    if (val > 8) val -= 8;
+    else val = 0;
   }
 }
 //-------------------------Инверсия экрана----------------------------------------------------
@@ -348,20 +373,5 @@ void _print_char(uint8_t c, uint8_t x, uint8_t row, uint8_t steps) //отрис�
         }
       }
     }
-  }
-}
-//-------------------------Отрисовка изображений-----------------------------------------------
-void drawBitmap(uint8_t x, uint8_t y, const uint8_t* bitmap, uint8_t size_x, uint8_t size_y) //отрисовка изображений
-{
-  uint8_t start_y, rows;
-
-  start_y = y / 8;
-
-  if (size_y % 8 == 0) rows = size_y / 8;
-  else rows = (size_y / 8) + 1;
-
-  for (uint8_t cy = 0; cy < rows; cy++) {
-    uint16_t cell = (start_y + cy) * 84 + x;
-    for (uint8_t cx = 0; cx < size_x; cx++) _lcd_buffer[cell + cx] = bitmapbyte(cx + (cy * size_x));
   }
 }
