@@ -1,6 +1,5 @@
 #include "resources.c"
 #include "languages.h"
-#include "connection.h"
 #include "DefaultFonts.c"
 
 //дерективы для управления дисплеем
@@ -34,9 +33,9 @@
 #define PCD8544_SETBIAS 0x10
 #define PCD8544_SETVOP 0x80
 //установки дисплея
-#define LCD_BIAS 0x03  //0-7 (0x00-0x07)
-#define LCD_TEMP 0x02  //0-3 (0x00-0x03)
-#define LCD_CONTRAST 0x46  //0-127 (0x00-0x7F)
+#define LCD_BIAS 0x03  //(0..7)(0x00..0x07)
+#define LCD_TEMP 0x02  //(0..3)(0x00..0x03)
+#define LCD_CONTRAST 0x46  //(0..127)(0x00..0x7F)
 
 uint8_t _lcd_buffer[504]; //буфер дисплея
 
@@ -45,7 +44,7 @@ struct _current_font {
   uint8_t x_size;
   uint8_t y_size;
   uint8_t offset;
-  uint8_t inverted;
+  boolean inverted;
 } cfont;
 
 void setContrast(uint8_t contrast);
@@ -272,10 +271,7 @@ void invert(boolean mode) //инверсия экрана
 //-------------------------Инверсия текста----------------------------------------------------
 void invertText(boolean mode) //инверсия текста
 {
-  switch (mode) {
-    case 0: cfont.inverted = 0; break;
-    case 1: cfont.inverted = 1; break;
-  }
+  cfont.inverted = mode;
 }
 //-------------------------Установка шрифта----------------------------------------------------
 void setFont(const uint8_t* font) //установка шрифта
@@ -367,10 +363,8 @@ void _print_char(uint8_t c, uint8_t x, uint8_t row, uint8_t steps) //отрис�
       uint16_t font_idx = ((c - cfont.offset) * (cfont.x_size * (cfont.y_size / 8))) + 3;
 
       for (uint16_t cnt = 0; cnt < cfont.x_size; cnt++) {
-        switch (cfont.inverted) {
-          case 0: _lcd_buffer[cell + cnt] = fontbyte(font_idx + cnt + (rowcnt * cfont.x_size)) >> steps; break;
-          case 1: _lcd_buffer[cell + cnt] = ~(fontbyte(font_idx + cnt + (rowcnt * cfont.x_size)) >> steps); break;
-        }
+        if (cfont.inverted) _lcd_buffer[cell + cnt] = ~(fontbyte(font_idx + cnt + (rowcnt * cfont.x_size)) >> steps);
+        else _lcd_buffer[cell + cnt] = fontbyte(font_idx + cnt + (rowcnt * cfont.x_size)) >> steps;
       }
     }
   }
