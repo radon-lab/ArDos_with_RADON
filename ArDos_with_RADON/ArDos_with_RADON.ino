@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.13
-  Версия программы RADON v3.9.8 low_pwr release 13.09.22 специально для проекта ArDos
+  Версия программы RADON v3.9.8 low_pwr release 29.09.22 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/ardos-dozimetr-prodolzhenie-temy-chast-%E2%84%962 и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -221,7 +221,7 @@ enum {
   _SET_ALARM_DOSE,       //тревога доза
   _SET_WARN_LEVEL_DOSE,  //порог доза 1
   _SET_ALARM_LEVEL_DOSE, //порог доза 2
-#if USE_UART
+#if USE_UART && (UART_SEND_BACK || UART_SEND_DOSE || UART_SEND_IMP)
   _SET_UART_MOD,         //последовательный порт
 #endif
   _SET_MENU_ALL          //всего пунктов меню
@@ -969,17 +969,20 @@ boolean _data_update(void) //преобразование данных
           }
 #endif
           break;
-#if USE_UART
+#if USE_UART && (UART_SEND_BACK || UART_SEND_DOSE || UART_SEND_IMP)
         case TASK_UPDATE_UART: //отправляем данные в порт
+          if (!dataChannelState()) { //если порт включен
 #if UART_SEND_BACK
-          sendNumI(rad_back);
+            sendNum(rad_back, 'B', ' '); //отправка данных
 #endif
 #if UART_SEND_DOSE
-          sendNumI(rad_dose);
+            sendNum(rad_dose, 'D', ' '); //отправка данных
 #endif
 #if UART_SEND_IMP
-          sendNumI(rad_buff[0]);
+            sendNum(rad_buff[0], 'I', ' '); //отправка данных
 #endif
+            sendEnd(); //отправка конца строки
+          }
           break;
 #endif
       }
@@ -2378,13 +2381,12 @@ void _settings_item_switch(boolean set, boolean inv, uint8_t num, uint8_t pos) /
       }
       break;
 
-#if USE_UART
+#if USE_UART && (UART_SEND_BACK || UART_SEND_DOSE || UART_SEND_IMP)
     case _SET_UART_MOD:
       switch (set) {
         case 0: print(S_ITEM_UART_SET, LEFT, pos_row); break; //Порт:
-        case 1: if (!UCSR0B) print(ALL_SWITCH_OFF, RIGHT, pos_row); else printNumI(UART_BAUND, RIGHT, pos_row); break;
+        case 1: if (dataChannelState()) print(ALL_SWITCH_OFF, RIGHT, pos_row); else printNumI(UART_BAUND, RIGHT, pos_row); break;
       }
-
       break;
 #endif
   }
@@ -2430,8 +2432,8 @@ void _settings_data_up(uint8_t pos) //прибавление данных
     case _SET_ALARM_DOSE: if (mainSettings.alarm_dose < 3) mainSettings.alarm_dose++; break; //Тревога Д
     case _SET_WARN_LEVEL_DOSE: if (mainSettings.warn_level_dose < 300) mainSettings.warn_level_dose += 5; else mainSettings.warn_level_dose = 10; break; //Порог Д1
     case _SET_ALARM_LEVEL_DOSE: if (mainSettings.alarm_level_dose < 500) mainSettings.alarm_level_dose += 10; else if (mainSettings.alarm_level_dose < 1000) mainSettings.alarm_level_dose += 50; else if (mainSettings.alarm_level_dose < 65000) mainSettings.alarm_level_dose += 100; else mainSettings.alarm_level_dose = 300; break; //Порог Д2
-#if USE_UART
-    case _SET_UART_MOD: if (!UCSR0B) dataChannelInit(); else dataChannelEnd(); break; //Порт
+#if USE_UART && (UART_SEND_BACK || UART_SEND_DOSE || UART_SEND_IMP)
+    case _SET_UART_MOD: if (dataChannelState()) dataChannelInit(); else dataChannelEnd(); break; //Порт
 #endif
   }
 }
@@ -2467,8 +2469,8 @@ void _settings_data_down(uint8_t pos) //убавление данных
     case _SET_ALARM_DOSE: if (mainSettings.alarm_dose) mainSettings.alarm_dose--; break; //Тревога Д
     case _SET_WARN_LEVEL_DOSE: if (mainSettings.warn_level_dose > 10) mainSettings.warn_level_dose -= 5; else mainSettings.warn_level_dose = 300; break; //Порог Д1
     case _SET_ALARM_LEVEL_DOSE: if (mainSettings.alarm_level_dose > 1000) mainSettings.alarm_level_dose -= 100; else if (mainSettings.alarm_level_dose > 500) mainSettings.alarm_level_dose -= 50; else if (mainSettings.alarm_level_dose > 300) mainSettings.alarm_level_dose -= 10; else mainSettings.alarm_level_dose = 65000; break; //Порог Д2
-#if USE_UART
-    case _SET_UART_MOD: if (!UCSR0B) dataChannelInit(); else dataChannelEnd(); break; //Порт
+#if USE_UART && (UART_SEND_BACK || UART_SEND_DOSE || UART_SEND_IMP)
+    case _SET_UART_MOD: if (dataChannelState()) dataChannelInit(); else dataChannelEnd(); break; //Порт
 #endif
   }
 }
