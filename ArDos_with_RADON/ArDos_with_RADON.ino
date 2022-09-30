@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.13
-  Версия программы RADON v3.9.8 low_pwr release 29.09.22 специально для проекта ArDos
+  Версия программы RADON v3.9.8 low_pwr release 30.09.22 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/ardos-dozimetr-prodolzhenie-temy-chast-%E2%84%962 и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -105,6 +105,9 @@
 
   - Нет счета
   Отсутствуют импульсы от счетчика, проверьте цепи подключения счетчика, сам счетчик или преобразователь.
+
+  - Короткое замыкание или зашкал детектора
+  Вход детектора находится в низком уровне слишком долго, возможно короткое замыкание в цепи детектора импульсов или тлеющий разряд в счетчике.
 */
 
 //----------------Библиотеки----------------
@@ -765,7 +768,7 @@ boolean _data_update(void) //преобразование данных
               if (mid_time_now < mainSettings.averag_time) mid_time_now++; //прибавляем указатель заполненности буффера
             }
 
-#if GEIGER_DEAD_TIME
+#if !APPROX_BACK_SCORE && GEIGER_DEAD_TIME
             if (rad_buff[0] >= COUNT_RATE) { //если скорость счета больше 100имп/с
               uint32_t count_buff = rad_buff[0] / (1.00 - rad_buff[0] * DEAD_TIME); //учитываем мертвое время счетчика
               if (count_buff < 65535) rad_buff[0] = count_buff; //если счетчик не переполнен
@@ -993,7 +996,7 @@ boolean _data_update(void) //преобразование данных
         speed_hv = speed_pump; //текущая скорость накачки
         speed_pump = 0; //сбрасываем скорость накачки
 
-        if (tmr_upd_err >= ERROR_LENGTHY_TIME) {
+        if (tmr_upd_err >= CONV_ERROR_TIME) {
           if (speed_hv >= HV_SPEED_ERROR) { //если текущая скорость накачки выше порога
 #if LOGBOOK_RETURN
             _logbook_data_update(3, 2, speed_hv); //обновление журнала устанавливаем ошибку 2 - перегрузка преобразователя
@@ -2307,7 +2310,7 @@ void _settings_item_switch(boolean set, boolean inv, uint8_t num, uint8_t pos) /
     case _SET_AVERAG_POS: //Усреднение
       switch (set) {
         case 0: print(S_ITEM_AVERAG, LEFT, pos_row); break; //Усреднение:
-        case 1: printNumI(mainSettings.averag_time, RIGHT, pos_row); break;
+        case 1: if (!mainSettings.averag_time) print(ALL_SWITCH_OFF, RIGHT, pos_row); else printNumI(mainSettings.averag_time, RIGHT, pos_row); break;
       }
       break;
 
@@ -2420,7 +2423,7 @@ void _settings_data_up(uint8_t pos) //прибавление данных
     case _SET_KNOCK_DISABLE: mainSettings.knock_disable = 0; break; //Зв.кнопок
 
     case _SET_MEASUR_POS: if (mainSettings.measur_pos < 9) mainSettings.measur_pos++; break; //Разн.зам
-    case _SET_AVERAG_POS: if (mainSettings.averag_time < 60) mainSettings.averag_time++; else mainSettings.averag_time = 1; break; //Усреднение
+    case _SET_AVERAG_POS: if (mainSettings.averag_time < 60) mainSettings.averag_time++; else mainSettings.averag_time = 0; break; //Усреднение
     case _SET_SIGMA_POS: if (mainSettings.sigma_pos < 2) mainSettings.sigma_pos++; else mainSettings.sigma_pos = 0; break; //Сигма
     case _SET_SEARCH_POS: if (mainSettings.search_score < 8) mainSettings.search_score++; else mainSettings.search_score = 0; break; //Поиск
     case _SET_SPEED_POS: if (mainSettings.search_pos < 7) mainSettings.search_pos++; else mainSettings.search_pos = 0; break; //Скорость
@@ -2457,7 +2460,7 @@ void _settings_data_down(uint8_t pos) //убавление данных
     case _SET_KNOCK_DISABLE: mainSettings.knock_disable = 1; break; //Зв.кнопок
 
     case _SET_MEASUR_POS: if (mainSettings.measur_pos) mainSettings.measur_pos--;  break; //Разн.зам
-    case _SET_AVERAG_POS: if (mainSettings.averag_time > 1) mainSettings.averag_time--; else mainSettings.averag_time = 60; break; //Усреднение
+    case _SET_AVERAG_POS: if (mainSettings.averag_time) mainSettings.averag_time--; else mainSettings.averag_time = 60; break; //Усреднение
     case _SET_SIGMA_POS: if (mainSettings.sigma_pos) mainSettings.sigma_pos--; else mainSettings.sigma_pos = 2; break; //Сигма
     case _SET_SEARCH_POS: if (mainSettings.search_score) mainSettings.search_score--; else mainSettings.search_score = 8; break; //Поиск
     case _SET_SPEED_POS: if (mainSettings.search_pos) mainSettings.search_pos--; else mainSettings.search_pos = 7; break; //Скорость
