@@ -2307,9 +2307,9 @@ void _settings_item_switch(boolean set, boolean inv, uint8_t num, uint8_t pos) /
       }
       break;
 
-    case _SET_AVERAG_POS: //Усреднение
+    case _SET_AVERAG_POS: //Усред.фон
       switch (set) {
-        case 0: print(S_ITEM_AVERAG, LEFT, pos_row); break; //Усреднение:
+        case 0: print(S_ITEM_AVERAG, LEFT, pos_row); break; //Усред.фон:
         case 1: if (!mainSettings.averag_time) print(ALL_SWITCH_OFF, RIGHT, pos_row); else printNumI(mainSettings.averag_time, RIGHT, pos_row); break;
       }
       break;
@@ -2423,7 +2423,7 @@ void _settings_data_up(uint8_t pos) //прибавление данных
     case _SET_KNOCK_DISABLE: mainSettings.knock_disable = 0; break; //Зв.кнопок
 
     case _SET_MEASUR_POS: if (mainSettings.measur_pos < 9) mainSettings.measur_pos++; break; //Разн.зам
-    case _SET_AVERAG_POS: if (mainSettings.averag_time < 60) mainSettings.averag_time++; else mainSettings.averag_time = 0; break; //Усреднение
+    case _SET_AVERAG_POS: if (mainSettings.averag_time < 60) mainSettings.averag_time++; else mainSettings.averag_time = 0; break; //Усред.фон
     case _SET_SIGMA_POS: if (mainSettings.sigma_pos < 2) mainSettings.sigma_pos++; else mainSettings.sigma_pos = 0; break; //Сигма
     case _SET_SEARCH_POS: if (mainSettings.search_score < 8) mainSettings.search_score++; else mainSettings.search_score = 0; break; //Поиск
     case _SET_SPEED_POS: if (mainSettings.search_pos < 7) mainSettings.search_pos++; else mainSettings.search_pos = 0; break; //Скорость
@@ -2460,7 +2460,7 @@ void _settings_data_down(uint8_t pos) //убавление данных
     case _SET_KNOCK_DISABLE: mainSettings.knock_disable = 1; break; //Зв.кнопок
 
     case _SET_MEASUR_POS: if (mainSettings.measur_pos) mainSettings.measur_pos--;  break; //Разн.зам
-    case _SET_AVERAG_POS: if (mainSettings.averag_time) mainSettings.averag_time--; else mainSettings.averag_time = 60; break; //Усреднение
+    case _SET_AVERAG_POS: if (mainSettings.averag_time) mainSettings.averag_time--; else mainSettings.averag_time = 60; break; //Усред.фон
     case _SET_SIGMA_POS: if (mainSettings.sigma_pos) mainSettings.sigma_pos--; else mainSettings.sigma_pos = 2; break; //Сигма
     case _SET_SEARCH_POS: if (mainSettings.search_score) mainSettings.search_score--; else mainSettings.search_score = 8; break; //Поиск
     case _SET_SPEED_POS: if (mainSettings.search_pos) mainSettings.search_pos--; else mainSettings.search_pos = 7; break; //Скорость
