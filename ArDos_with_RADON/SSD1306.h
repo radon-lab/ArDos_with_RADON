@@ -36,41 +36,7 @@
 //-------------------------Инициализация дисплея----------------------------------------------------
 void _init_lcd(void) //инициализация дисплея
 {
-  PRR &= ~(0x01 << PRTWI); //включили питание I2C
-  PWR_LCD_ON; //включаем питание дисплея
-  
-  wireInit(); //инициализация wire
-
-  wireBeginTransmission(SSD1306_ADDR, SSD1306_COMMAND_MODE); //начинаем передачу
-  wireWrite(SSD1306_DISPLAY_OFF); //выключаем дисплей
-  wireWrite(SSD1306_CLOCKDIV); //пределитель
-  wireWrite(0x80); //установили пределитель
-  wireWrite(SSD1306_CHARGEPUMP); //накачка
-  wireWrite(0x14); //установили накачку
-  wireWrite(SSD1306_ADDRESSING_MODE); //режим адресации
-  wireWrite(SSD1306_HORIZONTAL); //горизонтальный режим
-#if !ROTATE_DISP_RETURN && DEFAULT_ROTATION
-  wireWrite(SSD1306_FLIP_H); //инверсия горизонтали
-  wireWrite(SSD1306_FLIP_V); //инверсия вертикали
-#else
-  wireWrite(SSD1306_NORMAL_H); //нормальная горизонталь
-  wireWrite(SSD1306_NORMAL_V); //нормальная вертикаль
-#endif
-  wireWrite(SSD1306_CONTRAST); //контраст
-  wireWrite(DEFAULT_CONTRAST); //установили контраст
-  wireWrite(SSD1306_SETVCOMDETECT);
-  wireWrite(0x40);
-  wireWrite(SSD1306_NORMALDISPLAY); //неинверсный режим
-  wireWrite(SSD1306_DISPLAY_ON); //включили дисплей
-  wireEnd(); //остановка шины wire
-
-  wireBeginTransmission(SSD1306_ADDR, SSD1306_COMMAND_MODE); //начинаем передачу
-  wireWrite(SSD1306_SETCOMPINS);
-  wireWrite(0x12);
-  wireWrite(SSD1306_SETMULTIPLEX);
-  wireWrite(0x3F);
-  wireEnd(); //остановка шины wire
-
+  disableSleep(DEFAULT_CONTRAST); //инициализация дисплея
   setFont(FONT_DATA_NAME); //установка шрифта
 }
 //-------------------------Установка контрастности----------------------------------------------------
@@ -94,8 +60,45 @@ void enableSleep(void) //включение режима сна
 //-------------------------Выключение режима сна----------------------------------------------------
 void disableSleep(uint8_t contrast) //выключение режима сна
 {
-  _init_lcd(); //инициализация дисплея
-  setContrast(contrast); //установка контрастности
+  PRR &= ~(0x01 << PRTWI); //включили питание I2C
+  PWR_LCD_ON; //включаем питание дисплея
+
+  wireInit(); //инициализация wire
+
+  wireBeginTransmission(SSD1306_ADDR, SSD1306_COMMAND_MODE); //начинаем передачу
+  wireWrite(SSD1306_DISPLAY_OFF); //выключаем дисплей
+  wireWrite(SSD1306_CLOCKDIV); //пределитель
+  wireWrite(0x80); //установили пределитель
+  wireWrite(SSD1306_CHARGEPUMP); //накачка
+  wireWrite(0x14); //установили накачку
+  wireWrite(SSD1306_ADDRESSING_MODE); //режим адресации
+  wireWrite(SSD1306_HORIZONTAL); //горизонтальный режим
+#if !ROTATE_DISP_RETURN && DEFAULT_ROTATION
+  wireWrite(SSD1306_FLIP_H); //инверсия горизонтали
+  wireWrite(SSD1306_FLIP_V); //инверсия вертикали
+#else
+  wireWrite(SSD1306_NORMAL_H); //нормальная горизонталь
+  wireWrite(SSD1306_NORMAL_V); //нормальная вертикаль
+#endif
+  wireWrite(SSD1306_CONTRAST); //контраст
+  wireWrite(contrast); //установили контраст
+  wireWrite(SSD1306_SETVCOMDETECT);
+  wireWrite(0x40);
+  wireWrite(SSD1306_NORMALDISPLAY); //неинверсный режим
+  wireWrite(SSD1306_DISPLAY_ON); //включили дисплей
+  wireEnd(); //остановка шины wire
+
+  wireBeginTransmission(SSD1306_ADDR, SSD1306_COMMAND_MODE); //начинаем передачу
+  wireWrite(SSD1306_SETCOMPINS);
+  wireWrite(0x12);
+  wireWrite(SSD1306_SETMULTIPLEX);
+  wireWrite(0x3F);
+  wireEnd(); //остановка шины wire
+
+  wireBeginTransmission(SSD1306_ADDR, SSD1306_DATA_MODE); //начинаем передачу
+  for (uint16_t i = 1024; i; i--) wireWrite(0x00); //очищаем экран
+  wireEnd(); //остановка шины wire
+
   clrScr(); //очистка экрана
 }
 //-------------------------Инверсия экрана----------------------------------------------------

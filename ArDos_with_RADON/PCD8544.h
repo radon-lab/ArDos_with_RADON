@@ -158,6 +158,7 @@ void disableSleep(uint8_t contrast) //выключение режима сна
   _LCD_Write_Command(PCD8544_SETBIAS | LCD_BIAS);
   _LCD_Write_Command(PCD8544_FUNCTIONSET);
   _LCD_Write_Command(PCD8544_DISPLAYCONTROL | PCD8544_DISPLAYNORMAL);
+  
   clrScr(); //очистка экрана
 }
 //-------------------------Инверсия экрана----------------------------------------------------
