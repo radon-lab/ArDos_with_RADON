@@ -2025,7 +2025,6 @@ uint8_t search_menu(void) //инициализация режима поиск
   uint8_t units = 0; //переключатель единиц графика
 
   search_time_now = (float)pgm_read_word(&search_time[mainSettings.search_pos]) / ((float)pumpSettings.wdt_period / 100.0); //переключатель динамического изменения времени
-  graf = 0; //разрешаем обновление экрана поиска
 
   while (1) {
     if (_data_update()) { //обработка данных
@@ -2046,7 +2045,6 @@ uint8_t search_menu(void) //инициализация режима поиск
           search_score_now = 0; //сбрасываем время счета графика
           search_disable = 0; //разрешаем обновление графика
           for (uint8_t i = 0; i < 76; i++) search_buff[i] = 0; //очищаем буфер графика
-          graf = 0; //разрешаем обновление экрана поиска
           break;
 
         case UP_KEY_HOLD: //вкл/выкл фонарика
@@ -2055,12 +2053,10 @@ uint8_t search_menu(void) //инициализация режима поиск
 
         case UP_KEY_PRESS: //доп.действие
           search_disable = !search_disable; //запрещаем обновление графика
-          graf = 0; //разрешаем обновление экрана поиска
           break;
 
         case SEL_KEY_PRESS: //выбор режима
           if (units < 2) units++; else units = 0;
-          graf = 0; //разрешаем обновление экрана поиска
           break;
 
         case SEL_KEY_HOLD: //настройки
