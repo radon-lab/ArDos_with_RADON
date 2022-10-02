@@ -1176,6 +1176,7 @@ void _disable_sleep(void) //выход из сна
 {
   _sleep_out(); //выход из сна
   scr = 0; //разрешаем обновления экрана
+  graf = 0; //разрешаем обновление экрана поиска
   time_out = 0; //сбрасываем счетчик авто-выхода
 }
 //---------------------------------------Ожидание---------------------------------------------------------
@@ -2011,8 +2012,12 @@ void _search_update(void) //обновление данных поиска
 
   scan_now = (imp_s > SEARCH_IND_MAX) ? SEARCH_IND_MAX : imp_s; //устанавливаем точки максимумов
   scan_now = map(scan_now, 0, SEARCH_IND_MAX, 0, 50); //корректируем под коэффициент
+#if SEARCH_ANIM_DISABLE
+  scan_ind = scan_now; //отображаем сразу
+#else
   if (scan_now < scan_ind) scan_ind--; //добавляем плавности при уменьшении
-  else scan_ind = scan_now; //если увеличелось, отображаем сразу
+  else scan_ind = scan_now; //если увеличелось то отображаем сразу
+#endif
 }
 //-------------------------Инициализация режима поиск-----------------------------------------
 uint8_t search_menu(void) //инициализация режима поиск
@@ -2020,7 +2025,7 @@ uint8_t search_menu(void) //инициализация режима поиск
   uint8_t units = 0; //переключатель единиц графика
 
   search_time_now = (float)pgm_read_word(&search_time[mainSettings.search_pos]) / ((float)pumpSettings.wdt_period / 100.0); //переключатель динамического изменения времени
-  graf = 0; //разрешаем обновление экрана
+  graf = 0; //разрешаем обновление экрана поиска
 
   while (1) {
     if (_data_update()) { //обработка данных
@@ -2041,7 +2046,7 @@ uint8_t search_menu(void) //инициализация режима поиск
           search_score_now = 0; //сбрасываем время счета графика
           search_disable = 0; //разрешаем обновление графика
           for (uint8_t i = 0; i < 76; i++) search_buff[i] = 0; //очищаем буфер графика
-          graf = 0; //разрешаем обновления экрана
+          graf = 0; //разрешаем обновление экрана поиска
           break;
 
         case UP_KEY_HOLD: //вкл/выкл фонарика
@@ -2050,12 +2055,12 @@ uint8_t search_menu(void) //инициализация режима поиск
 
         case UP_KEY_PRESS: //доп.действие
           search_disable = !search_disable; //запрещаем обновление графика
-          graf = 0; //разрешаем обновления экрана
+          graf = 0; //разрешаем обновление экрана поиска
           break;
 
         case SEL_KEY_PRESS: //выбор режима
           if (units < 2) units++; else units = 0;
-          graf = 0; //разрешаем обновления экрана
+          graf = 0; //разрешаем обновление экрана поиска
           break;
 
         case SEL_KEY_HOLD: //настройки
@@ -2108,11 +2113,18 @@ uint8_t search_menu(void) //инициализация режима поиск
           drawGraf(map(search_buff[x], 0, graf_max, 1, 22), x, 3); //инициализируем график
         }
         drawDashLine(3, 8, 9, 4, 0x02);
+#if SEARCH_ANIM_DISABLE
+        drawLine(2, scan_ind + 1, 54); //убираем лишнее
+        drawLine(2, 2, scan_ind, 0x3E); //рисуем полосу имп/с
+        showScr(); //вывод буфера на экран
+#endif
       }
 
+#if !SEARCH_ANIM_DISABLE
       drawLine(2, scan_ind + 1, 54); //убираем лишнее
       drawLine(2, 2, scan_ind, 0x3E); //рисуем полосу имп/с
       showScr(); //вывод буфера на экран
+#endif
     }
   }
   return INIT_PROGRAM;
