@@ -1,5 +1,6 @@
 #ifdef SSD1306
-#define MAX_CONTRAST 255 //максимальное значение яркости
+#define MAX_CONTRAST 250 //максимальное значение яркости
+#define STEP_CONTRAST 10 //шаг значения яркости
 
 #define WIRE_PULL 1 //подтяжка шины I2C
 
@@ -34,24 +35,15 @@
 
 #include "WIRE.h"
 
-//-----------------------------Отправка команд на дисплей-------------------------------------
-void _LCD_Write_Command(uint8_t data)
-{
-  wireBeginTransmission(SSD1306_ADDR); //начинаем передачу
-  wireWrite(SSD1306_ONE_COMMAND_MODE); //записываем команду
-  wireWrite(data); //записываем команду
-  wireEnd(); //остановка шины wire
-}
 //-------------------------Инициализация дисплея----------------------------------------------------
 void _init_lcd(void) //инициализация дисплея
 {
-  PRR &= ~(0x01 << PRTWI);
+  PRR &= ~(0x01 << PRTWI); //включили питание I2C
   PWR_LCD_ON; //включаем питание дисплея
+  
   wireInit(); //инициализация wire
 
-  wireBeginTransmission(SSD1306_ADDR); //начинаем передачу
-  wireWrite(SSD1306_COMMAND_MODE); //режим передачи команд
-
+  wireBeginTransmission(SSD1306_ADDR, SSD1306_COMMAND_MODE); //начинаем передачу
   wireWrite(SSD1306_DISPLAY_OFF); //выключаем дисплей
   wireWrite(SSD1306_CLOCKDIV); //пределитель
   wireWrite(0x80); //установили пределитель
@@ -74,9 +66,7 @@ void _init_lcd(void) //инициализация дисплея
   wireWrite(SSD1306_DISPLAY_ON); //включили дисплей
   wireEnd(); //остановка шины wire
 
-  wireBeginTransmission(SSD1306_ADDR); //начинаем передачу
-  wireWrite(SSD1306_COMMAND_MODE); //режим передачи команд
-
+  wireBeginTransmission(SSD1306_ADDR, SSD1306_COMMAND_MODE); //начинаем передачу
   wireWrite(SSD1306_SETCOMPINS);
   wireWrite(0x12);
   wireWrite(SSD1306_SETMULTIPLEX);
@@ -88,9 +78,7 @@ void _init_lcd(void) //инициализация дисплея
 //-------------------------Установка контрастности----------------------------------------------------
 void setContrast(uint8_t contrast) //установка контрастности
 {
-  wireBeginTransmission(SSD1306_ADDR); //начинаем передачу
-  wireWrite(SSD1306_COMMAND_MODE); //режим передачи команд
-
+  wireBeginTransmission(SSD1306_ADDR, SSD1306_COMMAND_MODE); //начинаем передачу
   wireWrite(SSD1306_CONTRAST); //записываем команду
   wireWrite(contrast); //записываем команду
   wireEnd(); //остановка шины wire
@@ -98,9 +86,7 @@ void setContrast(uint8_t contrast) //установка контрастност
 //-------------------------Включение режима сна----------------------------------------------------
 void enableSleep(void) //включение режима сна
 {
-  wireBeginTransmission(SSD1306_ADDR); //начинаем передачу
-  wireWrite(SSD1306_ONE_COMMAND_MODE); //режим передачи команды
-
+  wireBeginTransmission(SSD1306_ADDR, SSD1306_ONE_COMMAND_MODE); //начинаем передачу
   wireWrite(SSD1306_DISPLAY_OFF); //выключели дисплей
   wireEnd(); //остановка шины wire
 
@@ -117,8 +103,7 @@ void disableSleep(uint8_t contrast) //выключение режима сна
 //-------------------------Инверсия экрана----------------------------------------------------
 void invert(boolean mode) //инверсия экрана
 {
-  wireBeginTransmission(SSD1306_ADDR); //начинаем передачу
-  wireWrite(SSD1306_ONE_COMMAND_MODE); //режим передачи команд
+  wireBeginTransmission(SSD1306_ADDR, SSD1306_ONE_COMMAND_MODE); //начинаем передачу
 
   switch (mode) {
     case 0: wireWrite(SSD1306_NORMALDISPLAY); break;
@@ -129,9 +114,7 @@ void invert(boolean mode) //инверсия экрана
 //----------------------Вывод буфера на экран-----------------------------------------------
 void showScr(void) //вывод буфера на экран
 {
-  wireBeginTransmission(SSD1306_ADDR); //начинаем передачу
-  wireWrite(SSD1306_COMMAND_MODE); //режим передачи команд
-
+  wireBeginTransmission(SSD1306_ADDR, SSD1306_COMMAND_MODE); //начинаем передачу
 #if ROTATE_DISP_RETURN
   switch (mainSettings.rotation) {
     case 0:
@@ -144,7 +127,6 @@ void showScr(void) //вывод буфера на экран
       break;
   }
 #endif
-
   wireWrite(SSD1306_COLUMNADDR); //начало колонны
   wireWrite(0x16); //минимальное значение
   wireWrite(0x69); //максимальное значение
@@ -152,9 +134,7 @@ void showScr(void) //вывод буфера на экран
   wireWrite(0x01); //минимальное значение
   wireWrite(0x06); //максимальное значение
 
-  wireBeginTransmission(SSD1306_ADDR); //начинаем передачу
-  wireWrite(SSD1306_DATA_MODE); //режим передачи данных
-
+  wireBeginTransmission(SSD1306_ADDR, SSD1306_DATA_MODE); //начинаем передачу
   for (uint16_t i = 0; i < 504; i++) wireWrite(_lcd_buffer[i]); //отрисовываем буфер
   wireEnd(); //остановка шины wire
 }

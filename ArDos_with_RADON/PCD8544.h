@@ -1,5 +1,6 @@
 #ifdef PCD8544
 #define MAX_CONTRAST 127 //максимальное значение контрастности
+#define STEP_CONTRAST 1  //шаг значения контрастности
 
 //Сброс дисплея
 #define RESET_LCD BIT_SET(DC_PORT, DC_BIT); BIT_SET(MOSI_PORT, MOSI_BIT); BIT_SET(SCK_PORT, SCK_BIT); BIT_CLEAR(RST_PORT, RST_BIT); _delay_ms(10); BIT_SET(RST_PORT, RST_BIT)

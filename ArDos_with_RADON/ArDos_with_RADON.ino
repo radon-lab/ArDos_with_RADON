@@ -42,14 +42,14 @@
   -Действия клавиш-
 
   - На экране ФОН
-  Вверх - выбор (график | средн. и макс. фон | бета и гамма), удерж. - вкл/выкл фонарик
-  Вниз - сбросить текущий фон и (график | средн. и макс. фон | бета и гамма), удерж. - вкл/выкл подсветку
-  Ок - переключить экран (фон | доза), удерж. - выход в меню
+  Вверх - выбор (график секундных замеров | график минутных замеров | макс. фон), удерж. - вкл/выкл фонарик
+  Вниз - сбросить текущий фон и (график секундных замеров | график минутных замеров | макс. фон), удерж. - вкл/выкл подсветку
+  Ок - переключить экран (фон | доза), удерж. - вход в меню
 
   - На экране ДОЗА
   Вверх - смена подрежима(текущая доза | доза за все время), удерж. - вкл/выкл фонарик
   Вниз - сброс показаний(текущей дозы | дозы за все время), удерж. - вкл/выкл подсветку
-  Ок - переключить экран, удерж. - выход в меню
+  Ок - переключить экран, удерж. - вход в меню
 
   - На экране ПОИСК
   Вверх - пауза графика и показателей, удерж. - вкл/выкл фонарик
@@ -69,7 +69,7 @@
    - На экране МЕНЮ
   Вверх - позиция выше, удерж. - вкл/выкл фонарик
   Вниз - позиция ниже, удерж. - вкл/выкл подсветку
-  Ок - выбор позиции, удерж. - выход в основные экраны
+  Ок - выбор позиции, удерж. - выход в режим "Фон/Доза"
 
   - На экранах ПАРАМЕТРЫ
   Вверх - нет действия, удерж. - отладка
@@ -82,8 +82,8 @@
   Ок - выбор позиции(очистка журнала), удерж. - выход из журнала
 
   - На экране ОТЛАДКА
-  Вверх - прибавить показания, удерж. - дробно/целое изменеия пункта "счет"
-  Вниз - убавить показания, удерж. - дробно/целое изменеия пункта "счет"
+  Вверх - прибавить показания, удерж. - дробное/целое изменеия пункта "счет"
+  Вниз - убавить показания, удерж. - дробное/целое изменеия пункта "счет"
   Ок - выбор позиции, удерж. - выход из отладки
 
   - На экране ОШИБКА
@@ -1286,7 +1286,6 @@ ISR(TIMER0_OVF_vect) //индикация попадания частиц
   }
 }
 //--------------------------------Подсветка старт/стоп-------------------------------------
-#ifdef PCD8544
 void _LIGHT_ON(void) { //подсветка старт
   PRR &= ~(0x01 << PRTIM2); //включаем питание таймера
   TIMSK2 = (0x01 << OCIE2A) | (0x01 << TOIE2); //разрешаем прерывания
@@ -1302,6 +1301,7 @@ void _LIGHT_STOP(void) { //подсветка стоп
   PRR |= (0x01 << PRTIM2); //выключаем питание таймера
 }
 //---------------------------------Плавная подсветка---------------------------------------
+#ifdef PCD8544
 ISR(TIMER2_OVF_vect) //плавная подсветка
 {
   LIGHT_ON; //включаем подсветку
@@ -1629,9 +1629,11 @@ uint8_t measur_menu(void) //режим замера
 
       switch (check_keys())
       {
+#ifdef PCD8544
         case DOWN_KEY_HOLD: //удержание кнопки вниз
-          fast_light(); //быстрое включение подсветки
+          fast_light(); //быстрое включение посветки
           break;
+#endif
 
         case DOWN_KEY_PRESS: //клик кнопки вниз
           if (measur) measur_stop(); //если идет замер, спрашиваем нужно ли остановить замер
@@ -2026,9 +2028,11 @@ uint8_t search_menu(void) //инициализация режима поиск
       _error_messege(); //обработка ошибок
 
       switch (check_keys()) {
-        case DOWN_KEY_HOLD: //вкл/выкл посветки
+#ifdef PCD8544
+        case DOWN_KEY_HOLD: //удержание кнопки вниз
           fast_light(); //быстрое включение посветки
           break;
+#endif
 
         case DOWN_KEY_PRESS: //сброс
           rad_imp = 0; //сбрасываем имп/с
@@ -2282,9 +2286,16 @@ void _settings_item_switch(boolean set, boolean inv, uint8_t num, uint8_t pos) /
       }
       break;
 
-    case _SET_CONTRAST: //Контраст
+    case _SET_CONTRAST: //Контраст(Яркость)
       switch (set) {
-        case 0: print(S_ITEM_CONTRAST, LEFT, pos_row); break; //Контраст:
+        case 0:
+#ifdef PCD8544
+          print(S_ITEM_CONTRAST, LEFT, pos_row); //Контраст:
+#endif
+#ifdef SSD1306
+          print(S_ITEM_BRIGHT, LEFT, pos_row); //Яркость:
+#endif
+          break;
         case 1: printNumI(mainSettings.contrast, RIGHT, pos_row); break;
       }
       break;
@@ -2449,7 +2460,7 @@ void _settings_data_up(uint8_t pos) //прибавление данных
         case 2: if (mainSettings.time_bright < mainSettings.time_sleep - 5) mainSettings.time_bright += 5; break;
       }
       break;
-    case _SET_CONTRAST: if (mainSettings.contrast < MAX_CONTRAST) setContrast(++mainSettings.contrast); break; //Контраст
+    case _SET_CONTRAST: if (mainSettings.contrast < MAX_CONTRAST) setContrast(mainSettings.contrast += STEP_CONTRAST); break; //Контраст
 #if ROTATE_DISP_RETURN
     case _SET_ROTATION: mainSettings.rotation = 1; break; //Разворот
 #endif
@@ -2486,7 +2497,7 @@ void _settings_data_down(uint8_t pos) //убавление данных
       }
       else if (mainSettings.sleep_switch == 2) mainSettings.sleep_switch = 1; break;
     case _SET_TIME_BRIGHT: if (mainSettings.time_bright > 5) mainSettings.time_bright -= 5; else mainSettings.sleep_switch = 0; break; //Подсветка
-    case _SET_CONTRAST: if (mainSettings.contrast) setContrast(--mainSettings.contrast); break; //Контраст
+    case _SET_CONTRAST: if (mainSettings.contrast) setContrast(mainSettings.contrast -= STEP_CONTRAST); break; //Контраст
 #if ROTATE_DISP_RETURN
     case _SET_ROTATION: mainSettings.rotation = 0; break; //Разворот
 #endif
@@ -2523,9 +2534,11 @@ uint8_t settings(void) //настройки
   while (1) {
     if (_data_update()) { //обработка данных
       switch (check_keys()) {
-        case DOWN_KEY_HOLD: //вкл/выкл посветки
+#ifdef PCD8544
+        case DOWN_KEY_HOLD: //удержание кнопки вниз
           fast_light(); //быстрое включение посветки
           break;
+#endif
 
         case DOWN_KEY_PRESS: //вниз
           switch (set) {
@@ -2630,9 +2643,11 @@ uint8_t menu(void) //меню
   while (1) {
     if (_data_update()) { //обработка данных
       switch (check_keys()) {
-        case DOWN_KEY_HOLD: //вкл/выкл посветки
+#ifdef PCD8544
+        case DOWN_KEY_HOLD: //удержание кнопки вниз
           fast_light(); //быстрое включение посветки
           break;
+#endif
 
         case DOWN_KEY_PRESS: //вниз
           if (pos < 6) { //изменяем позицию
@@ -2824,9 +2839,11 @@ uint8_t logbook(void) //журнал
   while (1) {
     if (_data_update()) { //обработка данных
       switch (check_keys()) {
-        case DOWN_KEY_HOLD: //вкл/выкл посветки
+#ifdef PCD8544
+        case DOWN_KEY_HOLD: //удержание кнопки вниз
           fast_light(); //быстрое включение посветки
           break;
+#endif
 
         case DOWN_KEY_PRESS: //вниз
           if (pos < max_item) { //изменяем позицию
@@ -2919,9 +2936,11 @@ uint8_t logbook(void) //журнал
   while (1) {
     if (_data_update()) { //обработка данных
       switch (check_keys()) {
-        case DOWN_KEY_HOLD: //вкл/выкл посветки
+#ifdef PCD8544
+        case DOWN_KEY_HOLD: //удержание кнопки вниз
           fast_light(); //быстрое включение посветки
           break;
+#endif
 
         case DOWN_KEY_PRESS: //вниз
           if (pos < 9) { //изменяем позицию
@@ -2978,19 +2997,10 @@ uint8_t logbook(void) //журнал
 //-----------------------------------Вкл/выкл подсветки---------------------------------
 void fast_light(void) //вкл/выкл подсветки
 {
-#ifdef SSD1306
-  if (!mainSettings.sleep_switch && (mainTask == MAIN_PROGRAM)) { //если сон выключен
-    enableSleep(); //выключаем подсветку, если была включена настройками
-    _buzz_disable(); //запрещаем щелчки
-    sleep = 1; //выставляем флаг сна
-    light = 1; //выставляем флаг выключенной подсветки
-  }
-#else
   if (!mainSettings.sleep_switch) { //если сон выключен
     if (light_switch) _LIGHT_OFF(); //выключаем подсветку, если была включена настройками
     else _LIGHT_ON(); //включаем подсветку
   }
-#endif
 }
 //---------------------------------Отрисовка сообщения об ошибке---------------------------------------
 void _init_error_messege(uint8_t err, uint32_t data) //отрисовка сообщения об ошибке
@@ -3498,7 +3508,19 @@ uint8_t main_screen(void)
 
       switch (check_keys()) {
         case DOWN_KEY_HOLD: //вкл/выкл посветки
-          if (skip_warn_messege()) fast_light(); //быстрое включение посветки
+#ifdef SSD1306
+          if (skip_warn_messege()) { //если нет предупреждения
+            if (!mainSettings.sleep_switch) { //если сон выключен
+              enableSleep(); //выключаем подсветку, если была включена настройками
+              _buzz_disable(); //запрещаем щелчки
+              sleep = 1; //выставляем флаг сна
+              light = 1; //выставляем флаг выключенной подсветки
+            }
+          }
+#endif
+#ifdef PCD8544
+          fast_light(); //быстрое включение посветки
+#endif
           break;
 
         case DOWN_KEY_PRESS: //сброс
