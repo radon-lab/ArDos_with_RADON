@@ -3498,7 +3498,7 @@ uint8_t main_screen(void)
 
       switch (check_keys()) {
         case DOWN_KEY_HOLD: //вкл/выкл посветки
-          fast_light(); //быстрое включение посветки
+          if (skip_warn_messege()) fast_light(); //быстрое включение посветки
           break;
 
         case DOWN_KEY_PRESS: //сброс
