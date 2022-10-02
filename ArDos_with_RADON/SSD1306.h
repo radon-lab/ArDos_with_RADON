@@ -2,8 +2,6 @@
 #define MAX_CONTRAST 250 //максимальное значение яркости
 #define STEP_CONTRAST 10 //шаг значения яркости
 
-#define WIRE_PULL 1 //подтяжка шины I2C
-
 #define SSD1306_ADDR 0x3C //адрес дисплея
 
 //Основные инструкции
