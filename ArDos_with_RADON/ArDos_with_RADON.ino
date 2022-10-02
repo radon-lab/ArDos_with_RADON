@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.13
-  Версия программы RADON v3.9.8 low_pwr release 30.09.22 специально для проекта ArDos
+  Версия программы RADON v3.4.0 low_pwr release 02.10.22 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/ardos-dozimetr-prodolzhenie-temy-chast-%E2%84%962 и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -395,13 +395,15 @@ void INIT_SYSTEM(void) //инициализация
   CONV_INIT; //инициализация преобразователя
   BUZZ_INIT; //инициализация бузера
   DET_INIT; //инициализация детектора частиц
-  LIGHT_INIT; //инициализация подсветки
   PWR_LCD_INIT; //инициализация питания дисплея
   RAD_FLASH_INIT; //инициализация фонарика
   FLASH_INIT; //инициализация индикатора частиц
   VIBRO_INIT; //инициализация вибромотора
 
+#ifdef PCD8544
+  LIGHT_INIT; //инициализация подсветки
   LCD_INIT; //инициализация пинов дисплея
+#endif
   PWR_LCD_ON; //включаем питание дисплея
 
   SEL_INIT; //инициализация кнопки "ок"
@@ -415,7 +417,9 @@ void INIT_SYSTEM(void) //инициализация
   ACSR |= (0x01 << ACD); //отключаем компаратор
 
   _init_lcd(); //инициализируем дисплей
+#ifdef PCD8544
   _LIGHT_ON(); //включаем подсветку
+#endif
   _wdt_enable(); //запускаем WatchDog
 
   _read_memory(); //проверка и чтение данных из памяти
@@ -1088,7 +1092,12 @@ boolean _data_update(void) //преобразование данных
           _buzz_disable(); //запрещаем щелчки
         }
         else if (cnt_pwr == mainSettings.time_bright) { //если пришло время выключить подсветку
+#ifdef PCD8544
           _LIGHT_OFF(); //выключаем подсветку
+#endif
+#ifdef SSD1306
+          setContrast(0); //установка минимальной яркости
+#endif
           light = 1; //выставляем флаг выключенной подсветки
         }
         break;
@@ -1146,7 +1155,9 @@ void _low_pwr(void) //режим пониженного энергопотреб
 void _sleep_out(void) //выход из сна
 {
   if (light) { //если выключели подсветку
+#ifdef PCD8544
     _LIGHT_ON(); //включаем подсветку
+#endif
     light = 0; //сбрасываем флаг подсветки
     if (sleep) { //если спали
       disableSleep(mainSettings.contrast); //выводим дисплей из сна
@@ -1154,6 +1165,9 @@ void _sleep_out(void) //выход из сна
       scr = 0; //разрешаем обновления экрана
       _buzz_enable(); //восстанавливаем настройку щелчков
     }
+#ifdef SSD1306
+    else setContrast(mainSettings.contrast); //установка минимальной яркости
+#endif
   }
   cnt_pwr = 0; //обнуляем счетчик сна
 }
@@ -1206,11 +1220,13 @@ uint8_t power_down(void) //выключение устройства
   _wdt_disable(); //выключаем watchdog
   _adc_disable(); //выключаем питание АЦП
 
+#ifdef PCD8544
+  _LIGHT_STOP(); //выключаем шим подсветки
   LIGHT_OFF; //выключаем подсветку
+#endif
   BUZZ_OFF; //выключаем бузер
   FLASH_OFF; //выключаем фонарь
   SOUND_STOP; //выключаем таймер бузера
-  _LIGHT_STOP(); //выключаем шим подсветки
   _RAD_FLASH_OFF; //выключаем индикацию
   enableSleep(); //выключаем дисплей
 
@@ -1235,7 +1251,9 @@ uint8_t power_down(void) //выключение устройства
         _bat_check(); //опрос батареи
         disableSleep(mainSettings.contrast); //включаем дисплей
         if (bat_adc < LOW_BAT_POWER) { //если батарея не разряжена
+#ifdef PCD8544
           LIGHT_ON; //включаем подсветку, если была включена настройками
+#endif
           _wdt_enable(); //запускаем WDT
           _init_logo(); //вывод логотипа
           _start_pump(); //первая накачка преобразователя
@@ -1268,6 +1286,7 @@ ISR(TIMER0_OVF_vect) //индикация попадания частиц
   }
 }
 //--------------------------------Подсветка старт/стоп-------------------------------------
+#ifdef PCD8544
 void _LIGHT_ON(void) { //подсветка старт
   PRR &= ~(0x01 << PRTIM2); //включаем питание таймера
   TIMSK2 = (0x01 << OCIE2A) | (0x01 << TOIE2); //разрешаем прерывания
@@ -1307,6 +1326,7 @@ ISR(TIMER2_COMPA_vect, ISR_NAKED) {
   LIGHT_OFF; //выключаем подсветку
   reti(); //возврат
 }
+#endif
 //---------------------------------Прерывание сигнала для пищалки---------------------------
 ISR(TIMER1_OVF_vect, ISR_NAKED) //прерывание сигнала для пищалки
 {
@@ -1867,7 +1887,9 @@ void _vibro_on(uint8_t vibro) //вибрация и световая индик�
 #if (TYPE_ALARM_IND == 1)
           FLASH_ON;
 #elif (TYPE_ALARM_IND == 2)
+#ifdef PCD8544
           LIGHT_ON;
+#endif
 #endif
           VIBRO_ON;
           break;
@@ -1876,7 +1898,9 @@ void _vibro_on(uint8_t vibro) //вибрация и световая индик�
 #if (TYPE_ALARM_IND == 1)
           FLASH_OFF;
 #elif (TYPE_ALARM_IND == 2)
+#ifdef PCD8544
           LIGHT_OFF;
+#endif
 #endif
           VIBRO_OFF;
           break;
@@ -1893,8 +1917,10 @@ void _vibro_off(void) //выключение вибрация и светово�
 #if (TYPE_ALARM_IND == 1)
   FLASH_OFF; //выключаем фонарик
 #elif (TYPE_ALARM_IND == 2)
+#ifdef PCD8544
   if (light_switch) LIGHT_ON; //включаем подсветку, если была включена настройками
   else LIGHT_OFF; //выключаем подсветку
+#endif
 #endif
   VIBRO_OFF; //выключаем вибрацию
 }
@@ -2401,19 +2427,29 @@ void _settings_data_up(uint8_t pos) //прибавление данных
   switch (pos) {
     case _SET_TIME_SLEEP: //Сон
       switch (mainSettings.sleep_switch) {
-        case 0: mainSettings.sleep_switch = 2; _LIGHT_ON(); break;
+        case 0:
+          mainSettings.sleep_switch = 2;
+#ifdef PCD8544
+          LIGHT_ON;
+#endif
+          break;
         case 1: mainSettings.sleep_switch = 2; mainSettings.time_bright = 5; break;
         case 2: if (mainSettings.time_sleep < 250) mainSettings.time_sleep += 5; break;
       }
       break;
     case _SET_TIME_BRIGHT: //Подсветка
       switch (mainSettings.sleep_switch) {
-        case 0: mainSettings.sleep_switch = 1; LIGHT_ON; break;
+        case 0:
+          mainSettings.sleep_switch = 1;
+#ifdef PCD8544
+          LIGHT_ON;
+#endif
+          break;
         case 1: if (mainSettings.time_bright < 250) mainSettings.time_bright += 5; break;
         case 2: if (mainSettings.time_bright < mainSettings.time_sleep - 5) mainSettings.time_bright += 5; break;
       }
       break;
-    case _SET_CONTRAST: if (mainSettings.contrast < 127) setContrast(++mainSettings.contrast); break; //Контраст
+    case _SET_CONTRAST: if (mainSettings.contrast < MAX_CONTRAST) setContrast(++mainSettings.contrast); break; //Контраст
 #if ROTATE_DISP_RETURN
     case _SET_ROTATION: mainSettings.rotation = 1; break; //Разворот
 #endif
@@ -2942,10 +2978,19 @@ uint8_t logbook(void) //журнал
 //-----------------------------------Вкл/выкл подсветки---------------------------------
 void fast_light(void) //вкл/выкл подсветки
 {
+#ifdef SSD1306
+  if (!mainSettings.sleep_switch && (mainTask == MAIN_PROGRAM)) { //если сон выключен
+    enableSleep(); //выключаем подсветку, если была включена настройками
+    _buzz_disable(); //запрещаем щелчки
+    sleep = 1; //выставляем флаг сна
+    light = 1; //выставляем флаг выключенной подсветки
+  }
+#else
   if (!mainSettings.sleep_switch) { //если сон выключен
     if (light_switch) _LIGHT_OFF(); //выключаем подсветку, если была включена настройками
     else _LIGHT_ON(); //включаем подсветку
   }
+#endif
 }
 //---------------------------------Отрисовка сообщения об ошибке---------------------------------------
 void _init_error_messege(uint8_t err, uint32_t data) //отрисовка сообщения об ошибке
