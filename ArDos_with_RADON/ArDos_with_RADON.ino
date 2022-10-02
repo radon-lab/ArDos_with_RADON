@@ -2010,7 +2010,7 @@ void _search_update(void) //обновление данных поиска
   }
 
   scan_now = (imp_s > SEARCH_IND_MAX) ? SEARCH_IND_MAX : imp_s; //устанавливаем точки максимумов
-  scan_now = map(scan_now, 0, SEARCH_IND_MAX, 2, 51); //корректируем под коэффициент
+  scan_now = map(scan_now, 0, SEARCH_IND_MAX, 0, 50); //корректируем под коэффициент
   if (scan_now < scan_ind) scan_ind--; //добавляем плавности при уменьшении
   else scan_ind = scan_now; //если увеличелось, отображаем сразу
 }
