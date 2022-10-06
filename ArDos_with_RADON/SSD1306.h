@@ -12,6 +12,7 @@
 #define SSD1306_DATA_MODE 0x40
 #define SSD1306_ADDRESSING_MODE 0x20
 #define SSD1306_HORIZONTAL 0x00
+#define SSD1306_VERTICAL 0x01
 
 //Основные команды
 #define SSD1306_CONTRAST 0x81
@@ -32,6 +33,9 @@
 #define SSD1306_INVERTDISPLAY 0xA7
 
 #include "WIRE.h"
+
+#undef SEARCH_ANIM_DISABLE
+#define SEARCH_ANIM_DISABLE 1 //принудительно отключаем анимацию шкалы режима "Поиск"
 
 //-------------------------Инициализация дисплея----------------------------------------------------
 void _init_lcd(void) //инициализация дисплея
@@ -72,7 +76,11 @@ void disableSleep(uint8_t contrast) //выключение режима сна
   wireWrite(SSD1306_CHARGEPUMP); //накачка
   wireWrite(0x14); //установили накачку
   wireWrite(SSD1306_ADDRESSING_MODE); //режим адресации
+#if SCALE_Y
+  wireWrite(SSD1306_VERTICAL); //вертикальный режим
+#else
   wireWrite(SSD1306_HORIZONTAL); //горизонтальный режим
+#endif
 #if !ROTATE_DISP_RETURN && DEFAULT_ROTATION
   wireWrite(SSD1306_FLIP_H); //инверсия горизонтали
   wireWrite(SSD1306_FLIP_V); //инверсия вертикали
@@ -95,9 +103,11 @@ void disableSleep(uint8_t contrast) //выключение режима сна
   wireWrite(0x3F);
   wireEnd(); //остановка шины wire
 
+#if !SCALE_X && !SCALE_Y
   wireBeginTransmission(SSD1306_ADDR, SSD1306_DATA_MODE); //начинаем передачу
   for (uint16_t i = 1024; i; i--) wireWrite(0x00); //очищаем экран
   wireEnd(); //остановка шины wire
+#endif
 
   clrScr(); //очистка экрана
 }
@@ -129,14 +139,77 @@ void showScr(void) //вывод буфера на экран
   }
 #endif
   wireWrite(SSD1306_COLUMNADDR); //начало колонны
-  wireWrite(0x16); //минимальное значение
-  wireWrite(0x69); //максимальное значение
+#if SCALE_X
+  wireWrite(1); //минимальное значение
+  wireWrite(126); //максимальное значение
+#else
+  wireWrite(22); //минимальное значение
+  wireWrite(105); //максимальное значение
+#endif
   wireWrite(SSD1306_PAGEADDR); //начало страницы
-  wireWrite(0x01); //минимальное значение
-  wireWrite(0x06); //максимальное значение
+#if SCALE_Y
+  wireWrite(0); //минимальное значение
+  wireWrite(7); //максимальное значение
+#else
+  wireWrite(1); //минимальное значение
+  wireWrite(6); //максимальное значение
+#endif
 
   wireBeginTransmission(SSD1306_ADDR, SSD1306_DATA_MODE); //начинаем передачу
-  for (uint16_t i = 0; i < 504; i++) wireWrite(_lcd_buffer[i]); //отрисовываем буфер
+
+#if SCALE_Y
+  uint8_t data = 0;
+  uint16_t buff = 0;
+
+  for (uint8_t x = 0; x < 84; x++) {
+#if SCALE_X
+    for (uint8_t i = !(x & 0x01); i < 2; i++) {
+#endif
+      for (uint8_t y = 0; y < 6; y++) {
+        data = _lcd_buffer[(y * 84) + x];
+        switch (y) {
+          case 4:
+          case 0:
+            buff = (uint16_t)data << 1;
+            wireWrite((uint8_t)buff | (data & 0x01)); //отрисовываем буфер
+            buff >>= 8;
+            buff |= buff << 1;
+            break;
+          case 5:
+          case 1:
+            buff |= (uint16_t)data << 3;
+            wireWrite((uint8_t)buff | ((data & 0x01) << 2)); //отрисовываем буфер
+            buff >>= 8;
+            buff |= (buff << 1) & 0x08;
+            if (y == 5) wireWrite((uint8_t)buff); //отрисовываем буфер
+            break;
+          case 2:
+            buff |= (uint16_t)data << 5;
+            wireWrite((uint8_t)buff | ((data & 0x01) << 4)); //отрисовываем буфер
+            buff >>= 8;
+            buff |= (buff << 1) & 0x20;
+            break;
+          case 3:
+            buff |= (uint16_t)data << 7;
+            wireWrite((uint8_t)buff | ((data & 0x01) << 6)); //отрисовываем буфер
+            buff >>= 8;
+            buff |= (buff << 1) & 0x80;
+            wireWrite((uint8_t)buff); //отрисовываем буфер
+            break;
+        }
+      }
+#if SCALE_X
+    }
+#endif
+  }
+#else
+  for (uint16_t i = 0; i < 504; i++) {
+#if SCALE_X
+    if ((uint8_t)i & 0x01) wireWrite(_lcd_buffer[i]); //дублируем буфер
+#endif
+    wireWrite(_lcd_buffer[i]); //отрисовываем буфер
+  }
+#endif
   wireEnd(); //остановка шины wire
 }
 #endif
