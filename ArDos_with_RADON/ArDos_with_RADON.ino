@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.13
-  Версия программы RADON v4.2.0 low_pwr release 04.10.22 специально для проекта ArDos
+  Версия программы RADON v4.2.0 low_pwr release 08.10.22 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/ardos-dozimetr-prodolzhenie-temy-chast-%E2%84%962 и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -862,7 +862,7 @@ boolean _data_update(void) //преобразование данных
               for (uint8_t i = 0; i < PATTERNS_APROX; i++) { //выбор паттерна
                 if (imp_per_sec >= pgm_read_word(&back_aprox_imp[i])) { //если имп/с совпадают с паттерном
 #if GEIGER_DEAD_TIME
-                  rad_back = pumpSettings.geiger_time / (pgm_read_float(&back_aprox_coef[i]) * ((1.0 / imp_per_sec) - DEAD_TIME)); //рассчитываем фон в мкр/ч с поправкой на скорость счета
+                  rad_back = pumpSettings.geiger_time / (pgm_read_float(&back_aprox_coef[i]) * ((1.0 / imp_per_sec) - DEAD_TIME)); //рассчитываем фон в мкр/ч с поправкой на скорость счета и мертвое время
 #else
                   rad_back = pumpSettings.geiger_time / (pgm_read_float(&back_aprox_coef[i]) * (1.0 / imp_per_sec)); //рассчитываем фон в мкр/ч с поправкой на скорость счета
 #endif
