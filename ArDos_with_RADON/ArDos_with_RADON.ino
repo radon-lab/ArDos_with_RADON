@@ -858,9 +858,9 @@ boolean _data_update(void) //преобразование данных
             if (imp_per_sec > OWN_BACK) imp_per_sec -= OWN_BACK; //убираем собственный фон счетчика
             else imp_per_sec = temp_buff = 0; //иначе ничего кроме собственного фона нету
 #endif
-            if (imp_per_sec >= pgm_read_word(&back_aprox_imp[PATTERNS_APROX - 1])) {
+            if ((uint16_t)imp_per_sec >= pgm_read_word(&back_aprox_imp[PATTERNS_APROX - 1])) {
               for (uint8_t i = 0; i < PATTERNS_APROX; i++) { //выбор паттерна
-                if (imp_per_sec >= pgm_read_word(&back_aprox_imp[i])) { //если имп/с совпадают с паттерном
+                if ((uint16_t)imp_per_sec >= pgm_read_word(&back_aprox_imp[i])) { //если имп/с совпадают с паттерном
 #if GEIGER_DEAD_TIME
                   rad_back = pumpSettings.geiger_time / (pgm_read_float(&back_aprox_coef[i]) * ((1.0 / imp_per_sec) - DEAD_TIME)); //рассчитываем фон в мкр/ч с поправкой на скорость счета и мертвое время
 #else
