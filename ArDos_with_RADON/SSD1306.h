@@ -71,6 +71,7 @@ void enableSleep(void) //включение режима сна
   wireBeginTransmission(SSD1306_ADDR, SSD1306_ONE_COMMAND_MODE); //начинаем передачу
   wireWrite(SSD1306_DISPLAY_OFF); //выключели дисплей
   wireEnd(); //остановка шины wire
+  wireWait(); //ожидание остановки шины
 
   PRR |= (0x01 << PRTWI); //выключили питание I2C
   PWR_LCD_OFF; //включаем питание дисплея
