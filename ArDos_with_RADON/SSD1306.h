@@ -103,11 +103,9 @@ void disableSleep(uint8_t contrast) //выключение режима сна
   wireWrite(0x3F);
   wireEnd(); //остановка шины wire
 
-#if !SCALE_X && !SCALE_Y
   wireBeginTransmission(SSD1306_ADDR, SSD1306_DATA_MODE); //начинаем передачу
   for (uint16_t i = 1024; i; i--) wireWrite(0x00); //очищаем экран
   wireEnd(); //остановка шины wire
-#endif
 
   clrScr(); //очистка экрана
 }
