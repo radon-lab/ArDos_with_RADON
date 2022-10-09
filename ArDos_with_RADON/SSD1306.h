@@ -43,7 +43,21 @@ void _init_lcd(void) //инициализация дисплея
   disableSleep(DEFAULT_CONTRAST); //инициализация дисплея
   setFont(FONT_DATA_NAME); //установка шрифта
 }
-//-------------------------Установка контрастности----------------------------------------------------
+//-------------------------Очистка блока дисплея----------------------------------------------------
+void _clear_block(uint8_t start_x, uint8_t end_x, uint8_t start_y, uint8_t end_y) //очистка блока дисплея
+{
+  wireBeginTransmission(SSD1306_ADDR, SSD1306_COMMAND_MODE); //начинаем передачу
+  wireWrite(SSD1306_COLUMNADDR); //начало колонны
+  wireWrite(start_x); //минимальное значение
+  wireWrite(end_x); //максимальное значение
+  wireWrite(SSD1306_PAGEADDR); //начало страницы
+  wireWrite(start_y); //минимальное значение
+  wireWrite(end_y); //максимальное значение
+
+  wireBeginTransmission(SSD1306_ADDR, SSD1306_DATA_MODE); //начинаем передачу
+  for (uint16_t i = (end_x - start_x + 1) * (end_y - start_y + 1); i; i--) wireWrite(0x00); //очищаем экран
+}
+//-------------------------Установка контрастности--------------------------------------------------
 void setContrast(uint8_t contrast) //установка контрастности
 {
   wireBeginTransmission(SSD1306_ADDR, SSD1306_COMMAND_MODE); //начинаем передачу
@@ -51,7 +65,7 @@ void setContrast(uint8_t contrast) //установка контрастност
   wireWrite(contrast); //записываем команду
   wireEnd(); //остановка шины wire
 }
-//-------------------------Включение режима сна----------------------------------------------------
+//-------------------------Включение режима сна-----------------------------------------------------
 void enableSleep(void) //включение режима сна
 {
   wireBeginTransmission(SSD1306_ADDR, SSD1306_ONE_COMMAND_MODE); //начинаем передачу
@@ -94,17 +108,35 @@ void disableSleep(uint8_t contrast) //выключение режима сна
   wireWrite(0x40);
   wireWrite(SSD1306_NORMALDISPLAY); //неинверсный режим
   wireWrite(SSD1306_DISPLAY_ON); //включили дисплей
-  wireEnd(); //остановка шины wire
 
   wireBeginTransmission(SSD1306_ADDR, SSD1306_COMMAND_MODE); //начинаем передачу
   wireWrite(SSD1306_SETCOMPINS);
   wireWrite(0x12);
   wireWrite(SSD1306_SETMULTIPLEX);
   wireWrite(0x3F);
-  wireEnd(); //остановка шины wire
 
-  wireBeginTransmission(SSD1306_ADDR, SSD1306_DATA_MODE); //начинаем передачу
-  for (uint16_t i = 1024; i; i--) wireWrite(0x00); //очищаем экран
+#if !SCALE_Y
+  _clear_block(0, 127, 0, 0); //очистка блока дисплея
+  _clear_block(0, 127, 7, 7); //очистка блока дисплея
+#endif
+
+#if SCALE_X
+#if SCALE_Y
+  _clear_block(0, 0, 0, 7); //очистка блока дисплея
+  _clear_block(127, 127, 0, 7); //очистка блока дисплея
+#else
+  _clear_block(0, 0, 1, 6); //очистка блока дисплея
+  _clear_block(127, 127, 1, 6); //очистка блока дисплея
+#endif
+#else
+#if SCALE_Y
+  _clear_block(0, 21, 0, 7); //очистка блока дисплея
+  _clear_block(106, 127, 0, 7); //очистка блока дисплея
+#else
+  _clear_block(0, 21, 1, 6); //очистка блока дисплея
+  _clear_block(106, 127, 1, 6); //очистка блока дисплея
+#endif
+#endif
   wireEnd(); //остановка шины wire
 
   clrScr(); //очистка экрана
