@@ -1,4 +1,5 @@
 #ifdef PCD8544
+#define MIN_CONTRAST 0   //минимальное значение контрастности
 #define MAX_CONTRAST 127 //максимальное значение контрастности
 #define STEP_CONTRAST 1  //шаг значения контрастности
 
@@ -29,11 +30,6 @@
 #define LCD_BIAS 0x03  //(0..7)(0x00..0x07)
 #define LCD_TEMP 0x02  //(0..3)(0x00..0x03)
 #define LCD_CONTRAST 0x46  //(0..127)(0x00..0x7F)
-
-void _LCD_Write_Command(uint8_t data);
-void _LCD_Write_Data_Dir(void);
-void _LCD_Write_Data_Inv(void);
-void _init_lcd(void);
 
 //-----------------------------Отправка команд на дисплей-------------------------------------
 void _LCD_Write_Command(uint8_t data)

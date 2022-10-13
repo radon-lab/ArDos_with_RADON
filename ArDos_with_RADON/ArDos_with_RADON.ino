@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.13
-  Версия программы RADON v4.2.2 low_pwr release 09.10.22 специально для проекта ArDos
+  Версия программы RADON v4.2.3 low_pwr release 13.10.22 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/ardos-dozimetr-prodolzhenie-temy-chast-%E2%84%962 и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -288,7 +288,7 @@ boolean low_bat_massege = 0; //флаг разрешения вывода соо
 
 //флаги обновления информации
 boolean scr = 0; //флаг обновления экрана
-boolean graf = 0; //флаг обновления режима поиск
+boolean scrSearch = 0; //флаг обновления режима поиск
 
 //технические флаги
 uint8_t alarm_switch = 0; //указатель текущей тревоги
@@ -364,7 +364,7 @@ enum {
 #define EEPROM_BLOCK_CRC_PUMP (EEPROM_BLOCK_CRC_BOOK + 1) //ячейка контрольной суммы настроек преобразователя
 #define EEPROM_BLOCK_CRC_STRUCT (EEPROM_BLOCK_CRC_PUMP + 1) //ячейка контрольной суммы структур данных
 
-void _init_rads_unit(boolean type, uint32_t num, uint8_t divisor, uint8_t char_all, uint8_t num_x, uint8_t num_y, boolean unit, uint8_t unit_x, uint8_t unit_y, boolean dash = 0); //отрисовка данных
+void _print_rads_unit(boolean type, uint32_t num, uint8_t divisor, uint8_t char_all, uint8_t num_x, uint8_t num_y, boolean unit, uint8_t unit_x, uint8_t unit_y, boolean dash = 0); //отрисовка данных
 //--------------------------------------Главный цикл программ---------------------------------------------------
 int main(void) //главный цикл программ
 {
@@ -404,7 +404,6 @@ void INIT_SYSTEM(void) //инициализация
   LIGHT_INIT; //инициализация подсветки
   LCD_INIT; //инициализация пинов дисплея
 #endif
-  PWR_LCD_ON; //включаем питание дисплея
 
   SEL_INIT; //инициализация кнопки "ок"
   DOWN_INIT; //инициализация кнопки "вниз"
@@ -417,10 +416,10 @@ void INIT_SYSTEM(void) //инициализация
   ACSR |= (0x01 << ACD); //отключаем компаратор
 
   _init_lcd(); //инициализируем дисплей
+  _wdt_enable(); //запускаем WatchDog
 #ifdef PCD8544
   _LIGHT_ON(); //включаем подсветку
 #endif
-  _wdt_enable(); //запускаем WatchDog
 
   _read_memory(); //проверка и чтение данных из памяти
   _rows_clear(); //очистка строк
@@ -439,8 +438,6 @@ void INIT_SYSTEM(void) //инициализация
   EIMSK = (0x01 << INT0); //разрешаем внешнее прерывание INT0
 
   _wait(FONT_TIME); //ждем
-
-  clrScr(); //очистка экрана
 }
 //-------------------Проверка и чтение данных из памяти-------------------------------------------
 void _read_memory(void) //проверка и чтение данных из памяти
@@ -662,6 +659,24 @@ ISR(WDT_vect) //cчет тиков WatchDog
 {
   if (++tick_buff == REBOOT_TICK) RESET_SYSTEM; //если буфер переполнен то перезагружаемся
 }
+//---------------------------Получить аппроксимированный фон------------------------------------------
+uint32_t _get_aprox_back(float _imp) //получить аппроксимированный фон
+{
+  if ((uint16_t)_imp >= pgm_read_word(&back_aprox_imp[PATTERNS_APROX - 1])) {
+    for (uint8_t i = 0; i < PATTERNS_APROX; i++) { //выбор паттерна
+      if ((uint16_t)_imp >= pgm_read_word(&back_aprox_imp[i])) { //если имп/с совпадают с паттерном
+#if GEIGER_DEAD_TIME
+        return (pumpSettings.geiger_time / (pgm_read_float(&back_aprox_coef[i]) * ((1.0 / _imp) - DEAD_TIME))); //рассчитываем фон в мкр/ч с поправкой на скорость счета и мертвое время
+#else
+        return (pumpSettings.geiger_time / (pgm_read_float(&back_aprox_coef[i]) * (1.0 / _imp))); //рассчитываем фон в мкр/ч с поправкой на скорость счета
+#endif
+        break;
+      }
+    }
+  }
+
+  return (_imp * pumpSettings.geiger_time); //рассчитываем фон в мкр/ч
+}
 //----------------------------------Преобразование данных---------------------------------------------
 boolean _data_update(void) //преобразование данных
 {
@@ -858,19 +873,7 @@ boolean _data_update(void) //преобразование данных
             if (imp_per_sec > OWN_BACK) imp_per_sec -= OWN_BACK; //убираем собственный фон счетчика
             else imp_per_sec = temp_buff = 0; //иначе ничего кроме собственного фона нету
 #endif
-            if ((uint16_t)imp_per_sec >= pgm_read_word(&back_aprox_imp[PATTERNS_APROX - 1])) {
-              for (uint8_t i = 0; i < PATTERNS_APROX; i++) { //выбор паттерна
-                if ((uint16_t)imp_per_sec >= pgm_read_word(&back_aprox_imp[i])) { //если имп/с совпадают с паттерном
-#if GEIGER_DEAD_TIME
-                  rad_back = pumpSettings.geiger_time / (pgm_read_float(&back_aprox_coef[i]) * ((1.0 / imp_per_sec) - DEAD_TIME)); //рассчитываем фон в мкр/ч с поправкой на скорость счета и мертвое время
-#else
-                  rad_back = pumpSettings.geiger_time / (pgm_read_float(&back_aprox_coef[i]) * (1.0 / imp_per_sec)); //рассчитываем фон в мкр/ч с поправкой на скорость счета
-#endif
-                  break;
-                }
-              }
-            }
-            else rad_back = imp_per_sec * pumpSettings.geiger_time; //рассчитываем фон в мкр/ч
+            rad_back = _get_aprox_back(imp_per_sec); //получить аппроксимированный фон в мкр/ч
 #else
 #if GEIGER_OWN_BACK
             float own_back_now = ((uint16_t)mid_time_now * 60 + back_time_now) * OWN_BACK; //рассчитываем количество импульсов собственного фона
@@ -883,7 +886,7 @@ boolean _data_update(void) //преобразование данных
           break;
 
         case TASK_UPDATE_ACCUR: //рассчитываем точность
-          accur_percent = _init_accur(temp_buff); //рассчет точности
+          accur_percent = _get_accur(temp_buff); //рассчет точности
           break;
 
         case TASK_MAX_BACK: //минимальный и максимальный фон
@@ -1092,20 +1095,20 @@ boolean _data_update(void) //преобразование данных
       case TASK_UPDATE_SLEEP: //считаем время до ухода в сон
         if (mainSettings.sleep_switch) { //если сон не выключен
           if (cnt_pwr <= (sleep_disable) ? mainSettings.time_bright : mainSettings.time_sleep) cnt_pwr++; //счет ухода в сон
-        }
-        if (cnt_pwr == mainSettings.time_sleep && mainSettings.sleep_switch == 2) { //если пришло время спать и сон не запрещен
-          enableSleep(); //уводим в сон дисплей
-          sleep = 1; //выставляем флаг сна
-          _buzz_disable(); //запрещаем щелчки
-        }
-        else if (cnt_pwr == mainSettings.time_bright) { //если пришло время выключить подсветку
+          if (cnt_pwr == mainSettings.time_sleep && mainSettings.sleep_switch == 2) { //если пришло время спать и сон не запрещен
+            enableSleep(); //уводим в сон дисплей
+            sleep = 1; //выставляем флаг сна
+            _buzz_disable(); //запрещаем щелчки
+          }
+          else if (cnt_pwr == mainSettings.time_bright) { //если пришло время выключить подсветку
 #ifdef PCD8544
-          _LIGHT_OFF(); //выключаем подсветку
+            _LIGHT_OFF(); //выключаем подсветку
 #endif
 #ifdef SSD1306
-          setContrast(0); //установка минимальной яркости
+            setContrast(OFF_LIGHT); //установка минимальной яркости
 #endif
-          light = 1; //выставляем флаг выключенной подсветки
+            light = 1; //выставляем флаг выключенной подсветки
+          }
         }
         break;
 
@@ -1183,7 +1186,7 @@ void _disable_sleep(void) //выход из сна
 {
   _sleep_out(); //выход из сна
   scr = 0; //разрешаем обновления экрана
-  graf = 0; //разрешаем обновление экрана поиска
+  scrSearch = 0; //разрешаем обновление экрана поиска
   time_out = 0; //сбрасываем счетчик авто-выхода
 }
 //---------------------------------------Ожидание---------------------------------------------------------
@@ -1624,7 +1627,9 @@ void _measur_massege(void) //окончание замера
 //-------------------------------Режим замера----------------------------------------------------------
 uint8_t measur_menu(void) //режим замера
 {
-  uint32_t buff = 0;
+  float first_imp_per_min = 0; //буфер импульсов/мин первого замера
+  float second_imp_per_min = 0; //буфер импульсов/мин первого замера
+  uint32_t buff = 0; //буфер импульсов
   boolean anim = 0; //анимация окончания замера
 
   alarm_measur = 1; //запрещаем оповещение окончания замера
@@ -1690,34 +1695,40 @@ uint8_t measur_menu(void) //режим замера
         scr = 1; //устанавливаем флаг
 
         clrScr(); //очистка экрана
-        task_bar(M_MEASUR_BETA); //отрисовываем фон
+        _print_task_bar(M_MEASUR_BETA); //отрисовываем фон
 
         switch (measur) {
           case 0: //результат
             buff = (first_froze < second_froze) ? second_froze - first_froze : 0; //рассчитываем результат замера
+            first_imp_per_min = (float)first_froze / pgm_read_byte(&diff_measuring[mainSettings.measur_pos]);
+            second_imp_per_min = (float)second_froze / pgm_read_byte(&diff_measuring[mainSettings.measur_pos]);
 
             if (next_measur) {
               switch (anim) {
                 case 0:
                   print(M_RESULT, CENTER, 24); //результат
-                  _init_couts_per_cm2((float)buff / pgm_read_byte(&diff_measuring[mainSettings.measur_pos])); //результат ч/см2*м
+                  _print_couts_per_cm2((float)buff / pgm_read_byte(&diff_measuring[mainSettings.measur_pos])); //результат ч/см2*м
                   break;
                 case 1:
                   print(M_BACK_OK, CENTER, 24); //ок - замер фона
-                  _init_rads_unit(1, buff * (pumpSettings.geiger_time / (pgm_read_byte(&diff_measuring[mainSettings.measur_pos]) * 60)), 1, 4, 1, 8, 0, 54, 16); //результат мкр/ч
+#if APPROX_BACK_SCORE
+                  _print_rads_unit(1, (buff) ? (_get_aprox_back(first_imp_per_min * 60) - _get_aprox_back(second_imp_per_min * 60)) : 0, 1, 4, 1, 8, 0, 54, 16); //результат мкр/ч
+#else
+                  _print_rads_unit(1, pumpSettings.geiger_time * ((float)buff / (pgm_read_byte(&diff_measuring[mainSettings.measur_pos]) * 60)), 1, 4, 1, 8, 0, 54, 16); //результат мкр/ч
+#endif
                   break;
               }
               anim = !anim;
             }
             else print(M_RESULT, CENTER, 24); //результат
 
-            _init_accur_percent(_init_accur(buff)); //отрисовка точности
+            _print_accur_percent(_get_accur(buff)); //отрисовка точности
 
             print(M_BACK_I, LEFT, 32); //строка 1 фон
-            _init_small_couts_per_cm2((float)first_froze / pgm_read_byte(&diff_measuring[mainSettings.measur_pos]), 32);
+            _print_small_couts_per_cm2(first_imp_per_min, 32);
 
             print(M_SAMP_I, LEFT, 40); //строка 2 обр
-            _init_small_couts_per_cm2((float)second_froze / pgm_read_byte(&diff_measuring[mainSettings.measur_pos]), 40);
+            _print_small_couts_per_cm2(second_imp_per_min, 40);
 
             break;
 
@@ -1730,13 +1741,13 @@ uint8_t measur_menu(void) //режим замера
               anim = !anim;
             }
             else print(M_BACK, CENTER, 24); //замер фона
-            _init_couts_per_cm2(first_froze / (((time_switch) ? time_switch : 1) / 60.0)); //рассчитываем результат замера в ч*см2/м); //первый замер ч/см2*м
-            _init_accur_percent(_init_accur(first_froze)); //отрисовка точности
+            _print_couts_per_cm2(first_froze / (((time_switch) ? time_switch : 1) / 60.0)); //рассчитываем результат замера в ч*см2/м); //первый замер ч/см2*м
+            _print_accur_percent(_get_accur(first_froze)); //отрисовка точности
             break;
 
           case 2: //2-й замер
-            _init_couts_per_cm2(second_froze / (((time_switch) ? time_switch : 1) / 60.0)); //второй замер ч/см2*м
-            _init_accur_percent(_init_accur(second_froze)); //отрисовка точности
+            _print_couts_per_cm2(second_froze / (((time_switch) ? time_switch : 1) / 60.0)); //второй замер ч/см2*м
+            _print_accur_percent(_get_accur(second_froze)); //отрисовка точности
             print(M_SAMP, CENTER, 24); //замер образца
             break;
         }
@@ -1762,7 +1773,7 @@ uint8_t measur_menu(void) //режим замера
   return INIT_PROGRAM;
 }
 //-------------------------------Частиц/см2*мин----------------------------------------------------------
-void _init_couts_per_cm2(float num) //частиц/см2*мин
+void _print_couts_per_cm2(float num) //частиц/см2*мин
 {
   num /= GEIGER_AREA;
 
@@ -1771,7 +1782,7 @@ void _init_couts_per_cm2(float num) //частиц/см2*мин
   print(UNIT_COUNT_PER_SQUARE_CM, 54, 16); //строка 1 ч/см2
 }
 //-------------------------------Частиц/см2*мин----------------------------------------------------------
-void _init_small_couts_per_cm2(float num, uint8_t pos_y) //частиц/см2*мин
+void _print_small_couts_per_cm2(float num, uint8_t pos_y) //частиц/см2*мин
 {
   num /= GEIGER_AREA;
 
@@ -1783,7 +1794,7 @@ void _init_small_couts_per_cm2(float num, uint8_t pos_y) //частиц/см2*м
 #endif
 }
 //----------------------------Расчет точности замера----------------------------------------------------
-uint8_t _init_accur(uint32_t num) //расчет точности замера
+uint8_t _get_accur(uint32_t num) //расчет точности замера
 {
   return (num) ? constrain(((mainSettings.sigma_pos + 1) / sqrtf((float)num)) * 100, 1, 99) : 99; //находим статистическую точность
 }
@@ -1863,7 +1874,7 @@ void alarm_messege(boolean set, uint8_t sound, const char *mode) //тревог�
 
         drawLine(5); //очистка строки 5
         print(mode, LEFT, 40); //фон
-        _init_rads_unit(0, (set) ? rad_dose : rad_back, 10, 5, RIGHT, 40, set, RIGHT, 40); //результат
+        _print_rads_unit(0, (set) ? rad_dose : rad_back, 10, 5, RIGHT, 40, set, RIGHT, 40); //результат
 
         showScr(); //вывод буфера на экран
       }
@@ -1945,7 +1956,7 @@ void _init_low_bat(void) //отрисовка сообщения разряже�
 //-----------------------------------Сообщение об разряженной батареи-----------------------------------------------
 void _bat_massege(void) //сообщение об разряженной батареи
 {
-  if (!low_bat_massege && bat_adc >= LOW_BAT_STAT) { //если флаг разрешения сообщения поднят и заряд ниже 3v, то выводим предупреждение
+  if (!low_bat_massege && bat_adc >= LOW_BAT_STAT) { //если флаг разрешения сообщения поднят и заряд ниже установленного то выводим предупреждение
     low_bat_massege = 1; //запрещаем вывод сообщения
 
     _disable_sleep(); //просыпаемся если спали
@@ -2006,7 +2017,11 @@ void _search_update(void) //обновление данных поиска
 
     rad_imp = ((float)temp_buff / search_score_now) * (1000.00 / pgm_read_word(&search_time[mainSettings.search_pos])); //персчет имп/сек.
     rad_imp_m = rad_imp * 60.0; //персчет импульсов в имп/мин.
-    rad_search = rad_imp * pumpSettings.geiger_time; //считаем мкР/ч | мкЗ/ч
+#if APPROX_BACK_SCORE
+    rad_search = _get_aprox_back(rad_imp); //считаем мкР/ч
+#else
+    rad_search = rad_imp * pumpSettings.geiger_time; //считаем мкР/ч
+#endif
 
     imp_s = search_buff[0] * (1000.00 / pgm_read_word(&search_time[mainSettings.search_pos])); //персчет имп/сек.
 
@@ -2014,7 +2029,7 @@ void _search_update(void) //обновление данных поиска
     score_now = pgm_read_byte(&search_score[score_now]);
 
     score_cnt = 0; //сброс
-    graf = 0; //разрешаем обновление графика
+    scrSearch = 0; //разрешаем обновление графика
   }
 
   scan_now = (imp_s > SEARCH_IND_MAX) ? SEARCH_IND_MAX : imp_s; //устанавливаем точки максимумов
@@ -2071,12 +2086,12 @@ uint8_t search_menu(void) //инициализация режима поиск
           return MENU_PROGRAM;
       }
 
-      if (!graf) {
-        graf = 1; //запрещаем обновление графика
+      if (!scrSearch) {
+        scrSearch = 1; //запрещаем обновление графика
 
         clrScr(); //очистка экрана
 
-        task_bar(S_SEARCH); //отрисовываем фон
+        _print_task_bar(S_SEARCH); //отрисовываем фон
         if (search_disable) drawBitmap(59, 0, scan_stop_img, 6, 8); //рисуем паузу
         drawBitmap(0, 8, scan_ind_scale_img, 51, 8); //рисуем шкалу
         drawLine(2, 0, 1, 0x3E); //рисуем шкалу
@@ -2101,7 +2116,7 @@ uint8_t search_menu(void) //инициализация режима поиск
             break;
 
           case 2:
-            _init_rads_unit(0, rad_search, 10, 5, 54, 16, 0, RIGHT, 8); //результат
+            _print_rads_unit(0, rad_search, 10, 5, 54, 16, 0, RIGHT, 8); //мкр/ч
             break;
         }
 
@@ -2158,7 +2173,7 @@ uint8_t parameters(void) //параметры
         _bat_check(); //опрос батареи
 
         clrScr(); //очистка экрана
-        task_bar(P_PARAM); //отрисовываем фон
+        _print_task_bar(P_PARAM); //отрисовываем фон
 
         print(P_BAT, LEFT, 8); //Батарея:
         printNumF(_convert_vcc_bat(bat_adc), 2, RIGHT, 8, 46, 4, 48); //напряжение акб
@@ -2243,7 +2258,7 @@ uint8_t debug(void) //отладка
         _bat_check(); //опрос батареи
 
         clrScr(); //очистка экрана
-        task_bar(D_DEBUG); //отрисовываем фон
+        _print_task_bar(D_DEBUG); //отрисовываем фон
 
         print(D_BAT, LEFT, 8); //БАТ
         printNumF(_convert_vcc_bat(bat_adc), 2, 20, 8, 46, 4, 48); //напряжение акб
@@ -2512,7 +2527,7 @@ void _settings_data_down(uint8_t pos) //убавление данных
       }
       else if (mainSettings.sleep_switch == 2) mainSettings.sleep_switch = 1; break;
     case _SET_TIME_BRIGHT: if (mainSettings.time_bright > 5) mainSettings.time_bright -= 5; else mainSettings.sleep_switch = 0; break; //Подсветка
-    case _SET_CONTRAST: if (mainSettings.contrast) setContrast(mainSettings.contrast -= STEP_CONTRAST); break; //Контраст
+    case _SET_CONTRAST: if (mainSettings.contrast > MIN_CONTRAST) setContrast(mainSettings.contrast -= STEP_CONTRAST); break; //Контраст
 #if ROTATE_DISP_RETURN
     case _SET_ROTATION: mainSettings.rotation = 0; break; //Разворот
 #endif
@@ -2611,7 +2626,7 @@ uint8_t settings(void) //настройки
 #endif
 
         clrScr(); // Очистка экрана
-        task_bar(S_SETTINGS); //отрисовываем фон
+        _print_task_bar(S_SETTINGS); //отрисовываем фон
 
         for (uint8_t i = 0; i < 5; i++) { //отсчет строк
           for (uint8_t r = 0; r < 2; r++) { //отсчет позиции
@@ -2706,7 +2721,7 @@ uint8_t menu(void) //меню
 #endif
 
         clrScr(); // Очистка экрана
-        task_bar(MAIN_MENU); //отрисовываем фон
+        _print_task_bar(MAIN_MENU); //отрисовываем фон
 
         for (uint8_t i = 0; i < 5; i++) _menu_item_switch((i == cursor) ? 1 : 0, pos - cursor + i + 1, i); //отрисовываем пункты настроек
         showScr(); //вывод буфера на экран
@@ -2772,15 +2787,15 @@ void _logbook_data_switch(boolean inv, uint8_t num, uint8_t pos, uint8_t data_nu
       case 1:
         if (temp_byte == 2) print(L_DATA_DOSE, LEFT, pos_row); //ДОЗА
         else print(L_DATA_BACK, LEFT, pos_row); //ФОН
-        _init_rads_unit(0, temp_dword, 1, 4, RIGHT, pos_row, temp_byte - 1, RIGHT, pos_row); //единицы фона/дозы
+        _print_rads_unit(0, temp_dword, 1, 4, RIGHT, pos_row, temp_byte - 1, RIGHT, pos_row); //единицы фона/дозы
         break;
       case 2:
         printNumI(temp_byte, LEFT, pos_row, 2); //время замера
         print(L_DATA_MINS, 12, pos_row); //м
 #if TYPE_MEASUR_LOGBOOK
-        _init_small_couts_per_cm2((float)temp_dword / temp_byte, pos_row); //отрисовываем ч/см2
+        _print_small_couts_per_cm2((float)temp_dword / temp_byte, pos_row); //отрисовываем ч/см2
 #else
-        _init_rads_unit(0, temp_dword, 1, 4, RIGHT, pos_row, 0, RIGHT, pos_row); //отрисовываем мкР/ч
+        _print_rads_unit(0, temp_dword, 1, 4, RIGHT, pos_row, 0, RIGHT, pos_row); //отрисовываем мкР/ч
 #endif
         break;
       case 3:
@@ -2792,9 +2807,9 @@ void _logbook_data_switch(boolean inv, uint8_t num, uint8_t pos, uint8_t data_nu
     printNumI(temp_byte, LEFT, pos_row, 2); //вркмя замера
     print(L_DATA_MINS, 12, pos_row); //м
 #if TYPE_MEASUR_LOGBOOK
-    _init_small_couts_per_cm2((float)temp_dword / temp_byte, pos_row); //отрисовываем ч/см2
+    _print_small_couts_per_cm2((float)temp_dword / temp_byte, pos_row); //отрисовываем ч/см2
 #else
-    _init_rads_unit(0, temp_dword, 1, 4, RIGHT, pos_row, 0, RIGHT, pos_row); //отрисовываем мкР/ч
+    _print_rads_unit(0, temp_dword, 1, 4, RIGHT, pos_row, 0, RIGHT, pos_row); //отрисовываем мкР/ч
 #endif
 #endif
   }
@@ -2928,7 +2943,7 @@ uint8_t logbook(void) //журнал
 #endif
 
         clrScr(); // Очистка экрана
-        task_bar(L_LOGBOOK); //отрисовываем фон
+        _print_task_bar(L_LOGBOOK); //отрисовываем фон
 
         if (!err_sw) {
           for (uint8_t i = 0; i < 5; i++) {
@@ -2999,7 +3014,7 @@ uint8_t logbook(void) //журнал
 #endif
 
         clrScr(); // Очистка экрана
-        task_bar(L_LOGBOOK); //отрисовываем фон
+        _print_task_bar(L_LOGBOOK); //отрисовываем фон
 
         for (uint8_t i = 0; i < 5; i++) _logbook_data_switch((i == cursor) ? 1 : 0, pos - cursor + i, i, 2); //отрисовывам информацию
         showScr(); //вывод буфера на экран
@@ -3399,7 +3414,7 @@ void _init_dash_unit(boolean type, uint8_t char_all, uint8_t char_unit, uint8_t 
   }
 }
 //----------------------------------Инициализация значений------------------------------------------------------
-void _init_rads_unit(boolean type, uint32_t num, uint8_t divisor, uint8_t char_all, uint8_t num_x, uint8_t num_y, boolean unit, uint8_t unit_x, uint8_t unit_y, boolean dash) //инициализация значений
+void _print_rads_unit(boolean type, uint32_t num, uint8_t divisor, uint8_t char_all, uint8_t num_x, uint8_t num_y, boolean unit, uint8_t unit_x, uint8_t unit_y, boolean dash) //инициализация значений
 {
   uint8_t _ptr = (mainSettings.rad_mode) ? PATTERNS_SVH : PATTERNS_RH;
 
@@ -3477,7 +3492,7 @@ void _alarm_init(uint8_t wait, uint8_t alarm) //индикация тревог�
   }
 }
 //----------------------------------Шапка экрана------------------------------------------------
-void task_bar(const char *title) //шапка экрана
+void _print_task_bar(const char *title) //шапка экрана
 {
   drawLine(0, 0, 83, 0xFF); //рисуем линию
   drawBitmap(70, 0, font_bat_img, 12, 8); //устанавлваем фон батареи
@@ -3488,7 +3503,7 @@ void task_bar(const char *title) //шапка экрана
   invertText(false);
 }
 //----------------------------------Отрисовка точности------------------------------------------------
-void _init_accur_percent(uint8_t num) //отрисовка точности
+void _print_accur_percent(uint8_t num) //отрисовка точности
 {
   drawBitmap(54, 8, plus_minus_img, 3, 8); //±
   setFont(TinyNumbersDown); //установка шрифта
@@ -3499,7 +3514,7 @@ void _init_accur_percent(uint8_t num) //отрисовка точности
   drawBitmap(79, 8, sigma_img, 5, 8); //σ
 }
 //----------------------------------Отрисовка предела фона------------------------------------------------
-void _init_back_bar(uint32_t num) //отрисовка предела фона
+void _print_back_bar(uint32_t num) //отрисовка предела фона
 {
   drawBitmap(0, 24, back_scale_img, 84, 8);
   for (uint8_t i = 0; i < PATTERNS_SCALE; i++) { //перебираем патерны
@@ -3587,8 +3602,8 @@ uint8_t main_screen(void)
 
         //рисуем шапку экрана
         switch (scr_mode) {
-          case 0: task_bar(MAIN_SCREEN_BACK); _alarm_init(alarm_back_wait + warn_back_wait, mainSettings.alarm_back); break;  //режим текущего фона
-          case 1: task_bar(MAIN_SCREEN_DOSE); _alarm_init(0, mainSettings.alarm_dose); break;  //режим накопленной дозы
+          case 0: _print_task_bar(MAIN_SCREEN_BACK); _alarm_init(alarm_back_wait + warn_back_wait, mainSettings.alarm_back); break;  //режим текущего фона
+          case 1: _print_task_bar(MAIN_SCREEN_DOSE); _alarm_init(0, mainSettings.alarm_dose); break;  //режим накопленной дозы
         }
 
         drawBitmap(55, 0, font_alarm_img, 5, 8); //устанавлваем фон звуков
@@ -3622,7 +3637,7 @@ uint8_t main_screen(void)
                 drawLine(3, 1, map(geiger_time_now, 0, 60, 5, 82), 0x06); //шкала точности
                 drawLine(3, 1, map(mid_time_now, 0, mainSettings.averag_time, 5, 82), 0x30); //шкала усреднения
 #else
-                _init_back_bar(rad_back);
+                _print_back_bar(rad_back);
 #endif
                 break;
               case 3: _init_alarm_massage(0, 24); break; //предупреждение
@@ -3656,16 +3671,16 @@ uint8_t main_screen(void)
                 printNumF(debug_coef, 2, RIGHT, 40, 46, 5); //строка 2
 #else
                 print(MAIN_SCREEN_BACK_MAX, 0, 32); //строка 1 макс:
-                _init_rads_unit(0, rad_max, 1, 4, RIGHT, 32, 0, RIGHT, 32, !rad_max); //строка 1 максимальный фон
+                _print_rads_unit(0, rad_max, 1, 4, RIGHT, 32, 0, RIGHT, 32, !rad_max); //строка 1 максимальный фон
 
                 print(MAIN_SCREEN_CURRENT_DOSE, 0, 40); //строка 2 доза:
-                _init_rads_unit(0, rad_dose, 10, 5, RIGHT, 40, 1, RIGHT, 40); //строка 2 текущая доза
+                _print_rads_unit(0, rad_dose, 10, 5, RIGHT, 40, 1, RIGHT, 40); //строка 2 текущая доза
 #endif
                 break;
             }
 
-            _init_accur_percent(accur_percent); //отрисовка точности
-            _init_rads_unit(1, rad_back, 1, 4, 1, 8, 0, 54, 16); //строка 1 основной фон
+            _print_accur_percent(accur_percent); //отрисовка точности
+            _print_rads_unit(1, rad_back, 1, 4, 1, 8, 0, 54, 16); //строка 1 основной фон
 
             break;
           //===========================================================//
@@ -3691,9 +3706,9 @@ uint8_t main_screen(void)
                   case 4: _init_alarm_massage(0, 32); break; //предупреждение
                 }
 
-                _init_rads_unit(1, rad_dose, 10, 5, 1, 8, 1, 66, 16); //строка 1 текущая доза
+                _print_rads_unit(1, rad_dose, 10, 5, 1, 8, 1, 66, 16); //строка 1 текущая доза
                 print(MAIN_SCREEN_CURRENT_DOSE_ALL, 0, 40); //строка 2 всего
-                _init_rads_unit(0, rad_dose_save, 10, 5, RIGHT, 40, 1, RIGHT, 40); //строка 2 сохранённая доза
+                _print_rads_unit(0, rad_dose_save, 10, 5, RIGHT, 40, 1, RIGHT, 40); //строка 2 сохранённая доза
                 break;
 
               case 1: //общая накопленная доза и время
@@ -3707,7 +3722,7 @@ uint8_t main_screen(void)
                 print(MAIN_SCREEN_DOSE_ACCUM, CENTER, 24); //накоплено
                 print(MAIN_SCREEN_DOSE_JUST_OVER, 16, 30); //всего за:
 
-                _init_rads_unit(1, rad_dose_save, 10, 5, 1, 8, 1, 66, 16); //строка 1 сохранённая доза
+                _print_rads_unit(1, rad_dose_save, 10, 5, 1, 8, 1, 66, 16); //строка 1 сохранённая доза
                 break;
             }
             break;

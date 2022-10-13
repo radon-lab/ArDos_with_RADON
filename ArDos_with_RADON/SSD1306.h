@@ -1,8 +1,11 @@
 #ifdef SSD1306
+#define OFF_LIGHT 10     //значение яркости при выключенной подсветке
+#define MIN_CONTRAST 50  //минимальное значение яркости
 #define MAX_CONTRAST 250 //максимальное значение яркости
 #define STEP_CONTRAST 10 //шаг значения яркости
 
-#define SSD1306_ADDR 0x3C //адрес дисплея
+//Адрес дисплея
+#define SSD1306_ADDR 0x3C
 
 //Основные инструкции
 #define SSD1306_DISPLAY_OFF 0xAE
@@ -55,7 +58,7 @@ void _clear_block(uint8_t start_x, uint8_t end_x, uint8_t start_y, uint8_t end_y
   wireWrite(end_y); //максимальное значение
 
   wireBeginTransmission(SSD1306_ADDR, SSD1306_DATA_MODE); //начинаем передачу
-  for (uint16_t i = (end_x - start_x + 1) * (end_y - start_y + 1); i; i--) wireWrite(0x00); //очищаем экран
+  for (uint16_t i = (end_x - start_x + 1) * (end_y - start_y + 1); i; i--) wireWrite(0x00); //очищаем блок
 }
 //-------------------------Установка контрастности--------------------------------------------------
 void setContrast(uint8_t contrast) //установка контрастности
@@ -74,13 +77,11 @@ void enableSleep(void) //включение режима сна
   wireWait(); //ожидание остановки шины
 
   PRR |= (0x01 << PRTWI); //выключили питание I2C
-  PWR_LCD_OFF; //включаем питание дисплея
 }
 //-------------------------Выключение режима сна----------------------------------------------------
 void disableSleep(uint8_t contrast) //выключение режима сна
 {
   PRR &= ~(0x01 << PRTWI); //включили питание I2C
-  PWR_LCD_ON; //включаем питание дисплея
 
   wireInit(); //инициализация wire
 
