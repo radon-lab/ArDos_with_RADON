@@ -1620,9 +1620,9 @@ void _measur_massege(void) //окончание замера
 
           measur_imp = (first_froze < second_froze) ? second_froze - first_froze : 0; //текущий результат замера в ч*см2/м
 #if APPROX_BACK_SCORE
-          measur_back = (measur_imp) ? (_get_aprox_back(_measur_get_imp_per_min(second_froze) * 60) - _get_aprox_back(_measur_get_imp_per_min(first_froze) * 60)) : 0; //текущий результат замера в мкр/ч
+          measur_back = (measur_imp) ? (_get_aprox_back(_measur_get_imp_per_min(second_froze) / 60) - _get_aprox_back(_measur_get_imp_per_min(first_froze) / 60)) : 0; //текущий результат замера в мкр/ч
 #else
-          measur_back = (measur_imp) ? (pumpSettings.geiger_time * (_measur_get_imp_per_min(measur_imp) * 60)) : 0; //текущий результат замера в мкр/ч
+          measur_back = (measur_imp) ? (pumpSettings.geiger_time * (_measur_get_imp_per_min(measur_imp) / 60)) : 0; //текущий результат замера в мкр/ч
 #endif
 
 #if LOGBOOK_RETURN
