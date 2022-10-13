@@ -315,6 +315,8 @@ uint8_t measur = 0; //текущий статус замера
 uint16_t time_switch = 0; //счетчик времени замера
 uint32_t first_froze = 0; //счетчик 1-го замера
 uint32_t second_froze = 0; //счетчик 2-го замера
+uint32_t measur_imp = 0; //текущий результат замера в имп
+uint32_t measur_back = 0; //текущий результат замера в мкр/ч
 
 //переменные работы со звуками
 struct soundData {
@@ -1543,8 +1545,30 @@ uint8_t check_keys(void) //проверка кнопок
   }
   return KEY_NULL;
 }
+//--------------------------Расчет точности замера-----------------------------------------------------
+uint8_t _get_accur(uint32_t num) //расчет точности замера
+{
+  return (num) ? constrain(((mainSettings.sigma_pos + 1) / sqrtf((float)num)) * 100, 1, 99) : 99; //находим статистическую точность
+}
+//----------------------------Сброс режима замера------------------------------------------------------
+float _measur_get_imp_per_min(uint32_t imp) //сброс режима замера
+{
+  return ((float)imp / pgm_read_byte(&diff_measuring[mainSettings.measur_pos]));
+}
+//----------------------------Сброс режима замера------------------------------------------------------
+void _measur_reset(void) //сброс режима замера
+{
+  measur = 0; //выключаем замер
+  time_switch = 0; //сбрасываем таймер
+  next_measur = 1; //сбрасываем флаг следующего замера
+  alarm_measur = 1; //разрешаем оповещение оканчания замера
+  first_froze = 0; //сбрасываем счетчик 1-го замера
+  second_froze = 0; //сбрасываем счетчик 2-го замера
+  measur_back = 0; //сбрасываем результат замера в мкр/ч
+  measur_imp = 0; //сбрасываем результат замера в имп
+}
 //-------------------------------Оостановка замера------------------------------------------------------
-void measur_stop(void) //остановка замера
+void _measur_stop(void) //остановка замера
 {
   boolean cursor = 0; //курсор
 
@@ -1559,16 +1583,7 @@ void measur_stop(void) //остановка замера
         case UP_KEY_PRESS: cursor = 1; break; //выбор да
 
         case SEL_KEY_PRESS: //выбор пункта
-          switch (cursor) {
-            case 1:
-              measur = 0; //выключаем замер
-              time_switch = 0; //сбрасываем таймер
-              next_measur = 1; //сбрасываем флаг продолжения замера
-              alarm_measur = 1; //разрешаем оповещение окончания замера
-              first_froze = 0; //сбрасываем счетчик 1-го замера
-              second_froze = 0; //сбрасываем счетчик 2-го замера
-              break;
-          }
+          if (cursor) _measur_reset(); //сброс режима замера
           return; //выход
       }
 
@@ -1600,26 +1615,33 @@ void _measur_massege(void) //окончание замера
 
     switch (measur) {
       case 1: alarm_measur = 1; break; //запрещаем повторное оповещение
-      case 2:
-        measur = 0;
-        time_switch = 0;
-        alarm_measur = 1;
-#if LOGBOOK_RETURN
-        if (bookSettings.logbook_measur) {
-          bookSettings.logbook_measur = 2; //устанавливаем признак новой записи
-#if  TYPE_MEASUR_LOGBOOK
-          _logbook_data_update(2, pgm_read_byte(&diff_measuring[mainSettings.measur_pos]), (first_froze < second_froze) ? (second_froze - first_froze) : 0); //обновление журнала ч/см2
+      case 2: {
+          _measur_reset(); //сброс режима замера
+
+          measur_imp = (first_froze < second_froze) ? second_froze - first_froze : 0; //текущий результат замера в ч*см2/м
+#if APPROX_BACK_SCORE
+          measur_back = (measur_imp) ? (_get_aprox_back(_measur_get_imp_per_min(second_froze) * 60) - _get_aprox_back(_measur_get_imp_per_min(first_froze) * 60)) : 0; //текущий результат замера в мкр/ч
 #else
-          _logbook_data_update(2, pgm_read_byte(&diff_measuring[mainSettings.measur_pos]), (first_froze < second_froze) ? (second_froze - first_froze) * (pumpSettings.geiger_time / (pgm_read_byte(&diff_measuring[mainSettings.measur_pos]) * 60)) : 0); //обновление журнала мкР/ч
+          measur_back = (measur_imp) ? (pumpSettings.geiger_time * (_measur_get_imp_per_min(measur_imp) * 60)) : 0; //текущий результат замера в мкр/ч
+#endif
+
+#if LOGBOOK_RETURN
+          if (bookSettings.logbook_measur) {
+            bookSettings.logbook_measur = 2; //устанавливаем признак новой записи
+#if  TYPE_MEASUR_LOGBOOK
+            _logbook_data_update(2, pgm_read_byte(&diff_measuring[mainSettings.measur_pos]), measur_imp); //обновление журнала ч/см2
+#else
+            _logbook_data_update(2, pgm_read_byte(&diff_measuring[mainSettings.measur_pos]), measur_back); //обновление журнала мкР/ч
+#endif
+          }
+#else
+#if  TYPE_MEASUR_LOGBOOK
+          _logbook_data_update(2, pgm_read_byte(&diff_measuring[mainSettings.measur_pos]), measur_imp); //обновление журнала ч/см2
+#else
+          _logbook_data_update(2, pgm_read_byte(&diff_measuring[mainSettings.measur_pos]), measur_back); //обновление журнала мкР/ч
+#endif
 #endif
         }
-#else
-#if  TYPE_MEASUR_LOGBOOK
-        _logbook_data_update(2, pgm_read_byte(&diff_measuring[mainSettings.measur_pos]), (first_froze < second_froze) ? (second_froze - first_froze) : 0); //обновление журнала ч/см2
-#else
-        _logbook_data_update(2, pgm_read_byte(&diff_measuring[mainSettings.measur_pos]), (first_froze < second_froze) ? (second_froze - first_froze) * (pumpSettings.geiger_time / (pgm_read_byte(&diff_measuring[mainSettings.measur_pos]) * 60)) : 0); //обновление журнала мкР/ч
-#endif
-#endif
         break;
     }
   }
@@ -1627,13 +1649,9 @@ void _measur_massege(void) //окончание замера
 //-------------------------------Режим замера----------------------------------------------------------
 uint8_t measur_menu(void) //режим замера
 {
-  float first_imp_per_min = 0; //буфер импульсов/мин первого замера
-  float second_imp_per_min = 0; //буфер импульсов/мин первого замера
-  uint32_t buff = 0; //буфер импульсов
   boolean anim = 0; //анимация окончания замера
 
-  alarm_measur = 1; //запрещаем оповещение окончания замера
-  next_measur = 1; //поднимаем флаг продолжения замера
+  _measur_reset(); //сброс режима замера
 
   while (1) {
     if (_data_update()) { //обработка данных
@@ -1649,19 +1667,12 @@ uint8_t measur_menu(void) //режим замера
 #endif
 
         case DOWN_KEY_PRESS: //клик кнопки вниз
-          if (measur) measur_stop(); //если идет замер, спрашиваем нужно ли остановить замер
-          else {
-            measur = 0; //выключаем замер
-            time_switch = 0; //сбрасываем таймер
-            next_measur = 1; //сбрасываем флаг следующего замера
-            alarm_measur = 1; //разрешаем оповещение оканчания замера
-            first_froze = 0; //сбрасываем счетчик 1-го замера
-            second_froze = 0; //сбрасываем счетчик 2-го замера
-          }
+          if (measur) _measur_stop(); //если идет замер, спрашиваем нужно ли остановить замер
+          else _measur_reset(); //сброс режима замера
           break;
 
         case UP_KEY_PRESS: //клик кнопки вверх
-          if (measur) measur_stop(); //если идет замер, спрашиваем нужно ли остановить замер
+          if (measur) _measur_stop(); //если идет замер, спрашиваем нужно ли остановить замер
           break;
 
         case UP_KEY_HOLD: //удержание кнопки вверх
@@ -1686,7 +1697,7 @@ uint8_t measur_menu(void) //режим замера
           break;
 
         case SEL_KEY_HOLD: //удержание кнопки выбора
-          if (measur) measur_stop(); //если идет замер, спрашиваем нужно ли остановить замер
+          if (measur) _measur_stop(); //если идет замер, спрашиваем нужно ли остановить замер
           else return MENU_PROGRAM; //выходим в меню
           break;
       }
@@ -1699,36 +1710,28 @@ uint8_t measur_menu(void) //режим замера
 
         switch (measur) {
           case 0: //результат
-            buff = (first_froze < second_froze) ? second_froze - first_froze : 0; //рассчитываем результат замера
-            first_imp_per_min = (float)first_froze / pgm_read_byte(&diff_measuring[mainSettings.measur_pos]);
-            second_imp_per_min = (float)second_froze / pgm_read_byte(&diff_measuring[mainSettings.measur_pos]);
-
             if (next_measur) {
               switch (anim) {
                 case 0:
                   print(M_RESULT, CENTER, 24); //результат
-                  _print_couts_per_cm2((float)buff / pgm_read_byte(&diff_measuring[mainSettings.measur_pos])); //результат ч/см2*м
+                  _print_couts_per_cm2(_measur_get_imp_per_min(measur_imp)); //результат ч*см2/м
                   break;
                 case 1:
                   print(M_BACK_OK, CENTER, 24); //ок - замер фона
-#if APPROX_BACK_SCORE
-                  _print_rads_unit(1, (buff) ? (_get_aprox_back(first_imp_per_min * 60) - _get_aprox_back(second_imp_per_min * 60)) : 0, 1, 4, 1, 8, 0, 54, 16); //результат мкр/ч
-#else
-                  _print_rads_unit(1, pumpSettings.geiger_time * ((float)buff / (pgm_read_byte(&diff_measuring[mainSettings.measur_pos]) * 60)), 1, 4, 1, 8, 0, 54, 16); //результат мкр/ч
-#endif
+                  _print_rads_unit(1, measur_back, 1, 4, 1, 8, 0, 54, 16); //результат мкр/ч
                   break;
               }
               anim = !anim;
             }
             else print(M_RESULT, CENTER, 24); //результат
 
-            _print_accur_percent(_get_accur(buff)); //отрисовка точности
+            _print_accur_percent(_get_accur(measur_imp)); //отрисовка точности
 
             print(M_BACK_I, LEFT, 32); //строка 1 фон
-            _print_small_couts_per_cm2(first_imp_per_min, 32);
+            _print_small_couts_per_cm2(_measur_get_imp_per_min(first_froze), 32);
 
             print(M_SAMP_I, LEFT, 40); //строка 2 обр
-            _print_small_couts_per_cm2(second_imp_per_min, 40);
+            _print_small_couts_per_cm2(_measur_get_imp_per_min(second_froze), 40);
 
             break;
 
@@ -1741,12 +1744,12 @@ uint8_t measur_menu(void) //режим замера
               anim = !anim;
             }
             else print(M_BACK, CENTER, 24); //замер фона
-            _print_couts_per_cm2(first_froze / (((time_switch) ? time_switch : 1) / 60.0)); //рассчитываем результат замера в ч*см2/м); //первый замер ч/см2*м
+            _print_couts_per_cm2((float)first_froze / (((time_switch) ? time_switch : 1) / 60.0)); //первый замер ч*см2/м
             _print_accur_percent(_get_accur(first_froze)); //отрисовка точности
             break;
 
           case 2: //2-й замер
-            _print_couts_per_cm2(second_froze / (((time_switch) ? time_switch : 1) / 60.0)); //второй замер ч/см2*м
+            _print_couts_per_cm2((float)second_froze / (((time_switch) ? time_switch : 1) / 60.0)); //второй замер ч*см2/м
             _print_accur_percent(_get_accur(second_froze)); //отрисовка точности
             print(M_SAMP, CENTER, 24); //замер образца
             break;
@@ -1775,7 +1778,7 @@ uint8_t measur_menu(void) //режим замера
 //-------------------------------Частиц/см2*мин----------------------------------------------------------
 void _print_couts_per_cm2(float num) //частиц/см2*мин
 {
-  num /= GEIGER_AREA;
+  num /= GEIGER_AREA; //рассчитываем ч*см2/м
 
   setFont(MediumNumbers); //установка шрифта
   printNumF(num, (num < 100) ? 1 : 0, 1, 8, 46, 4, TYPE_CHAR_FILL); //строка 1
@@ -1784,7 +1787,7 @@ void _print_couts_per_cm2(float num) //частиц/см2*мин
 //-------------------------------Частиц/см2*мин----------------------------------------------------------
 void _print_small_couts_per_cm2(float num, uint8_t pos_y) //частиц/см2*мин
 {
-  num /= GEIGER_AREA;
+  num /= GEIGER_AREA; //рассчитываем ч*см2/м
 
   print(UNIT_COUNT_PER_SQUARE_CM, 54, pos_y); //строка 2 ч/см2
 #if (TYPE_CHAR_FILL > 44)
@@ -1792,11 +1795,6 @@ void _print_small_couts_per_cm2(float num, uint8_t pos_y) //частиц/см2*�
 #else
   printNumF(num, (num < 100) ? 1 : 0, 30, pos_y, 46, 4, 32);
 #endif
-}
-//----------------------------Расчет точности замера----------------------------------------------------
-uint8_t _get_accur(uint32_t num) //расчет точности замера
-{
-  return (num) ? constrain(((mainSettings.sigma_pos + 1) / sqrtf((float)num)) * 100, 1, 99) : 99; //находим статистическую точность
 }
 //-------------------------------Выбор тревоги----------------------------------------------------------
 void _alarm_warning(void) //выбор тревоги
