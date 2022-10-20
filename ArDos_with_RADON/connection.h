@@ -9,11 +9,11 @@
 #define UP_PIN    4  //пин кнопки вверх(0..19)(pin D)
 
 //Дисплей 5110(3310)
-#define MOSI_PIN 14 //пин преобразователя(0..19)(pin D)
-#define RST_PIN  10 //пин преобразователя(0..19)(pin D)
-#define SCK_PIN  15 //пин преобразователя(0..19)(pin D)
-#define DC_PIN   12 //пин преобразователя(0..19)(pin D)
-#define CE_PIN   11 //пин преобразователя(0..19)(pin D)
+#define MOSI_PIN 14 //пин MOSI дисплея(0..19)(pin D)
+#define RST_PIN  10 //пин RST дисплея(0..19)(pin D)
+#define SCK_PIN  15 //пин SCK дисплея(0..19)(pin D)
+#define DC_PIN   12 //пин DC дисплея(0..19)(pin D)
+#define CE_PIN   11 //пин CE дисплея(0..19)(pin D)
 
 //Основная периферия
 #define DET_PIN   2  //пин секундных точек(только пин 2)(pin D)

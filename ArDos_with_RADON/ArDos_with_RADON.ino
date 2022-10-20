@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.13
-  Версия программы RADON v4.2.3 low_pwr release 13.10.22 специально для проекта ArDos
+  Версия программы RADON v4.2.3 low_pwr release 19.10.22 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/ardos-dozimetr-prodolzhenie-temy-chast-%E2%84%962 и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -1616,7 +1616,9 @@ void _measur_massege(void) //окончание замера
     switch (measur) {
       case 1: alarm_measur = 1; break; //запрещаем повторное оповещение
       case 2: {
-          _measur_reset(); //сброс режима замера
+          measur = 0; //возвращаемся к результату
+          time_switch = 0; //сбрасываем таймер
+          alarm_measur = 1; //разрешаем оповещение
 
           measur_imp = (first_froze < second_froze) ? second_froze - first_froze : 0; //текущий результат замера в ч*см2/м
 #if APPROX_BACK_SCORE
