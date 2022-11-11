@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.13
-  Версия программы RADON v4.2.3 low_pwr release 19.10.22 специально для проекта ArDos
+  Версия программы RADON v4.2.3 low_pwr release 11.11.22 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/ardos-dozimetr-prodolzhenie-temy-chast-%E2%84%962 и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -919,7 +919,6 @@ boolean _data_update(void) //преобразование данных
         case TASK_UPDATE_ALARM: //обработка тревоги
           if (!sleep_disable) { //если сон разрешен
             if (mainSettings.alarm_dose && (rad_dose - alarm_dose_wait) >= mainSettings.alarm_level_dose) { //если тревога не запрещена и текущая(предыдущая) доза больше порога
-              warn_messege(1, mainSettings.alarm_dose, SOUND_ALARM); //доза 2
 #if LOGBOOK_RETURN
               if (!alarm_switch && bookSettings.logbook_warn) _logbook_data_update(0, 2, rad_dose); //обновление журнала
 #endif
@@ -940,7 +939,6 @@ boolean _data_update(void) //преобразование данных
 
             if (accur_percent <= RAD_ACCUR_WARN) {
               if (mainSettings.alarm_back && !alarm_back_wait && rad_back >= mainSettings.alarm_level_back) { //если тревога не запрещена и текущий фон больше порога
-                warn_messege(0, mainSettings.alarm_back, SOUND_ALARM); //фон 2
 #if LOGBOOK_RETURN
                 if (!alarm_switch && bookSettings.logbook_warn) _logbook_data_update(0, 1, rad_back); //обновление журнала
 #endif
@@ -1841,6 +1839,8 @@ void alarm_messege(boolean set, uint8_t sound, const char *mode) //тревог�
   clrScr(); //очистка экрана
   drawBitmap(26, 0, rad_img, 32, 32);
   print(A_ALARM, CENTER, 32); //строка ТРЕВОГА!
+
+  warn_messege(set, mainSettings.alarm_back, SOUND_ALARM); //звук тревоги
 
   while (1) {
     if (_data_update()) { //обработка данных
