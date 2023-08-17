@@ -1,7 +1,7 @@
 #include <avr/pgmspace.h>
 
 //Языки для локализации
-const char VERSION[] PROGMEM = "4.2.3"; //версия программы
+const char VERSION[] PROGMEM = "4.3.4"; //версия программы
 
 //---------------------------------------------//
 #ifdef RUSSIAN //если выбран язык "русский"
@@ -28,7 +28,7 @@ const char RES_USER[] PROGMEM = "gjkmpjdfntkz?"; //пользователя?
 const char M_MEASUR_BETA[] PROGMEM = "Pfvth ,tnf"; //Замер бета
 
 const char M_STOP[] PROGMEM = "Jcnfyjdbnm"; //Остановить
-const char M_MEASUR[] PROGMEM = "pfvth&"; //замер?
+const char M_MEASUR[] PROGMEM = "pfvth?"; //замер?
 
 const char M_MEASURS[] PROGMEM = "Pfvth"; //Замер
 const char M_COMPLET[] PROGMEM = "pfdthity!"; //завершен!
@@ -65,8 +65,8 @@ const char S_IMP_PER_MIN[] PROGMEM = "bvg|v"; //имп/м
 const char P_PARAM[] PROGMEM = "Gfhfvtnhs"; //Параметры
 
 const char P_BAT[] PROGMEM = "<fnfhtz&"; //Батарея:
-const char P_ADC_BAT[] PROGMEM = "Pyfx.FWG&"; //Знач.АЦП:
-const char P_HV_PUMP[] PROGMEM = "Yfrfxrf DD&"; //Накачка ВВ:
+const char P_IMP_PUMP[] PROGMEM = "Bvgekmc&"; //Импульс:
+const char P_HV_PUMP[] PROGMEM = "Yfghz;tybt&"; //Напряжение:
 const char P_PUMP_SPEED[] PROGMEM = "Crjhjcnm&"; //Скорость:
 const char P_REFERENCE[] PROGMEM = "Jgjhyjt&"; //Опорное:
 
@@ -76,9 +76,11 @@ const char D_DEBUG[] PROGMEM = "Jnkflrf"; //Отладка
 const char D_BAT[] PROGMEM = "<FN"; //БАТ
 const char D_ADC_BAT[] PROGMEM = "FWG"; //АЦП
 const char D_HV_PUMP[] PROGMEM = "DD"; //ВВ
+const char D_TIME_PUMP[] PROGMEM = "DGY"; //ВПН
 const char D_PUMP_SPEED[] PROGMEM = "CRH"; //СКР
 const char D_REFERENCE[] PROGMEM = "JGH"; //ОПР
 const char D_PULS_LEN[] PROGMEM = "BVG"; //ИМП
+const char D_PULS_IND[] PROGMEM = "VNK"; //МТЛ
 const char D_COEF_DIV[] PROGMEM = "RLK"; //КДЛ
 const char D_PUMP_ADC[] PROGMEM = "FWG"; //АЦП
 const char D_WDT_PER[] PROGMEM = "GTH"; //ПЕР
@@ -91,7 +93,7 @@ const char D_COEF_LIMIT[] PROGMEM = "GJHJU&"; //ПОРОГ
 const char S_SETTINGS[] PROGMEM = "Yfcnhjqrb"; //Настройки
 
 const char S_ITEM_SLEEP[] PROGMEM = "Cjy&"; //Сон:
-const char S_ITEM_LIGHT[] PROGMEM = "Gjlcdtnrf&"; //Подсветка:
+const char S_ITEM_BACKL[] PROGMEM = "Gjlcdtnrf&"; //Подсветка:
 const char S_ITEM_CONTRAST[] PROGMEM = "Rjynhfcn&"; //Контраст:
 const char S_ITEM_BRIGHT[] PROGMEM = "Zhrjcnm&"; //Яркость:
 const char S_ITEM_ROTATION[] PROGMEM = "Hfpdjhjn&"; //Разворот:
@@ -261,7 +263,7 @@ const char RES_USER[] PROGMEM = "data?"; //пользователя?
 const char M_MEASUR_BETA[] PROGMEM = "Measur mode"; //Замер бета
 
 const char M_STOP[] PROGMEM = "Stop"; //Остановить
-const char M_MEASUR[] PROGMEM = "measur:"; //замер?
+const char M_MEASUR[] PROGMEM = "measur?"; //замер?
 
 const char M_MEASURS[] PROGMEM = "Measur"; //Замер
 const char M_COMPLET[] PROGMEM = "complet!"; //завершен!
@@ -298,8 +300,8 @@ const char S_IMP_PER_MIN[] PROGMEM = "cpm"; //имп/м
 const char P_PARAM[] PROGMEM = "Parametrs"; //Параметры
 
 const char P_BAT[] PROGMEM = "Battery:"; //Батарея:
-const char P_ADC_BAT[] PROGMEM = "ADC BAT:"; //Знач.АЦП:
-const char P_HV_PUMP[] PROGMEM = "HV PUMP:"; //Накачка ВВ:
+const char P_IMP_PUMP[] PROGMEM = "Pump imp:"; //Импульс:
+const char P_HV_PUMP[] PROGMEM = "Pump volt:"; //Напряжение:
 const char P_PUMP_SPEED[] PROGMEM = "Pump speed:"; //Скорость:
 const char P_REFERENCE[] PROGMEM = "Reference:"; //Опорное:
 
@@ -309,9 +311,11 @@ const char D_DEBUG[] PROGMEM = "Debug"; //Отладка
 const char D_BAT[] PROGMEM = "BAT"; //БАТ
 const char D_ADC_BAT[] PROGMEM = "ADC"; //АЦП
 const char D_HV_PUMP[] PROGMEM = "HV"; //ВВ
+const char D_TIME_PUMP[] PROGMEM = "TCK"; //ВПН
 const char D_PUMP_SPEED[] PROGMEM = "SPD"; //СКР
 const char D_REFERENCE[] PROGMEM = "REF"; //ОПР
 const char D_PULS_LEN[] PROGMEM = "IMP"; //ИМП
+const char D_PULS_IND[] PROGMEM = "MTL"; //МТЛ
 const char D_COEF_DIV[] PROGMEM = "CDF"; //КДЛ
 const char D_PUMP_ADC[] PROGMEM = "ADC"; //АЦП
 const char D_WDT_PER[] PROGMEM = "WDT"; //ПЕР
@@ -324,7 +328,7 @@ const char D_COEF_LIMIT[] PROGMEM = "LIMIT:"; //ПОРОГ
 const char S_SETTINGS[] PROGMEM = "Settings"; //Настройки
 
 const char S_ITEM_SLEEP[] PROGMEM = "Sleep:"; //Сон:
-const char S_ITEM_LIGHT[] PROGMEM = "Light:"; //Подсветка:
+const char S_ITEM_BACKL[] PROGMEM = "Light:"; //Подсветка:
 const char S_ITEM_CONTRAST[] PROGMEM = "Contrast:"; //Контраст:
 const char S_ITEM_BRIGHT[] PROGMEM = "Bright:"; //Яркость:
 const char S_ITEM_ROTATION[] PROGMEM = "Rotate:"; //Разворот:

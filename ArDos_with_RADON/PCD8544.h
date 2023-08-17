@@ -6,6 +6,10 @@
 //Сброс дисплея
 #define RESET_LCD BIT_SET(DC_PORT, DC_BIT); BIT_SET(MOSI_PORT, MOSI_BIT); BIT_SET(SCK_PORT, SCK_BIT); BIT_CLEAR(RST_PORT, RST_BIT); _delay_ms(10); BIT_SET(RST_PORT, RST_BIT)
 
+//Тип данных дисплея
+#define DATA_LCD (BIT_SET(DC_PORT, DC_BIT))
+#define COMMAND_LCD (BIT_CLEAR(DC_PORT, DC_BIT))
+
 //Основные команды
 #define PCD8544_POWERDOWN 0x04
 #define PCD8544_ENTRYMODE 0x02
@@ -31,158 +35,116 @@
 #define LCD_TEMP 0x02  //(0..3)(0x00..0x03)
 #define LCD_CONTRAST 0x46  //(0..127)(0x00..0x7F)
 
-//-----------------------------Отправка команд на дисплей-------------------------------------
-void _LCD_Write_Command(uint8_t data)
-{
-  __asm__ __volatile__ (
-    "CBI %[_DC_PORT], %[_DC_PIN]      \n\t" //LOW на выход пина команд
-    "LDI r19, 8                       \n\t" //счетчик циклов байта
-    //-----------------------------------------------------------------------------------------
-    "_LOOP_START_%=:                  \n\t" //начало цикла отправки бита
-    "SBI %[_MOSI_PORT], %[_MOSI_PIN]  \n\t" //HIGH на выход пина бит
-    "SBRS %[DATA], 7                  \n\t" //если бит "7" установлен то пропускаем переход
-    "CBI %[_MOSI_PORT], %[_MOSI_PIN]  \n\t" //LOW на выход пина бит
-    //-----------------------------------------------------------------------------------------
-    "CBI %[_SCK_PORT], %[_SCK_PIN]    \n\t" //LOW на выход пина такта
-    "LSL %[DATA]                      \n\t" //сдвигаем байт влево
-    "SBI %[_SCK_PORT], %[_SCK_PIN]    \n\t" //HIGH на выход пина такта
-    "DEC r19                          \n\t" //декремент счетчика циклов байта
-    "BRNE _LOOP_START_%=              \n\t" //переход в начало цикла отправки бита
-    :"=r"(data)
-    :[DATA]"0"(data),
-    [_DC_PORT]"I"(_SFR_IO_ADDR(DC_PORT)),
-    [_DC_PIN]"I"(DC_BIT),
-    [_MOSI_PORT]"I"(_SFR_IO_ADDR(MOSI_PORT)),
-    [_MOSI_PIN]"I"(MOSI_BIT),
-    [_SCK_PORT]"I"(_SFR_IO_ADDR(SCK_PORT)),
-    [_SCK_PIN]"I"(SCK_BIT)
-  );
-}
-//--------------------------------Отправка данных на дисплей(прямое)----------------------------------
-void _LCD_Write_Data_Dir(void)
-{
-  __asm__ __volatile__ (
-    "SBI %[_DC_PORT], %[_DC_PIN]      \n\t" //HIGH на выход пина команд
-    //-----------------------------------------------------------------------------------------
-    "_BYTE_START_%=:                  \n\t" //начало цикла отправки байта
-    "LD r21, X+                       \n\t" //загрузили байт из масива
-    "LDI r19, 8                       \n\t" //счетчик циклов байта
-    //-----------------------------------------------------------------------------------------
-    "_LOOP_START_%=:                  \n\t" //начало цикла отправки бита
-    "SBI %[_MOSI_PORT], %[_MOSI_PIN]  \n\t" //HIGH на выход пина бит
-    "SBRS r21, 7                      \n\t" //если бит "7" установлен то пропускаем переход
-    "CBI %[_MOSI_PORT], %[_MOSI_PIN]  \n\t" //LOW на выход пина бит
-    //-----------------------------------------------------------------------------------------
-    "CBI %[_SCK_PORT], %[_SCK_PIN]    \n\t" //LOW на выход пина такта
-    "LSL r21                          \n\t" //сдвигаем байт влево
-    "SBI %[_SCK_PORT], %[_SCK_PIN]    \n\t" //HIGH на выход пина такта
-    "DEC r19                          \n\t" //декремент счетчика циклов байта
-    "BRNE _LOOP_START_%=              \n\t" //переход в начало цикла отправки бита
-    //-----------------------------------------------------------------------------------------
-    "SBIW %[COUNT], 1                 \n\t" //отнимаем от счетчика байт
-    "BRNE _BYTE_START_%=              \n\t" //переход к загрузке нового байта
-    :
-    :"x"(_lcd_buffer),
-    [COUNT]"w"(sizeof(_lcd_buffer)),
-    [_DC_PORT]"I"(_SFR_IO_ADDR(DC_PORT)),
-    [_DC_PIN]"I"(DC_BIT),
-    [_MOSI_PORT]"I"(_SFR_IO_ADDR(MOSI_PORT)),
-    [_MOSI_PIN]"I"(MOSI_BIT),
-    [_SCK_PORT]"I"(_SFR_IO_ADDR(SCK_PORT)),
-    [_SCK_PIN]"I"(SCK_BIT)
-  );
-}
-//--------------------------------Отправка данных на дисплей(перевернутое)----------------------------------
-void _LCD_Write_Data_Inv(void)
-{
-  __asm__ __volatile__ (
-    "SBI %[_DC_PORT], %[_DC_PIN]      \n\t" //HIGH на выход пина команд
-    //-----------------------------------------------------------------------------------------
-    "_BYTE_START_%=:                  \n\t" //начало цикла отправки байта
-    "LD r21, -X                       \n\t" //загрузили байт из масива
-    "LDI r19, 8                       \n\t" //счетчик циклов байта
-    //-----------------------------------------------------------------------------------------
-    "_LOOP_START_%=:                  \n\t" //начало цикла отправки бита
-    "SBI %[_MOSI_PORT], %[_MOSI_PIN]  \n\t" //HIGH на выход пина бит
-    "SBRS r21, 0                      \n\t" //если бит "0" установлен то пропускаем переход
-    "CBI %[_MOSI_PORT], %[_MOSI_PIN]  \n\t" //LOW на выход пина бит
-    //-----------------------------------------------------------------------------------------
-    "CBI %[_SCK_PORT], %[_SCK_PIN]    \n\t" //LOW на выход пина такта
-    "LSR r21                          \n\t" //сдвигаем байт вправо
-    "SBI %[_SCK_PORT], %[_SCK_PIN]    \n\t" //HIGH на выход пина такта
-    "DEC r19                          \n\t" //декремент счетчика циклов байта
-    "BRNE _LOOP_START_%=              \n\t" //переход в начало цикла отправки бита
-    //-----------------------------------------------------------------------------------------
-    "SBIW %[COUNT], 1                 \n\t" //отнимаем от счетчика байт
-    "BRNE _BYTE_START_%=              \n\t" //переход к загрузке нового байта
-    :
-    :"x"(_lcd_buffer + sizeof(_lcd_buffer)),
-    [COUNT]"w"(sizeof(_lcd_buffer)),
-    [_DC_PORT]"I"(_SFR_IO_ADDR(DC_PORT)),
-    [_DC_PIN]"I"(DC_BIT),
-    [_MOSI_PORT]"I"(_SFR_IO_ADDR(MOSI_PORT)),
-    [_MOSI_PIN]"I"(MOSI_BIT),
-    [_SCK_PORT]"I"(_SFR_IO_ADDR(SCK_PORT)),
-    [_SCK_PIN]"I"(SCK_BIT)
-  );
-}
 //-------------------------Инициализация дисплея----------------------------------------------------
 void _init_lcd(void) //инициализация дисплея
 {
-  RESET_LCD; //команда перезагрузки дисплея
-  disableSleep(DEFAULT_CONTRAST); //инициализация дисплея
+  PWR_LCD_ON; //включаем питание дисплея
+  RESET_LCD; //сигнал сброса дисплея
+  CE_ON; //включаем шину данных
+  
+  COMMAND_LCD;
+  writeSPI(PCD8544_FUNCTIONSET | PCD8544_EXTENDEDINSTRUCTION);
+  writeSPI(PCD8544_SETVOP | DEFAULT_CONTRAST);
+  writeSPI(PCD8544_SETTEMP | LCD_TEMP);
+  writeSPI(PCD8544_SETBIAS | LCD_BIAS);
+  writeSPI(PCD8544_FUNCTIONSET);
+  writeSPI(PCD8544_DISPLAYCONTROL | PCD8544_DISPLAYNORMAL);
+  stopWrite(); //остановка обновления дисплея
+
+  clrScr(); //очистка экрана
   setFont(FONT_DATA_NAME); //установка шрифта
 }
 //-------------------------Установка контрастности----------------------------------------------------
-void setContrast(uint8_t contrast) //установка контрастности
+void _set_contrast_lcd(uint8_t contrast) //установка контрастности
 {
-  _LCD_Write_Command(PCD8544_FUNCTIONSET | PCD8544_EXTENDEDINSTRUCTION);
-  _LCD_Write_Command(PCD8544_SETVOP | contrast);
-  _LCD_Write_Command(PCD8544_FUNCTIONSET);
+  COMMAND_LCD;
+  writeSPI(PCD8544_FUNCTIONSET | PCD8544_EXTENDEDINSTRUCTION);
+  writeSPI(PCD8544_SETVOP | contrast);
+  writeSPI(PCD8544_FUNCTIONSET);
+  stopWrite(); //остановка обновления дисплея
 }
 //-------------------------Включение режима сна----------------------------------------------------
-void enableSleep(void) //включение режима сна
+void _enable_sleep_lcd(void) //включение режима сна
 {
-  _LCD_Write_Command(PCD8544_FUNCTIONSET | PCD8544_POWERDOWN);
+  COMMAND_LCD;
+  writeSPI(PCD8544_FUNCTIONSET | PCD8544_POWERDOWN);
+  stopWrite(); //остановка обновления дисплея
 }
 //-------------------------Выключение режима сна----------------------------------------------------
-void disableSleep(uint8_t contrast) //выключение режима сна
+void _disable_sleep_lcd(void) //выключение режима сна
 {
-  _LCD_Write_Command(PCD8544_FUNCTIONSET | PCD8544_EXTENDEDINSTRUCTION);
-  _LCD_Write_Command(PCD8544_SETVOP | contrast);
-  _LCD_Write_Command(PCD8544_SETTEMP | LCD_TEMP);
-  _LCD_Write_Command(PCD8544_SETBIAS | LCD_BIAS);
-  _LCD_Write_Command(PCD8544_FUNCTIONSET);
-  _LCD_Write_Command(PCD8544_DISPLAYCONTROL | PCD8544_DISPLAYNORMAL);
-  
-  clrScr(); //очистка экрана
+  COMMAND_LCD;
+  writeSPI(PCD8544_FUNCTIONSET);
+  stopWrite(); //остановка обновления дисплея
 }
 //-------------------------Инверсия экрана----------------------------------------------------
-void invert(boolean mode) //инверсия экрана
+void _invert_lcd(boolean mode) //инверсия экрана
 {
+  COMMAND_LCD;
   switch (mode) {
-    case 0: _LCD_Write_Command(PCD8544_DISPLAYCONTROL | PCD8544_DISPLAYNORMAL); break;
-    case 1: _LCD_Write_Command(PCD8544_DISPLAYCONTROL | PCD8544_DISPLAYINVERTED); break;
+    case 0: writeSPI(PCD8544_DISPLAYCONTROL | PCD8544_DISPLAYNORMAL); break;
+    case 1: writeSPI(PCD8544_DISPLAYCONTROL | PCD8544_DISPLAYINVERTED); break;
   }
+  stopWrite(); //остановка обновления дисплея
 }
 //----------------------Вывод буфера на экран-----------------------------------------------
-void showScr(void) //вывод буфера на экран
+void _update_lcd(void) //вывод буфера на экран
 {
-  _LCD_Write_Command(PCD8544_SETYADDR);
-  _LCD_Write_Command(PCD8544_SETXADDR);
+  switch (display_update) {
+    case DISPLAY_IDLE: return;
+    case DISPLAY_WRITE:
 #if ROTATE_DISP_RETURN
-  switch (mainSettings.rotation) {
-    case 0: _LCD_Write_Data_Dir(); break;
-    case 1: _LCD_Write_Data_Inv(); break;
-  }
+      switch (mainSettings.rotation) {
+        case 0:
+          if ((uint16_t)display_cnt-- <= (uint16_t)_lcd_buffer) display_update = DISPLAY_STOP;
+          writeRevSPI(*display_cnt);
+          break;
+        case 1:
+          writeRevSPI(*display_cnt--);
+          if ((uint16_t)display_cnt >= (uint16_t)(_lcd_buffer + sizeof(_lcd_buffer))) display_update = DISPLAY_STOP;
+          break;
+      }
 #else
 #if DEFAULT_ROTATION
-  _LCD_Write_Data_Inv();
+      if ((uint16_t)display_cnt-- <= (uint16_t)_lcd_buffer) display_update = DISPLAY_STOP;
+      writeRevSPI(*display_cnt);
 #else
-  _LCD_Write_Data_Dir();
+      writeSPI(*display_cnt++);
+      if ((uint16_t)display_cnt >= (uint16_t)(_lcd_buffer + sizeof(_lcd_buffer))) display_update = DISPLAY_STOP;
 #endif
 #endif
-  _LCD_Write_Command(PCD8544_SETYADDR);
-  _LCD_Write_Command(PCD8544_SETXADDR);
+      break;
+
+    case DISPLAY_STOP:
+      COMMAND_LCD;
+      writeSPI(PCD8544_SETYADDR);
+      writeSPI(PCD8544_SETXADDR);
+
+      display_update = DISPLAY_IDLE;
+      sleep_status &= ~(0x01 << WAIT_DSP); //сбросили флаг запрета сна
+      break;
+
+    default:
+#if ROTATE_DISP_RETURN
+      switch (mainSettings.rotation) {
+        case 0: display_cnt = _lcd_buffer; break;
+        case 1: display_cnt = _lcd_buffer + sizeof(_lcd_buffer); break;
+      }
+#else
+#if DEFAULT_ROTATION
+      display_cnt = _lcd_buffer + sizeof(_lcd_buffer);
+#else
+      display_cnt = _lcd_buffer;
+#endif
+#endif
+      COMMAND_LCD;
+      writeSPI(PCD8544_SETYADDR);
+      writeSPI(PCD8544_SETXADDR);
+      DATA_LCD;
+
+      display_update = DISPLAY_WRITE;
+      sleep_status |= (0x01 << WAIT_DSP); //установили флаг запрета сна
+      break;
+  }
 }
 #endif

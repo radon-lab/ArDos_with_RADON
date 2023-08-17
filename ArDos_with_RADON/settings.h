@@ -27,9 +27,11 @@ struct Settings_1 {
 
 //настройки преобразователя
 struct Settings_2 {
+#if !PUMP_FEEDBACK
   uint8_t ADC_value = DEFAULT_ADC_VALUE; //значение АЦП при котором 400В
   uint16_t k_delitel = DEFAULT_DIV_FACTOR; //коефициент делителя напряжения
-  uint8_t puls = DEFAULT_PULS; //длинна импульса высоковольтного транса
+#endif
+  uint16_t puls = DEFAULT_PULS; //длинна импульса высоковольтного транса
   float reference = DEFAULT_REFERENCE; //опорное напряжение
   float geiger_time = DEFAULT_GEIGER_TIME; //время измерения
   uint16_t wdt_period = DEF_WDT_PERIOD; //период тика wdt

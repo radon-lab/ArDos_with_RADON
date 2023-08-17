@@ -18,7 +18,7 @@
 //Основная периферия
 #define DET_PIN   2  //пин секундных точек(только пин 2)(pin D)
 #define CONV_PIN  5  //пин преобразователя(0..19)(pin D)
-#define LIGHT_PIN 16 //пин подсветки(0..19)(pin D)
+#define BACKL_PIN 16 //пин подсветки(0..19)(pin D)
 #define BUZZ_PIN  6  //пин пищалки(0..19)(pin D)
 
 //Дополнительная периферия
@@ -28,7 +28,8 @@
 #define PWR_LCD_PIN   17 //пин управления питанием экрана(0..19)(pin D)
 
 //Обратная связь
-#define ANALOG_DET_PIN 6 //пин обратной связи преобразователя(0..7)(pin A)
+#define ANALOG_DET_PIN 6 //пин обратной связи преобразователя на АЦП(0..7)(pin A)
+#define COMP_DET_PIN 7 //пин обратной связи преобразователя на компараторе(только 7)(pin D)
 
 
 //Соединения периферии с портами МК
@@ -40,40 +41,83 @@
 #define BIT_CLEAR(value, bit) ((value) &= ~(0x01 << (bit)))
 #define BIT_WRITE(value, bit, bitvalue) (bitvalue ? BIT_SET(value, bit) : BIT_CLEAR(value, bit))
 
+#define DECODE_PCMSK(pin) ((pin < 8) ? PCMSK2 : ((pin < 14) ? PCMSK0 : PCMSK1))
+#define DECODE_PCIF(pin) ((pin < 8) ? PCIF2 : ((pin < 14) ? PCIF0 : PCIF1))
 #define DECODE_PORT(pin) ((pin < 8) ? PORTD : ((pin < 14) ? PORTB : PORTC))
 #define DECODE_BIT(pin) ((pin < 8) ? pin : ((pin < 14) ? (pin - 8) : (pin - 14)))
+
+//пин компаратора
+#define COMP_BIT   DECODE_BIT(COMP_DET_PIN)
+#define COMP_PORT  DECODE_PORT(COMP_DET_PIN)
+
+#define COMP_CLR   (BIT_CLEAR(COMP_PORT, COMP_BIT))
+#define COMP_INP   (BIT_CLEAR((DDR_REG(COMP_PORT)), COMP_BIT))
+
+#if PUMP_FEEDBACK == 1
+#if PUMP_FEEDBACK_PULL
+#define COMP_CHK (!(ACSR & (0x01 << ACO)))
+#else
+#define COMP_CHK (ACSR & (0x01 << ACO))
+#endif
+#define COMP_INT_CHK   (ACSR & (0x01 << ACI))
+#define COMP_INT_CLR   (ACSR |= (0x01 << ACI))
+
+#define COMP_INIT  COMP_CLR; COMP_INP
+#else
+#if PUMP_FEEDBACK_PULL
+#define COMP_CHK (BIT_READ(COMP_PORT, COMP_BIT))
+#else
+#define COMP_CHK (!(BIT_READ(COMP_PORT, COMP_BIT)))
+#endif
+#define COMP_INT_CHK   (BIT_READ(PCIFR, DECODE_PCIF(COMP_DET_PIN)))
+#define COMP_INT_CLR   (BIT_SET(PCIFR, DECODE_PCIF(COMP_DET_PIN)))
+#define COMP_INT_SET   (DECODE_PCMSK(COMP_DET_PIN) = (0x01 << COMP_BIT))
+
+#define COMP_INIT  COMP_CLR; COMP_INP; COMP_INT_SET; COMP_INT_CLR
+#endif
 
 //пин SCK дисплея
 #define SCK_BIT  DECODE_BIT(SCK_PIN)
 #define SCK_PORT DECODE_PORT(SCK_PIN)
-#define SCK_CLR  (BIT_CLEAR(SCK_PORT, SCK_BIT))
+#define SCK_SET  (BIT_SET(SCK_PORT, SCK_BIT))
 #define SCK_OUT  (BIT_SET((DDR_REG(SCK_PORT)), SCK_BIT))
 
 //пин MOSI дисплея
 #define MOSI_BIT  DECODE_BIT(MOSI_PIN)
 #define MOSI_PORT DECODE_PORT(MOSI_PIN)
-#define MOSI_CLR  (BIT_CLEAR(MOSI_PORT, MOSI_BIT))
+#define MOSI_SET  (BIT_SET(MOSI_PORT, MOSI_BIT))
 #define MOSI_OUT  (BIT_SET((DDR_REG(MOSI_PORT)), MOSI_BIT))
 
 //пин DC дисплея
 #define DC_BIT  DECODE_BIT(DC_PIN)
 #define DC_PORT DECODE_PORT(DC_PIN)
-#define DC_CLR  (BIT_CLEAR(DC_PORT, DC_BIT))
+#define DC_SET  (BIT_SET(DC_PORT, DC_BIT))
 #define DC_OUT  (BIT_SET((DDR_REG(DC_PORT)), DC_BIT))
 
 //пин RST дисплея
 #define RST_BIT  DECODE_BIT(RST_PIN)
 #define RST_PORT DECODE_PORT(RST_PIN)
-#define RST_CLR  (BIT_CLEAR(RST_PORT, RST_BIT))
+#define RST_SET  (BIT_SET(RST_PORT, RST_BIT))
 #define RST_OUT  (BIT_SET((DDR_REG(RST_PORT)), RST_BIT))
 
 //пин CE дисплея
 #define CE_BIT   DECODE_BIT(CE_PIN)
 #define CE_PORT  DECODE_PORT(CE_PIN)
 #define CE_ON    (BIT_CLEAR(CE_PORT, CE_BIT))
+#define CE_OFF   (BIT_SET(CE_PORT, CE_BIT))
 #define CE_OUT   (BIT_SET((DDR_REG(CE_PORT)), CE_BIT))
 
-#define LCD_INIT  SCK_CLR; SCK_OUT; MOSI_CLR; MOSI_OUT; DC_CLR; DC_OUT; RST_CLR; RST_OUT; CE_ON; CE_OUT
+//пин питания дисплея
+#define PWR_LCD_BIT   DECODE_BIT(PWR_LCD_PIN)
+#define PWR_LCD_PORT  DECODE_PORT(PWR_LCD_PIN)
+
+#define PWR_LCD_ON    BIT_CLEAR(PWR_LCD_PORT, PWR_LCD_BIT)
+#define PWR_LCD_OFF   BIT_SET(PWR_LCD_PORT, PWR_LCD_BIT)
+#define PWR_LCD_OUT   BIT_SET((DDR_REG(PWR_LCD_PORT)), PWR_LCD_BIT)
+
+#define PWR_LCD_INIT  PWR_LCD_OFF; PWR_LCD_OUT
+#define LCD_DISABLE   SCK_SET; MOSI_SET; DC_SET; RST_SET; CE_OFF; PWR_LCD_OFF
+#define LCD_INIT      SCK_SET; SCK_OUT; MOSI_SET; MOSI_OUT; DC_SET; DC_OUT; RST_SET; RST_OUT; CE_OFF; CE_OUT
 
 //пин кнопки ОК
 #define SEL_BIT   DECODE_BIT(SEL_PIN)
@@ -136,19 +180,19 @@
 #define CONV_INIT  CONV_OFF; CONV_INP
 
 //пин подсветки
-#define LIGHT_BIT   DECODE_BIT(LIGHT_PIN)
-#define LIGHT_PORT  DECODE_PORT(LIGHT_PIN)
+#define BACKL_BIT   DECODE_BIT(BACKL_PIN)
+#define BACKL_PORT  DECODE_PORT(BACKL_PIN)
 
-#if DISP_LIGHT_INV
-#define LIGHT_ON    (BIT_SET(LIGHT_PORT, LIGHT_BIT))
-#define LIGHT_OFF   (BIT_CLEAR(LIGHT_PORT, LIGHT_BIT))
+#if DISP_BACKL_INV
+#define BACKL_ON    (BIT_SET(BACKL_PORT, BACKL_BIT))
+#define BACKL_OFF   (BIT_CLEAR(BACKL_PORT, BACKL_BIT))
 #else
-#define LIGHT_ON    (BIT_CLEAR(LIGHT_PORT, LIGHT_BIT))
-#define LIGHT_OFF   (BIT_SET(LIGHT_PORT, LIGHT_BIT))
+#define BACKL_ON    (BIT_CLEAR(BACKL_PORT, BACKL_BIT))
+#define BACKL_OFF   (BIT_SET(BACKL_PORT, BACKL_BIT))
 #endif
-#define LIGHT_OUT   (BIT_SET((DDR_REG(LIGHT_PORT)), LIGHT_BIT))
+#define BACKL_OUT   (BIT_SET((DDR_REG(BACKL_PORT)), BACKL_BIT))
 
-#define LIGHT_INIT  LIGHT_OFF; LIGHT_OUT
+#define BACKL_INIT  BACKL_OFF; BACKL_OUT
 
 //пин фонарика
 #define FLASH_BIT   DECODE_BIT(FLASH_PIN)
@@ -180,13 +224,3 @@
 #define RAD_FLASH_OUT   (BIT_SET((DDR_REG(RAD_FLASH_PORT)), RAD_FLASH_BIT))
 
 #define RAD_FLASH_INIT  RAD_FLASH_OFF; RAD_FLASH_OUT
-
-//пин питания дисплея
-#define PWR_LCD_BIT   DECODE_BIT(PWR_LCD_PIN)
-#define PWR_LCD_PORT  DECODE_PORT(PWR_LCD_PIN)
-
-#define PWR_LCD_ON    BIT_CLEAR(PWR_LCD_PORT, PWR_LCD_BIT)
-#define PWR_LCD_OFF   BIT_SET(PWR_LCD_PORT, PWR_LCD_BIT)
-#define PWR_LCD_OUT   BIT_SET((DDR_REG(PWR_LCD_PORT)), PWR_LCD_BIT)
-
-#define PWR_LCD_INIT  PWR_LCD_ON; PWR_LCD_OUT

@@ -22,12 +22,27 @@ struct _current_font {
   boolean inverted;
 } cfont;
 
-void setContrast(uint8_t contrast);
-void enableSleep(void);
-void disableSleep(uint8_t contrast);
-void showScr(void);
+enum {
+  WAIT_WDT, //ожидание основоного таймера
+  WAIT_DSP, //ожидание дисплея
+  WAIT_ADC, //ожидание АЦП
+  WAIT_COMP, //ожидание компаратора
+  WAIT_TIM1, //ожидание таймера 1
+  WAIT_TIM2, //ожидание таймера 2
+  WAIT_PWR1, //режим питания 1
+  WAIT_PWR2 //режим питания 2
+};
+
+uint8_t sleep_status = 0; //флаги запрета сна
+uint8_t display_update = 0;
+uint8_t* display_cnt;
+
+void _set_contrast_lcd(uint8_t contrast);
+void _enable_sleep_lcd(void);
+void _disable_sleep_lcd(void);
+void _update_lcd(void);
 void clrScr(void);
-void invert(bool mode);
+void _invert_lcd(bool mode);
 void invertText(bool mode);
 void drawLine(uint8_t row, uint8_t start_x = 0, uint8_t end_x = 83, uint8_t line = 0);
 void print(const char *st, uint8_t x, uint8_t y, boolean mem = 0);
@@ -38,6 +53,24 @@ void drawBitmap(uint8_t x, uint8_t y, const uint8_t* bitmap, uint8_t size_x, uin
 
 void _print_char(unsigned char c, uint8_t x, uint8_t row, uint8_t steps);
 
+enum {
+  DISPLAY_IDLE, //дисплей в режиме ожидания
+  DISPLAY_INIT, //инициализация передачи изображения на дисплей
+  DISPLAY_WRITE, //передача изображения на дисплей
+  DISPLAY_STOP //завершение передачи изображения на дисплей
+};
+
+void stopWrite(void) //остановка обновления дисплея
+{
+  display_update = DISPLAY_IDLE; //перешли в режим ожидания
+  sleep_status &= ~(0x01 << WAIT_DSP); //сбросили флаг запрета сна
+}
+
+#ifndef PRR //если регистр PRR не обнаружен
+#define PRR PRR0 //создаем регистр PRR
+#endif
+
+#include "SPI.h"
 #ifdef PCD8544
 #include "PCD8544.h"
 #endif
@@ -45,54 +78,6 @@ void _print_char(unsigned char c, uint8_t x, uint8_t row, uint8_t steps);
 #include "SSD1306.h"
 #endif
 
-//-------------------------Очистка экрана----------------------------------------------------
-void clrScr(void) //очистка экрана
-{
-  for (uint16_t c = 0; c < 504; c++) _lcd_buffer[c] = 0;
-}
-//-------------------------Отрисовка изображений-----------------------------------------------
-void drawBitmap(uint8_t x, uint8_t y, const uint8_t* bitmap, uint8_t size_x, uint8_t size_y) //отрисовка изображений
-{
-  uint8_t start_y, rows;
-
-  start_y = y / 8;
-
-  if (size_y % 8 == 0) rows = size_y / 8;
-  else rows = (size_y / 8) + 1;
-
-  for (uint8_t cy = 0; cy < rows; cy++) {
-    uint16_t cell = (start_y + cy) * 84 + x;
-    for (uint8_t cx = 0; cx < size_x; cx++) _lcd_buffer[cell + cx] = bitmapbyte(cx + (cy * size_x));
-  }
-}
-//-------------------------Очистка строки----------------------------------------------------
-void drawLine(uint8_t row, uint8_t start_x, uint8_t end_x, uint8_t line) //очистка строки
-{
-  uint16_t start = start_x + ((uint16_t)row * 84);
-  uint16_t end = end_x + ((uint16_t)row * 84);
-  for (uint16_t c = start; c <= end; c++) {
-    if (!line) _lcd_buffer[c] = 0;
-    else _lcd_buffer[c] |= line;
-  }
-}
-//------------------------Отрисовка прочерков-------------------------------------------------
-void drawDashLine(uint8_t row, uint8_t start_x, uint8_t len_line, uint8_t len_dot, uint8_t line) //отрисовка прочерков
-{
-  uint16_t start = start_x + ((uint16_t)row * 84);
-  for (uint8_t i = 0; i < len_line; i++) {
-    for (uint8_t c = 0; c < len_dot; c++) _lcd_buffer[start++] |= line;
-    start += len_dot;
-  }
-}
-//--------------------------------Отрисовка графика-------------------------------------
-void drawGraf(uint8_t val, uint8_t pos_x, uint8_t height) //отрисовка графика
-{
-  for (uint8_t y = 0; y < height; y++) { //отрисовываем строки
-    _lcd_buffer[424 - (84 * y) + pos_x] |= pgm_read_byte(&graf_line[(val > 8) ? 8 : val]);
-    if (val > 8) val -= 8;
-    else val = 0;
-  }
-}
 //-------------------------Инверсия текста----------------------------------------------------
 void invertText(boolean mode) //инверсия текста
 {
@@ -179,10 +164,69 @@ void printNumF(float num, uint8_t dec, uint8_t x, uint8_t y, char divider, uint8
 
   print(st, x, y, 1);
 }
+//-------------------------Очистка экрана----------------------------------------------------
+void clrScr(void) //очистка экрана
+{
+  if (display_update > DISPLAY_INIT) stopWrite(); //остановка обновления дисплея
+  for (uint16_t c = 0; c < 504; c++) _lcd_buffer[c] = 0;
+  display_update = DISPLAY_INIT;
+}
+//-------------------------Отрисовка изображений-----------------------------------------------
+void drawBitmap(uint8_t x, uint8_t y, const uint8_t* bitmap, uint8_t size_x, uint8_t size_y) //отрисовка изображений
+{
+  if (display_update > DISPLAY_INIT) stopWrite(); //остановка обновления дисплея
+  uint8_t start_y, rows;
+
+  start_y = y / 8;
+
+  if (size_y % 8 == 0) rows = size_y / 8;
+  else rows = (size_y / 8) + 1;
+
+  for (uint8_t cy = 0; cy < rows; cy++) {
+    uint16_t cell = (start_y + cy) * 84 + x;
+    for (uint8_t cx = 0; cx < size_x; cx++) _lcd_buffer[cell + cx] = bitmapbyte(cx + (cy * size_x));
+  }
+  display_update = DISPLAY_INIT;
+}
+//-------------------------Очистка строки----------------------------------------------------
+void drawLine(uint8_t row, uint8_t start_x, uint8_t end_x, uint8_t line) //очистка строки
+{
+  if (display_update > DISPLAY_INIT) stopWrite(); //остановка обновления дисплея
+  uint16_t start = start_x + ((uint16_t)row * 84);
+  uint16_t end = end_x + ((uint16_t)row * 84);
+  for (uint16_t c = start; c <= end; c++) {
+    if (!line) _lcd_buffer[c] = 0;
+    else _lcd_buffer[c] |= line;
+  }
+  display_update = DISPLAY_INIT;
+}
+//------------------------Отрисовка прочерков-------------------------------------------------
+void drawDashLine(uint8_t row, uint8_t start_x, uint8_t len_line, uint8_t len_dot, uint8_t line) //отрисовка прочерков
+{
+  if (display_update > DISPLAY_INIT) stopWrite(); //остановка обновления дисплея
+  uint16_t start = start_x + ((uint16_t)row * 84);
+  for (uint8_t i = 0; i < len_line; i++) {
+    for (uint8_t c = 0; c < len_dot; c++) _lcd_buffer[start++] |= line;
+    start += len_dot;
+  }
+  display_update = DISPLAY_INIT;
+}
+//--------------------------------Отрисовка графика-------------------------------------
+void drawGraf(uint8_t val, uint8_t pos_x, uint8_t height) //отрисовка графика
+{
+  if (display_update > DISPLAY_INIT) stopWrite(); //остановка обновления дисплея
+  for (uint8_t y = 0; y < height; y++) { //отрисовываем строки
+    _lcd_buffer[424 - (84 * y) + pos_x] |= pgm_read_byte(&graf_line[(val > 8) ? 8 : val]);
+    if (val > 8) val -= 8;
+    else val = 0;
+  }
+  display_update = DISPLAY_INIT;
+}
 //-------------------------Отрисовка символа----------------------------------------------------
 void _print_char(uint8_t c, uint8_t x, uint8_t row, uint8_t steps) //отрисовка символа
 {
-  if (((x + cfont.x_size) <= 84) and (row + (cfont.y_size / 8) <= 6)) {
+  if (display_update > DISPLAY_INIT) stopWrite(); //остановка обновления дисплея
+  if (((x + cfont.x_size) <= 84) && (row + (cfont.y_size / 8) <= 6)) {
     for (uint8_t rowcnt = 0; rowcnt < (cfont.y_size / 8); rowcnt++) {
       uint16_t cell = (row + rowcnt) * 84 + x;
       uint16_t font_idx = ((c - cfont.offset) * (cfont.x_size * (cfont.y_size / 8))) + 3;
@@ -193,4 +237,5 @@ void _print_char(uint8_t c, uint8_t x, uint8_t row, uint8_t steps) //отрис�
       }
     }
   }
+  display_update = DISPLAY_INIT;
 }
