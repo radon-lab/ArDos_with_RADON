@@ -66,10 +66,6 @@ void stopWrite(void) //остановка обновления дисплея
   sleep_status &= ~(0x01 << WAIT_DSP); //сбросили флаг запрета сна
 }
 
-#ifndef PRR //если регистр PRR не обнаружен
-#define PRR PRR0 //создаем регистр PRR
-#endif
-
 #include "SPI.h"
 #ifdef PCD8544
 #include "PCD8544.h"

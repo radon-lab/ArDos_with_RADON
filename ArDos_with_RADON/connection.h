@@ -16,7 +16,7 @@
 #define CE_PIN   11 //пин CE дисплея(0..19)(pin D)
 
 //Основная периферия
-#define DET_PIN   2  //пин секундных точек(только пин 2)(pin D)
+#define DET_PIN   2  //пин детектора частиц(только пин 2)(pin D)
 #define CONV_PIN  5  //пин преобразователя(0..19)(pin D)
 #define BACKL_PIN 16 //пин подсветки(0..19)(pin D)
 #define BUZZ_PIN  6  //пин пищалки(0..19)(pin D)
@@ -45,6 +45,10 @@
 #define DECODE_PCIF(pin) ((pin < 8) ? PCIF2 : ((pin < 14) ? PCIF0 : PCIF1))
 #define DECODE_PORT(pin) ((pin < 8) ? PORTD : ((pin < 14) ? PORTB : PORTC))
 #define DECODE_BIT(pin) ((pin < 8) ? pin : ((pin < 14) ? (pin - 8) : (pin - 14)))
+
+#ifndef PRR //если регистр PRR не обнаружен
+#define PRR PRR0 //создаем регистр PRR
+#endif
 
 //пин компаратора
 #define COMP_BIT   DECODE_BIT(COMP_DET_PIN)
@@ -111,8 +115,13 @@
 #define PWR_LCD_BIT   DECODE_BIT(PWR_LCD_PIN)
 #define PWR_LCD_PORT  DECODE_PORT(PWR_LCD_PIN)
 
+#if DISP_POWER_INV
+#define PWR_LCD_ON    BIT_SET(PWR_LCD_PORT, PWR_LCD_BIT)
+#define PWR_LCD_OFF   BIT_CLEAR(PWR_LCD_PORT, PWR_LCD_BIT)
+#else
 #define PWR_LCD_ON    BIT_CLEAR(PWR_LCD_PORT, PWR_LCD_BIT)
 #define PWR_LCD_OFF   BIT_SET(PWR_LCD_PORT, PWR_LCD_BIT)
+#endif
 #define PWR_LCD_OUT   BIT_SET((DDR_REG(PWR_LCD_PORT)), PWR_LCD_BIT)
 
 #define PWR_LCD_INIT  PWR_LCD_OFF; PWR_LCD_OUT
@@ -163,8 +172,13 @@
 #define DET_BIT   DECODE_BIT(DET_PIN)
 #define DET_PORT  DECODE_PORT(DET_PIN)
 
-#define DET_CHK   (BIT_READ(PIN_REG(DET_PORT), DET_BIT))
+#if GEIGER_INT_PULL
+#define DET_CHK   (!BIT_READ(PIN_REG(DET_PORT), DET_BIT))
 #define DET_SET   (BIT_SET(DET_PORT, DET_BIT))
+#else
+#define DET_CHK   (BIT_READ(PIN_REG(DET_PORT), DET_BIT))
+#define DET_SET   (BIT_CLEAR(DET_PORT, DET_BIT))
+#endif
 #define DET_INP   (BIT_CLEAR((DDR_REG(DET_PORT)), DET_BIT))
 
 #define DET_INIT  DET_SET; DET_INP
