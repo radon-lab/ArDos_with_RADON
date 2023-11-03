@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.13
-  Версия программы RADON v4.3.5 low_pwr release 29.10.23 специально для проекта ArDos
+  Версия программы RADON v4.3.5 low_pwr release 03.11.23 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/ardos-dozimetr-prodolzhenie-temy-chast-%E2%84%962 и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -441,8 +441,8 @@ void INIT_SYSTEM(void) //инициализация
   ACSR |= (0x01 << ACD); //отключаем компаратор
 #else
   ACSR = (0x01 << ACBG) | (0x01 << ACIS1); //включаем компаратор
-#if !PUMP_FEEDBACK_PULL
-  ACSR |= (0x01 << ACIS1); //включаем компаратор
+#if PUMP_FEEDBACK_PULL
+  ACSR |= (0x01 << ACIS0); //включаем компаратор
 #endif
   DIDR1 |= (0x01 << AIN1D);
 #endif
