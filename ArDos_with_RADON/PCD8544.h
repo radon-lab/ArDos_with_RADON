@@ -41,7 +41,7 @@ void _init_lcd(void) //инициализация дисплея
   PWR_LCD_ON; //включаем питание дисплея
   RESET_LCD; //сигнал сброса дисплея
   CE_ON; //включаем шину данных
-  
+
   COMMAND_LCD;
   writeSPI(PCD8544_FUNCTIONSET | PCD8544_EXTENDEDINSTRUCTION);
   writeSPI(PCD8544_SETVOP | DEFAULT_CONTRAST);
@@ -96,12 +96,12 @@ void _update_lcd(void) //вывод буфера на экран
 #if ROTATE_DISP_RETURN
       switch (mainSettings.rotation) {
         case 0:
-          if ((uint16_t)display_cnt-- <= (uint16_t)_lcd_buffer) display_update = DISPLAY_STOP;
-          writeRevSPI(*display_cnt);
+          writeSPI(*display_cnt++);
+          if ((uint16_t)display_cnt >= (uint16_t)(_lcd_buffer + sizeof(_lcd_buffer))) display_update = DISPLAY_STOP;
           break;
         case 1:
-          writeRevSPI(*display_cnt--);
-          if ((uint16_t)display_cnt >= (uint16_t)(_lcd_buffer + sizeof(_lcd_buffer))) display_update = DISPLAY_STOP;
+          if ((uint16_t)display_cnt-- <= (uint16_t)_lcd_buffer) display_update = DISPLAY_STOP;
+          writeRevSPI(*display_cnt);
           break;
       }
 #else
