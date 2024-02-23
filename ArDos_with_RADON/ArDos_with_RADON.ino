@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.13
-  Версия программы RADON v4.3.5 low_pwr release 05.11.23 специально для проекта ArDos
+  Версия программы RADON v4.3.5 low_pwr release 22.02.24 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/ardos-dozimetr-prodolzhenie-temy-chast-%E2%84%962 и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -1661,10 +1661,10 @@ void _analog_update(void) //обработка аналоговых входов
           else {
             if ((9999 - speed_pump) >= speed_puls) speed_pump += speed_puls; //если счетчик импульсов не переполнен
             else speed_pump = 9999; //иначе переполнение
+            if (speed_puls < 999) analogState &= ~(0x01 << ADC_HW); //сбросили флаг обновления АЦП обратной связи
+            sleep_status &= ~(0x01 << WAIT_ADC); //сбросили флаг запрета сна
             speed_puls = 0; //сбросили счетчик импульсов
             ADMUX |= 0x0F; //сбросли признак чтения АЦП
-            sleep_status &= ~(0x01 << WAIT_ADC); //сбросили флаг запрета сна
-            if (speed_puls < 999) analogState &= ~(0x01 << ADC_HW); //сбросили флаг обновления АЦП обратной связи
           }
         }
         break;
