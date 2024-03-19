@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.13
-  Версия программы RADON v4.3.5 low_pwr release 22.02.24 специально для проекта ArDos
+  Версия программы RADON v4.3.6 low_pwr release 18.03.24 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/ardos-dozimetr-prodolzhenie-temy-chast-%E2%84%962 и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -1501,7 +1501,7 @@ uint8_t power_down(void) //выключение устройства
           return MAIN_PROGRAM; //выходим
         }
         else { //иначе выводим предупреждение об разряженной батарее
-          _init_low_bat(); //отрисовка сообщения разряженной батареи
+          _low_bat_show(); //отрисовка сообщения разряженной батареи
           _wait_now(POWER_TIME); //ждём
           return POWER_DOWN_PROGRAM; //перезапускаем сон
         }
@@ -2135,17 +2135,18 @@ uint8_t measur_menu(void) //режим замера
         }
 
         if (measur) { //если идет замер
-          printNumI(pgm_read_byte(&diff_measuring[mainSettings.measur_pos]), 50, 40, 2, 32); //минут всего
-          print(M_MIN, RIGHT, 40);            //строка 1 мин
-#if (TYPE_CHAR_FILL > 44)
-          printNumI(((pgm_read_byte(&diff_measuring[mainSettings.measur_pos]) * 60 - time_switch) / 60), 0, 40, 2, TYPE_CHAR_FILL); //минут
-#else
-          printNumI(((pgm_read_byte(&diff_measuring[mainSettings.measur_pos]) * 60 - time_switch) / 60), 0, 40, 2, 32); //минут
-#endif
-          print(M_TIME, 12, 40);            //строка 2
-          printNumI((pgm_read_byte(&diff_measuring[mainSettings.measur_pos]) * 60 - time_switch) % 60, 18, 40, 2, 48); //секунд
-
           drawLine(4, 1, map(time_switch, 0, pgm_read_byte(&diff_measuring[mainSettings.measur_pos]) * 60, 5, 82), 0x30); //шкала пройденого времени
+
+          _clear_buff(); //очистка буфера
+          _add_num_int(pgm_read_byte(&diff_measuring[mainSettings.measur_pos]), 2, 32); //минут всего
+          _add_text(M_MIN); //строка 1 мин
+          _print_text(RIGHT, 40); //вывод текста
+
+          _clear_buff(); //очистка буфера
+          _add_num_int(((pgm_read_byte(&diff_measuring[mainSettings.measur_pos]) * 60 - time_switch) / 60), 2, '0'); //минут
+          _add_text(M_TIME); //строка 2
+          _add_num_int((pgm_read_byte(&diff_measuring[mainSettings.measur_pos]) * 60 - time_switch) % 60, 2, 48); //секунд
+          _print_text(LEFT, 40); //вывод текста
         }
       }
     }
@@ -2244,7 +2245,7 @@ void alarm_messege(boolean set, uint8_t sound, const char *mode) //тревог�
       if (_check_screen()) {
 #if TYPE_ALARM_IND != 2
         drawLine(4); //очистка строки 4
-        _init_alarm_massage(1, 32); //тревога
+        _alarm_massage_show(1, 32); //тревога
 #endif
 
         drawLine(5); //очистка строки 5
@@ -2254,8 +2255,8 @@ void alarm_messege(boolean set, uint8_t sound, const char *mode) //тревог�
     }
   }
 }
-//--------------------------Инициализация сообщения тревоги---------------------------------
-void _init_alarm_massage(boolean text, uint8_t pos) { //инициализация сообщения тревоги
+//--------------------------Отображение сообщения тревоги---------------------------------
+void _alarm_massage_show(boolean text, uint8_t pos) { //отображение сообщения тревоги
   static boolean anim = 0; //переключатель анимации
 
   if (anim) {
@@ -2319,7 +2320,7 @@ void _vibro_off(void) //выключение вибрация и светово�
   VIBRO_OFF; //выключаем вибрацию
 }
 //-----------------------------------Отрисовка сообщения разряженной батареи----------------------------------------
-void _init_low_bat(void) //отрисовка сообщения разряженной батареи
+void _low_bat_show(void) //отрисовка сообщения разряженной батареи
 {
   drawBitmap(26, 0, low_bat_img, 32, 32); //рисуем заставку
   print(B_BAT, CENTER, 32); //Батарея
@@ -2338,7 +2339,7 @@ boolean _bat_massege(void) //сообщение об разряженной ба
 #endif
 
     clrScr(); // Очистка экрана
-    _init_low_bat(); //отрисовка сообщения разряженной батареи
+    _low_bat_show(); //отрисовка сообщения разряженной батареи
     _wait(MASSEGE_TIME); //ждём
 
     if (bat_adc >= LOW_BAT_POWER) return 1; //выключение устройства
@@ -2651,7 +2652,7 @@ uint8_t debug(void) //отладка
         printNumF(pumpSettings.reference, 2, 20, 32, 46, 4, 48); //опорное напряжение
         printNumI(pumpSettings.puls, RIGHT, 32); //длинна импульса
 #if !PUMP_FEEDBACK
-        printNumI(pumpSettings.k_delitel, 20, 40); //коэффициент делителя
+        printNumI(pumpSettings.k_delitel, 20, 40, 4); //коэффициент делителя
         printNumI(pumpSettings.ADC_value, RIGHT, 40); //значение АЦП для преобразователя
 #endif
 
@@ -2673,6 +2674,14 @@ uint8_t debug(void) //отладка
     }
   }
   return INIT_PROGRAM;
+}
+//-----------------------------------Отображение значений----------------------------------------------------
+void _print_alarm_level(uint16_t lvl, uint8_t y, uint8_t mode)
+{
+  _clear_buff();
+  if (!mainSettings.rad_mode) _add_num_int(lvl);
+  else _add_num_int_f(lvl, mode ? 1 : 2, mode);
+  _print_text(RIGHT, y);
 }
 //------------------------------------Отрисовка пунктов------------------------------------------------------
 void _settings_item_switch(boolean set, boolean inv, uint8_t num, uint8_t pos) //отрисовка пунктов
@@ -2799,14 +2808,14 @@ void _settings_item_switch(boolean set, boolean inv, uint8_t num, uint8_t pos) /
     case _SET_WARN_LEVEL_BACK: //Порог Ф1
       switch (set) {
         case 0: print(S_ITEM_ALARM_THRESHOLD_BACK_1, LEFT, pos_row); break; //Порог Ф1:
-        case 1: printNumI(mainSettings.warn_level_back, RIGHT, pos_row); break;
+        case 1: _print_alarm_level(mainSettings.warn_level_back, pos_row, 0); break;
       }
       break;
 
     case _SET_ALARM_LEVEL_BACK: //Порог Ф2
       switch (set) {
         case 0: print(S_ITEM_ALARM_THRESHOLD_BACK_2, LEFT, pos_row); break; //Порог Ф2:
-        case 1: printNumI(mainSettings.alarm_level_back, RIGHT, pos_row); break;
+        case 1: _print_alarm_level(mainSettings.alarm_level_back, pos_row, 1); break;
       }
       break;
 
@@ -2820,14 +2829,14 @@ void _settings_item_switch(boolean set, boolean inv, uint8_t num, uint8_t pos) /
     case _SET_WARN_LEVEL_DOSE: //Порог Д1
       switch (set) {
         case 0: print(S_ITEM_ALARM_THRESHOLD_DOSE_1, LEFT, pos_row); break; //Порог Д1:
-        case 1: printNumI(mainSettings.warn_level_dose, RIGHT, pos_row); break;
+        case 1: _print_alarm_level(mainSettings.warn_level_dose, pos_row, 0); break;
       }
       break;
 
     case _SET_ALARM_LEVEL_DOSE: //Порог Д2
       switch (set) {
         case 0: print(S_ITEM_ALARM_THRESHOLD_DOSE_2, LEFT, pos_row); break; //Порог Д2:
-        case 1: printNumI(mainSettings.alarm_level_dose, RIGHT, pos_row); break;
+        case 1: _print_alarm_level(mainSettings.alarm_level_dose, pos_row, 1); break;
       }
       break;
 
@@ -3327,7 +3336,7 @@ uint8_t logbook(void) //журнал
             }
           }
         }
-        else _init_error_messege(_data_read_byte(pos, 230), _data_read_dword(pos, 360)); //отрисовка информации
+        else _error_messege_show(_data_read_byte(pos, 230), _data_read_dword(pos, 360)); //отрисовка информации
       }
     }
   }
@@ -3402,39 +3411,45 @@ void fast_light(void) //вкл/выкл подсветки
   }
 }
 //---------------------------------Отрисовка сообщения об ошибке---------------------------------------
-void _init_error_messege(uint8_t err, uint32_t data) //отрисовка сообщения об ошибке
+void _error_messege_show(uint8_t err, uint32_t data) //отрисовка сообщения об ошибке
 {
   clrScr(); //очистка экрана
 
   invertText(true);
-  print(E_ERROR, CENTER, 0); //- ОШИБКА -
+  print(E_ERROR, CENTER, 0); //- ВНИМАНИЕ -
   invertText(false);
 
   switch (err) {
     case 0:
-      print(E_ERROR_NULL, CENTER, 16); //пусто
+      print(E_ERROR_NULL, CENTER, 24); //- Нет данных -
       break;
 
     case 2:
       print(E_DATA_OVERLOAD, CENTER, 16); //Перегрузка
       print(E_DATA_PUMP, CENTER, 24); //преобразователя!
-      print(E_DATA_SPEED, 18, 32); //СКР:
-      printNumI(data, 43, 32);
+      _clear_buff(); //очистка буфера
+      _add_text(E_DATA_SPEED); //СКР:
+      _add_num_int(data); //скорость
+      _print_text(CENTER, 32); //вывод текста
       break;
 #if !PUMP_FEEDBACK
     case 3:
       print(E_DATA_SHOT_CIRCUIT, CENTER, 16); //Короткое зам.
       print(E_DATA_PUMP, CENTER, 24); //преобразователя!
-      print(E_DATA_HV, 18, 32); //НАП:
-      printNumI(_convert_vcc_hv(data), 43, 32);
+      _clear_buff(); //очистка буфера
+      _add_text(E_DATA_HV); //НАП:
+      _add_num_int(_convert_vcc_hv(data)); //напряжение
+      _print_text(CENTER, 32); //вывод текста
       break;
 
     case 4:
       print(E_DATA_LOW, CENTER, 16); //Низкое
       print(E_DATA_VOLTAGE, CENTER, 24); //напряжение
       print(E_DATA_PUMP, CENTER, 32); //преобразователя!
-      print(E_DATA_HV, 18, 40); //НАП:
-      printNumI(_convert_vcc_hv(data), 43, 40);
+      _clear_buff(); //очистка буфера
+      _add_text(E_DATA_HV); //НАП:
+      _add_num_int(_convert_vcc_hv(data)); //напряжение
+      _print_text(CENTER, 40); //вывод текста
       break;
 #endif
     case 5:
@@ -3460,51 +3475,9 @@ void _error_messege(void) //сообщение об ошибке
     _disable_sleep(); //просыпаемся если спали
 
 #if LOGBOOK_RETURN
-    _init_error_messege(_data_read_byte(0, 230), _data_read_dword(0, 360));
+    _error_messege_show(_data_read_byte(0, 230), _data_read_dword(0, 360));
 #else
-    clrScr(); //очистка экрана
-
-    invertText(true);
-    print(E_ERROR, CENTER, 0); //- ОШИБКА -
-    invertText(false);
-
-    switch (error_switch) {
-      case 0:
-        print(E_ERROR_NULL, CENTER, 16); //пусто
-        break;
-
-      case 2:
-        print(E_DATA_OVERLOAD, CENTER, 16); //Перегрузка
-        print(E_DATA_PUMP, CENTER, 24); //преобразователя!
-        print(E_DATA_SPEED, 18, 32); //СКР:
-        printNumI(speed_hv, 43, 32);
-        break;
-#if !PUMP_FEEDBACK
-      case 3:
-        print(E_DATA_SHOT_CIRCUIT, CENTER, 16); //Короткое зам.
-        print(E_DATA_PUMP, CENTER, 24); //преобразователя!
-        print(E_DATA_HV, 18, 32); //НАП:
-        printNumI(_convert_vcc_hv(hv_adc), 43, 32);
-        break;
-
-      case 4:
-        print(E_DATA_LOW, CENTER, 16); //Низкое
-        print(E_DATA_VOLTAGE, CENTER, 24); //напряжение
-        print(E_DATA_PUMP, CENTER, 32); //преобразователя!
-        print(E_DATA_HV, 18, 40); //НАП:
-        printNumI(_convert_vcc_hv(hv_adc), 43, 40);
-        break;
-#endif
-      case 5:
-        print(E_DATA_NO_ACCOUNT, CENTER, 24); //Нет счета!
-        break;
-
-      case 6:
-        print(E_DATA_SHOT_CIRCUIT, CENTER, 16); //Короткое зам.
-        print(E_DATA_OFF_SCALE, CENTER, 24); //или зашкал!
-        print(E_DATA_DETECTOR, CENTER, 32); //детектора!
-        break;
-    }
+    _error_messege_show(error_switch, (error_switch == 2) ? speed_hv : _convert_vcc_hv(hv_adc));
 #endif
 
     melodyPlay(SOUND_ERROR, REPLAY_ONCE); //звук ошибки
@@ -3766,36 +3739,72 @@ void choice_menu(boolean n) //меню выбора
     invertText(false); //выключаем инверсию
   }
 }
-//----------------------------------Инициализация прочерков------------------------------------------------------
-void _init_dash_unit(boolean type, uint8_t char_all, uint8_t char_unit, uint8_t num_x, uint8_t num_y) //инициализация прочерков
+//----------------------------------Отображение значений------------------------------------------------------
+void _print_rads_unit(boolean type, uint32_t num, uint8_t divisor, uint8_t char_all, uint8_t num_x, uint8_t num_y, boolean unit, uint8_t unit_x, uint8_t unit_y, boolean dash) //отображение значений
 {
-  for (uint8_t i = 0; i < char_all; i++) {
-    if (type) setFont(MediumNumbers); //установка шрифта
-    print(UNIT_DASH, (num_x == RIGHT) ? 84 - char_all * cfont.x_size - char_unit + i * cfont.x_size : num_x + i * cfont.x_size, num_y);
-  }
-}
-//----------------------------------Инициализация значений------------------------------------------------------
-void _print_rads_unit(boolean type, uint32_t num, uint8_t divisor, uint8_t char_all, uint8_t num_x, uint8_t num_y, boolean unit, uint8_t unit_x, uint8_t unit_y, boolean dash) //инициализация значений
-{
-  uint8_t _ptr = (mainSettings.rad_mode) ? PATTERNS_SVH : PATTERNS_RH;
+  boolean mode = 0;
+  uint8_t div = 0;
+  uint8_t dec = 0;
 
-  for (uint8_t i = 0; i < _ptr; i++) { //перебираем патерны
-    if (num <= pgm_read_dword(&pattern_all[mainSettings.rad_mode][i][0]) * divisor) { //если есть совпадение
-      uint8_t char_unit = (_rads_unit(pgm_read_dword(&pattern_all[mainSettings.rad_mode][i][3]), unit, unit_x, unit_y) - 1) * cfont.x_size; //устанавливаем единицы измерения
-      if (type) setFont(MediumNumbers); //установка шрифта
-#if (TYPE_CHAR_FILL > 44)
-      if (dash) _init_dash_unit(type, char_all, char_unit, num_x, num_y);
-      else printNumF(float(num) / pgm_read_dword(&pattern_all[mainSettings.rad_mode][i][2]), pgm_read_dword(&pattern_all[mainSettings.rad_mode][i][1]), (num_x == RIGHT) ? 84 - char_all * cfont.x_size - char_unit : num_x, num_y, 46, char_all, TYPE_CHAR_FILL); //строка 1
-#else
-      if (dash) _init_dash_unit(type, char_all, char_unit, num_x, num_y);
-      else printNumF(float(num) / pgm_read_dword(&pattern_all[mainSettings.rad_mode][i][2]), pgm_read_dword(&pattern_all[mainSettings.rad_mode][i][1]), (num_x == RIGHT) ? 84 - char_all * cfont.x_size - char_unit : num_x, num_y, 46, char_all, (type) ? TYPE_CHAR_FILL : 32); //строка 1
-#endif
-      break;
+  uint32_t data = num / divisor;
+
+  if (mainSettings.rad_mode) { //если мкЗ
+    if (data >= 1000000) {
+      div = 5;
+      dec = 1;
+      mode = 1;
+    }
+    else if (data >= 10000) {
+      div = 5;
+      dec = 2;
+      mode = 1;
+    }
+    else if (data >= 1000) {
+      div = 2;
+      dec = 1;
+    }
+    else {
+      div = 2;
+      dec = 2;
     }
   }
+  else { //иначе мкР
+    if (data >= 100000) {
+      div = 3;
+      mode = 1;
+    }
+    else if (data >= 10000) {
+      div = 3;
+      dec = 1;
+      mode = 1;
+    }
+  }
+
+  if (num_x != RIGHT) print(_rads_unit(mode, unit), unit_x, unit_y); //устанавливаем единицы измерения
+
+  _clear_buff();
+  if (dash) {
+    while (char_all) {
+      char_all--;
+      _add_text(UNIT_DASH);
+    }
+  }
+  else {
+#if (TYPE_CHAR_FILL > 44)
+    _add_num_int_f(num, dec, div, '.', char_all, TYPE_CHAR_FILL); //вывод чисел
+#else
+    _add_num_int_f(num, dec, div, '.', char_all, (type) ? TYPE_CHAR_FILL : 32); //вывод чисел
+#endif
+  }
+
+  if (num_x == RIGHT) {
+    _add_text(_rads_unit(mode, unit));
+  }
+  if (type) setFont(MediumNumbers); //установка шрифта
+  _print_text(num_x, num_y);
 }
 //----------------------------------Единицы измерения------------------------------------------------------
-uint8_t _rads_unit(boolean set, boolean unit, uint8_t unit_x, uint8_t unit_y) //Единицы измерения
+const char* _rads_unit(boolean set, boolean unit) //Единицы измерения
 {
   switch (mainSettings.rad_mode)
   {
@@ -3804,15 +3813,15 @@ uint8_t _rads_unit(boolean set, boolean unit, uint8_t unit_x, uint8_t unit_y) //
       switch (set) {
         case 0:
           switch (unit) {
-            case 0: print(UNIT_UR_H, unit_x, unit_y); return sizeof(UNIT_UR_H); //строка 2 мкР/ч
-            case 1: print(UNIT_UR, unit_x, unit_y); return sizeof(UNIT_UR); //строка 2 мкР
+            case 0: return UNIT_UR_H; //строка 2 мкР/ч
+            case 1: return UNIT_UR; //строка 2 мкР
           }
           break;
 
         case 1:
           switch (unit) {
-            case 0: print(UNIT_MR_H, unit_x, unit_y); return sizeof(UNIT_MR_H); //строка 2 мР/ч
-            case 1: print(UNIT_MR, unit_x, unit_y); return sizeof(UNIT_MR); //строка 2 мР
+            case 0: return UNIT_MR_H; //строка 2 мР/ч
+            case 1: return UNIT_MR; //строка 2 мР
           }
           break;
       }
@@ -3823,15 +3832,15 @@ uint8_t _rads_unit(boolean set, boolean unit, uint8_t unit_x, uint8_t unit_y) //
       switch (set) {
         case 0:
           switch (unit) {
-            case 0: print(UNIT_USV_H, unit_x, unit_y); return sizeof(UNIT_USV_H); //строка 2 мкЗ/ч
-            case 1: print(UNIT_USV, unit_x, unit_y); return sizeof(UNIT_USV); //строка 2 мкЗ
+            case 0: return UNIT_USV_H; //строка 2 мкЗ/ч
+            case 1: return UNIT_USV; //строка 2 мкЗ
           }
           break;
 
         case 1:
           switch (unit) {
-            case 0: print(UNIT_MSV_H, unit_x, unit_y); return sizeof(UNIT_MSV_H); //строка 2 мЗ/ч
-            case 1: print(UNIT_MSV, unit_x, unit_y); return sizeof(UNIT_MSV); //строка 2 мЗ
+            case 0: return UNIT_MSV_H; //строка 2 мЗ/ч
+            case 1: return UNIT_MSV; //строка 2 мЗ
           }
           break;
       }
@@ -3839,7 +3848,7 @@ uint8_t _rads_unit(boolean set, boolean unit, uint8_t unit_x, uint8_t unit_y) //
   }
 }
 //----------------------------------Индикация тревоги------------------------------------------------
-void _alarm_init(uint8_t wait, uint8_t alarm) //индикация тревоги
+void _alarm_show(uint8_t wait, uint8_t alarm) //индикация тревоги
 {
   if (wait) drawBitmap(60, 0, beep_alt_wait_img, 7, 8); //если ждем понижения фона
   else {
@@ -3963,8 +3972,8 @@ uint8_t main_screen(void)
 
         //рисуем шапку экрана
         switch (scr_mode) {
-          case 0: _print_task_bar(MAIN_SCREEN_BACK); _alarm_init(alarm_back_wait + warn_back_wait, mainSettings.alarm_back); break;  //режим текущего фона
-          case 1: _print_task_bar(MAIN_SCREEN_DOSE); _alarm_init(0, mainSettings.alarm_dose); break;  //режим накопленной дозы
+          case 0: _print_task_bar(MAIN_SCREEN_BACK); _alarm_show(alarm_back_wait + warn_back_wait, mainSettings.alarm_back); break;  //режим текущего фона
+          case 1: _print_task_bar(MAIN_SCREEN_DOSE); _alarm_show(0, mainSettings.alarm_dose); break;  //режим накопленной дозы
         }
 
         drawBitmap(55, 0, font_alarm_img, 5, 8); //устанавлваем фон звуков
@@ -4001,7 +4010,7 @@ uint8_t main_screen(void)
                 _print_back_bar(rad_back);
 #endif
                 break;
-              case 3: _init_alarm_massage(0, 24); break; //предупреждение
+              case 3: _alarm_massage_show(0, 24); break; //предупреждение
             }
 
             switch (back_mode) {
@@ -4051,20 +4060,20 @@ uint8_t main_screen(void)
             {
               case 0: //текущая доза
                 setFont(TinyNumbersDown); //установка шрифта
-                printNumI(time_sec / 60 / 60 / 24, 34, 23, 2, 48); //дней
+                printNumI(time_sec / 60 / 60 / 24, 22, 23, 5, 44); //дней
                 drawBitmap(42, 24, day_img, 8, 8); //дн
                 setFont(TinyNumbersDown); //установка шрифта
-                printNumI((time_sec / 60 / 60) % 24, 54, 23, 2, 48); //часов
+                printNumI((time_sec / 60 / 60) % 24, 54, 23, 2, '0'); //часов
                 drawBitmap(62, 24, colon_img, 3, 8); //:
                 setFont(TinyNumbersDown); //установка шрифта
-                printNumI((time_sec / 60) % 60, 65, 23, 2, 48); //минут
+                printNumI((time_sec / 60) % 60, 65, 23, 2, '0'); //минут
                 drawBitmap(73, 24, colon_img, 3, 8); //:
                 setFont(TinyNumbersDown); //установка шрифта
-                printNumI(time_sec % 60, 76, 23, 2, 48); //секунд
+                printNumI(time_sec % 60, 76, 23, 2, '0'); //секунд
 
                 switch (alarm_switch) {
                   case 0: drawLine(4, 1, map(stat_upd_tmr, 0, STAT_UPD_TIME, 5, 82), 0x30); break; //шкала времени до сохранения дозы
-                  case 4: _init_alarm_massage(0, 32); break; //предупреждение
+                  case 4: _alarm_massage_show(0, 32); break; //предупреждение
                 }
 
                 _print_rads_unit(1, rad_dose, 10, 5, 1, 8, 1, 66, 16); //строка 1 текущая доза
@@ -4073,12 +4082,14 @@ uint8_t main_screen(void)
                 break;
 
               case 1: //общая накопленная доза и время
-                printNumI(time_save / 60 / 60 / 24, 8, 40, 2, 48);
-                print(MAIN_SCREEN_DOSE_DAYS, 20, 40);
-                printNumI((time_save / 60 / 60) % 24, 32, 40, 2, 48);
-                print(MAIN_SCREEN_DOSE_HOURSE, 44, 40);
-                printNumI((time_save / 60) % 60, 56, 40, 2, 48);
-                print(MAIN_SCREEN_DOSE_MINS, 68, 40);
+                _clear_buff(); //очистка буфера
+                _add_num_int(time_save / 60 / 60 / 24, 2, '0');
+                _add_text(MAIN_SCREEN_DOSE_DAYS);
+                _add_num_int((time_save / 60 / 60) % 24, 2, '0');
+                _add_text(MAIN_SCREEN_DOSE_HOURSE);
+                _add_num_int((time_save / 60) % 60, 2, '0');
+                _add_text(MAIN_SCREEN_DOSE_MINS);
+                _print_text(CENTER, 40); //вывод текста
 
                 print(MAIN_SCREEN_DOSE_ACCUM, CENTER, 24); //накоплено
                 print(MAIN_SCREEN_DOSE_JUST_OVER, 16, 30); //всего за:

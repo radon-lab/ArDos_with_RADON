@@ -1,7 +1,7 @@
 #include <avr/pgmspace.h>
 
 //Языки для локализации
-const char VERSION[] PROGMEM = "4.3.5"; //версия программы
+const char VERSION[] PROGMEM = "4.3.6"; //версия программы
 
 //---------------------------------------------//
 #ifdef RUSSIAN //если выбран язык "русский"
@@ -156,8 +156,8 @@ const char L_SETTINGS_MEASUR[] PROGMEM = "Pfvths&"; //Замеры:
 const char L_SETTINGS_CLEAR[] PROGMEM = "Jxbcnbnm"; //Очистить
 
 //Ошибки
-const char E_ERROR[] PROGMEM = " - JIB<RF - "; //- ОШИБКА -
-const char E_ERROR_NULL[] PROGMEM = "* gecnj *"; //* пусто *
+const char E_ERROR[] PROGMEM = " - DYBVFYBT - "; //- ВНИМАНИЕ -
+const char E_ERROR_NULL[] PROGMEM = "- Ytn lfyys[ -"; //- Нет данных -
 
 const char E_DATA_OVERLOAD[] PROGMEM = "Gthtuheprf"; //Перегрузка
 const char E_DATA_PUMP[] PROGMEM = "rjydthnthf!"; //конвертера!
@@ -213,8 +213,8 @@ const char MAIN_SCREEN_CURRENT_DOSE_ALL[] PROGMEM = "DCTUJ&"; //ВСЕГО:
 const char MAIN_SCREEN_GRAF_SEC[] PROGMEM = "CTR"; //СЕК
 const char MAIN_SCREEN_GRAF_MIN[] PROGMEM = "VBY"; //МИН
 
-const char MAIN_SCREEN_DOSE_DAYS[] PROGMEM = "l"; //д
-const char MAIN_SCREEN_DOSE_HOURSE[] PROGMEM = "x"; //ч
+const char MAIN_SCREEN_DOSE_DAYS[] PROGMEM = "l "; //д
+const char MAIN_SCREEN_DOSE_HOURSE[] PROGMEM = "x "; //ч
 const char MAIN_SCREEN_DOSE_MINS[] PROGMEM = "v"; //м
 
 const char MAIN_SCREEN_DOSE_ACCUM[] PROGMEM = "yfrjgktyj"; //накоплено
@@ -391,8 +391,8 @@ const char L_SETTINGS_MEASUR[] PROGMEM = "Measur:"; //Замеры:
 const char L_SETTINGS_CLEAR[] PROGMEM = "Clear book"; //Очистить
 
 //Ошибки
-const char E_ERROR[] PROGMEM = " - ERROR - "; //- ОШИБКА -
-const char E_ERROR_NULL[] PROGMEM = "* null *"; //* пусто *
+const char E_ERROR[] PROGMEM = " - ATTENTION - "; //- ВНИМАНИЕ -
+const char E_ERROR_NULL[] PROGMEM = "- No data -"; //- Нет данных -
 
 const char E_DATA_OVERLOAD[] PROGMEM = "Overload"; //Перегрузка
 const char E_DATA_PUMP[] PROGMEM = "converter!"; //конвертера!
@@ -445,8 +445,8 @@ const char MAIN_SCREEN_BACK_MAX[] PROGMEM = "MAX:"; //МАКС:
 
 const char MAIN_SCREEN_CURRENT_DOSE_ALL[] PROGMEM = "ALL:"; //ВСЕГО:
 
-const char MAIN_SCREEN_DOSE_DAYS[] PROGMEM = "d"; //д
-const char MAIN_SCREEN_DOSE_HOURSE[] PROGMEM = "h"; //ч
+const char MAIN_SCREEN_DOSE_DAYS[] PROGMEM = "d "; //д
+const char MAIN_SCREEN_DOSE_HOURSE[] PROGMEM = "h "; //ч
 const char MAIN_SCREEN_DOSE_MINS[] PROGMEM = "m"; //м
 
 const char MAIN_SCREEN_GRAF_SEC[] PROGMEM = "SEC"; //СЕК
