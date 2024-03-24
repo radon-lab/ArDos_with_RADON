@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.13
-  Версия программы RADON v4.3.7 low_pwr release 20.03.24 специально для проекта ArDos
+  Версия программы RADON v4.3.8 low_pwr release 23.03.24 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/ardos-dozimetr-prodolzhenie-temy-chast-%E2%84%962 и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -2728,7 +2728,7 @@ void _print_alarm_level(uint16_t lvl, uint8_t y, uint8_t mode)
 //------------------------------------Отрисовка пунктов------------------------------------------------------
 void _settings_item_switch(boolean set, boolean inv, uint8_t num, uint8_t pos) //отрисовка пунктов
 {
-  uint8_t pos_row = (pos << 3) + 8; //переводим позицию в номер строки
+  uint8_t pos_row = (pos * 8) + 8; //переводим позицию в номер строки
 
   if (inv) invertText(true); //включаем инверсию
 
@@ -3063,7 +3063,7 @@ uint8_t settings(void) //настройки
 //------------------------------------Отрисовка пунктов------------------------------------------------------
 void _menu_item_switch(boolean inv, uint8_t num, uint8_t pos) //отрисовка пунктов
 {
-  uint8_t pos_row = (pos << 3) + 8; //переводим позицию в номер строки
+  uint8_t pos_row = (pos * 8) + 8; //переводим позицию в номер строки
 
   if (inv) {
     drawLine(pos + 1, 0, 83, 0xFF); //рисуем линию
@@ -3093,13 +3093,8 @@ uint8_t menu(void) //меню
   while (1) {
     if (_data_update()) { //обработка данных
       switch (buttonState()) {
-#ifdef PCD8544
-        case DOWN_KEY_HOLD: //удержание кнопки вниз
-          fast_light(); //быстрое включение посветки
-          break;
-#endif
-
         case DOWN_KEY_PRESS: //вниз
+        case DOWN_KEY_KEEP: //удержание кнопки вниз
           if (pos < 6) { //изменяем позицию
             pos++;
             if (cursor < 4) cursor++; //изменяем положение курсора
@@ -3111,6 +3106,7 @@ uint8_t menu(void) //меню
           break;
 
         case UP_KEY_PRESS: //вверх
+        case UP_KEY_KEEP: //удержание кнопки вверх
           if (pos > 0) { //изменяем позицию
             pos--;
             if (cursor > 0) cursor--; //изменяем положение курсора
@@ -3119,10 +3115,6 @@ uint8_t menu(void) //меню
             pos = 6;
             cursor = 4;
           }
-          break;
-
-        case UP_KEY_HOLD: //вкл/выкл фонарика
-          FLASH_SWITCH; //быстрое включение фонарика
           break;
 
         case SEL_KEY_PRESS: //выбор пункта
@@ -3151,7 +3143,7 @@ uint8_t menu(void) //меню
 //------------------------------------Отрисовка пунктов настроек журнала------------------------------------------------------
 void _logbook_settings(boolean inv, uint8_t num, uint8_t pos) //отрисовка пунктов настроек журнала
 {
-  uint8_t pos_row = (pos << 3) + 8; //переводим позицию в номер строки
+  uint8_t pos_row = (pos * 8) + 8; //переводим позицию в номер строки
 
   if (inv) {
     drawLine(pos + 1, 0, 83, 0xFF); //рисуем линию
@@ -3169,7 +3161,7 @@ void _logbook_settings(boolean inv, uint8_t num, uint8_t pos) //отрисовк
 //------------------------------------Отрисовка пунктов журнала------------------------------------------------------
 void _logbook_item_switch(boolean inv, uint8_t num, uint8_t pos) //отрисовка пунктов журнала
 {
-  uint8_t pos_row = (pos << 3) + 8; //переводим позицию в номер строки
+  uint8_t pos_row = (pos * 8) + 8; //переводим позицию в номер строки
 
   if (inv) {
     drawLine(pos + 1, 0, 83, 0xFF); //рисуем линию
@@ -3188,7 +3180,7 @@ void _logbook_item_switch(boolean inv, uint8_t num, uint8_t pos) //отрисо�
 //------------------------------------Отрисовка информации журнала------------------------------------------------------
 void _logbook_data_switch(boolean inv, uint8_t num, uint8_t pos, uint8_t data_num) //отрисовка информации журнала
 {
-  uint8_t pos_row = (pos << 3) + 8; //переводим позицию в номер строки
+  uint8_t pos_row = (pos * 8) + 8; //переводим позицию в номер строки
 
   uint8_t temp_byte = _data_read_byte(num, 200 + data_num * 10);
   uint32_t temp_dword = _data_read_dword(num, (uint16_t)240 + data_num * 40);
@@ -3287,13 +3279,8 @@ uint8_t logbook(void) //журнал
   while (1) {
     if (_data_update()) { //обработка данных
       switch (buttonState()) {
-#ifdef PCD8544
-        case DOWN_KEY_HOLD: //удержание кнопки вниз
-          fast_light(); //быстрое включение посветки
-          break;
-#endif
-
         case DOWN_KEY_PRESS: //вниз
+        case DOWN_KEY_KEEP: //удержание кнопки вниз
           if (pos < max_item) { //изменяем позицию
             pos++;
             if (cursor < 4) cursor++; //изменяем положение курсора
@@ -3305,6 +3292,7 @@ uint8_t logbook(void) //журнал
           break;
 
         case UP_KEY_PRESS: //вверх
+        case UP_KEY_KEEP: //удержание кнопки вверх
           if (pos > 0) { //изменяем позицию
             pos--;
             if (cursor > 0) cursor--; //изменяем положение курсора
@@ -3313,10 +3301,6 @@ uint8_t logbook(void) //журнал
             pos = max_item;
             cursor = (max_item < 4) ? max_item : 4;
           }
-          break;
-
-        case UP_KEY_HOLD: //вкл/выкл фонарика
-          FLASH_SWITCH; //быстрое включение фонарика
           break;
 
         case SEL_KEY_PRESS: //выбор
@@ -3381,13 +3365,8 @@ uint8_t logbook(void) //журнал
   while (1) {
     if (_data_update()) { //обработка данных
       switch (buttonState()) {
-#ifdef PCD8544
-        case DOWN_KEY_HOLD: //удержание кнопки вниз
-          fast_light(); //быстрое включение посветки
-          break;
-#endif
-
         case DOWN_KEY_PRESS: //вниз
+        case DOWN_KEY_KEEP: //удержание кнопки вниз
           if (pos < 9) { //изменяем позицию
             pos++;
             if (cursor < 4) cursor++; //изменяем положение курсора
@@ -3399,6 +3378,7 @@ uint8_t logbook(void) //журнал
           break;
 
         case UP_KEY_PRESS: //вверх
+        case UP_KEY_KEEP: //удержание кнопки вверх
           if (pos > 0) { //изменяем позицию
             pos--;
             if (cursor > 0) cursor--; //изменяем положение курсора
@@ -3407,10 +3387,6 @@ uint8_t logbook(void) //журнал
             pos = 9;
             cursor = 4;
           }
-          break;
-
-        case UP_KEY_HOLD: //вкл/выкл фонарика
-          FLASH_SWITCH; //быстрое включение фонарика
           break;
 
         case SEL_KEY_PRESS: //выбор
@@ -3783,18 +3759,22 @@ void _print_rads_unit(boolean type, uint32_t num, uint8_t divisor, uint8_t char_
   uint32_t data = num / divisor; //пределитель увеличения разрядности
 
   if (mainSettings.rad_mode) { //если мкЗ
-    if (data >= 1000000) {
+    if (data >= 10000000) {
       div = 5;
+      mode = 1;
+    }
+    else if (data >= 1000000) {
+      div = 4;
       dec = 1;
       mode = 1;
     }
     else if (data >= 10000) {
-      div = 5;
+      div = 3;
       dec = 2;
       mode = 1;
     }
     else if (data >= 1000) {
-      div = 2;
+      div = 1;
       dec = 1;
     }
     else dec = 2;
@@ -3805,7 +3785,7 @@ void _print_rads_unit(boolean type, uint32_t num, uint8_t divisor, uint8_t char_
       mode = 1;
     }
     else if (data >= 10000) {
-      div = 3;
+      div = 2;
       dec = 1;
       mode = 1;
     }
