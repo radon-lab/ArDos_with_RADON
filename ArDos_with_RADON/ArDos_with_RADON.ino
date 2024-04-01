@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.13
-  Версия программы RADON v4.3.8 low_pwr release 23.03.24 специально для проекта ArDos
+  Версия программы RADON v4.3.8 low_pwr release 01.04.24 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/ardos-dozimetr-prodolzhenie-temy-chast-%E2%84%962 и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -1602,8 +1602,9 @@ uint8_t power_down(void) //выключение устройства
         _bat_update(); //опрос батареи
         _wdt_enable(); //запускаем WDT
         if (bat_adc < LOW_BAT_POWER) { //если батарея не разряжена
+          _set_contrast_lcd(mainSettings.contrast); //установка контраста
 #ifdef PCD8544
-          _BACKL_ON(); //включаем подсветку, если была включена настройками
+          _BACKL_ON(); //включаем подсветку
 #endif
 #if PUMP_FEEDBACK == 1
           ACSR = (0x01 << ACBG) | (0x01 << ACIS1); //включаем компаратор
@@ -3348,7 +3349,7 @@ uint8_t logbook(void) //журнал
         if (!err_sw) {
           for (uint8_t i = 0; i < 5; i++) {
             switch (point) {
-              case 0: _logbook_item_switch((i == cursor) ? 1 : 0, pos - cursor + i, i); break; //отрисовываем пункты настроек
+              case 0: _logbook_item_switch((i == cursor) ? 1 : 0, pos - cursor + i, i); break; //отрисовываем пункты журнала
               case 5: _logbook_settings((i == cursor) ? 1 : 0, pos - cursor + i, i); break; //отрисовываем пункты настроек
               default: _logbook_data_switch((i == cursor) ? 1 : 0, pos - cursor + i, i, point - 1); break; //отрисовывам информацию
             }
@@ -3486,8 +3487,10 @@ void _error_messege(void) //сообщение об ошибке
 
 #if LOGBOOK_RETURN
     _error_messege_show(_data_read_byte(0, 230), _data_read_dword(0, 360));
+#elif !PUMP_FEEDBACK
+    _error_messege_show(error_switch, (error_switch == 2) ? speed_hv : hv_adc);
 #else
-    _error_messege_show(error_switch, (error_switch == 2) ? speed_hv : _convert_vcc_hv(hv_adc));
+    _error_messege_show(error_switch, speed_hv);
 #endif
 
     melodyPlay(SOUND_ERROR, REPLAY_ONCE); //звук ошибки
