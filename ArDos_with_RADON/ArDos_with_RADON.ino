@@ -4000,6 +4000,10 @@ void data_reset(uint8_t sw) //сброс текущей дозы
                 case 2: //журнал
                   _logbook_data_clear(); //очистка журнала
 
+                  if (bookSettings.logbook_alarm == 2) bookSettings.logbook_alarm = 1; //сброс флага тревоги
+                  if (bookSettings.logbook_warn == 2) bookSettings.logbook_warn = 1; //сброс флага опасности
+                  if (bookSettings.logbook_measur == 2) bookSettings.logbook_measur = 1; //сброс флага замеров
+
                   print(R_SUCC_LOGBOOK, CENTER, 16); //Журнал
                   print(R_SUCC_CLEAR, CENTER, 24); //очищен!
                   break;
