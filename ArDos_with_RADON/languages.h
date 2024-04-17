@@ -1,12 +1,16 @@
 #include <avr/pgmspace.h>
 
 //Языки для локализации
-const char VERSION[] PROGMEM = "4.3.8"; //версия программы
+const char VERSION[] PROGMEM = FW_VERSION; //версия программы
 
 //---------------------------------------------//
 #ifdef RUSSIAN //если выбран язык "русский"
 //Основные
+#ifdef RADON
+const char INTRO[] PROGMEM = "Dthcbz GJ"; //Версия ПО
+#else
 const char INTRO[] PROGMEM = "-=HFLJY=-"; //-=РАДОН=-
+#endif
 
 const char SETTINGS[] PROGMEM = "Yfcnhjqrb"; //Настройки
 const char DAMAGED[] PROGMEM = "gjdht;ltys!"; //повреждены!
@@ -61,6 +65,13 @@ const char S_SEARCH[] PROGMEM = "Gjbcr"; //Поиск
 const char S_IMP_PER_SEC[] PROGMEM = "bvg|c"; //имп/с
 const char S_IMP_PER_MIN[] PROGMEM = "bvg|v"; //имп/м
 
+//Информация
+const char I_INFO[] PROGMEM = "GJ " FW_VERSION; //ПО
+
+const char I_DEBUG[] PROGMEM = "Jnkflrf"; //Отладка
+const char I_PARAMETERS[] PROGMEM = "Gfhfvtnhs"; //Параметры
+const char I_RESET[] PROGMEM = "C,hjc yfcnhjtr"; //Сброс настроек
+
 //Параметры
 const char P_PARAM[] PROGMEM = "Gfhfvtnhs"; //Параметры
 
@@ -98,14 +109,14 @@ const char S_ITEM_CONTRAST[] PROGMEM = "Rjynhfcn&"; //Контраст:
 const char S_ITEM_BRIGHT[] PROGMEM = "Zhrjcnm&"; //Яркость:
 const char S_ITEM_ROTATION[] PROGMEM = "Hfpdjhjn&"; //Разворот:
 const char S_ITEM_FLASHES[] PROGMEM = "Dcgsirb&"; //Вспышки:
-const char S_ITEM_VOLUME[] PROGMEM = "Uhjvrjcnm&"; //Громкость:
 const char S_ITEM_CLICKS[] PROGMEM = "Otkxrb&"; //Щелчки:
 const char S_ITEM_BUTT_SOUND[] PROGMEM = "Pd.ryjgjr&"; //Зв.кнопок:
-const char S_ITEM_DIFF_MEASUR[] PROGMEM = "Hfpy.pfv&"; //Разн.зам:
-const char S_ITEM_AVERAG[] PROGMEM = "Echtl.ajy&"; //Усред.фон:
+const char S_ITEM_VOLUME[] PROGMEM = "Uhjvrjcnm&"; //Громкость:
 const char S_ITEM_SIGMA[] PROGMEM = "Cbuvf&"; //Сигма:
-const char S_ITEM_SEARCH[] PROGMEM = "Gjbcr&"; //Поиск:
-const char S_ITEM_SPEED[] PROGMEM = "Crjhjcnm&"; //Скорость:
+const char S_ITEM_AVERAG[] PROGMEM = "Echtl.ajy&"; //Усред.фон:
+const char S_ITEM_DIFF_MEASUR[] PROGMEM = "Hfpy.pfv&"; //Разн.зам:
+const char S_ITEM_SEARCH[] PROGMEM = "Dhv.gjbcr&"; //Врм.поиск:
+const char S_ITEM_SPEED[] PROGMEM = "Crh.gjbcr&"; //Скр.поиск:
 const char S_ITEM_UNITS[] PROGMEM = "Tl.bpvth&"; //Ед.измер:
 const char S_ITEM_ALARM_BACK[] PROGMEM = "Nhtdjuf A&"; //Тревога Ф:
 const char S_ITEM_ALARM_THRESHOLD_BACK_1[] PROGMEM = "Gjhju A1&"; //Порог Ф1:
@@ -131,7 +142,7 @@ const char MAIN_SEARCH[] PROGMEM = "Ht;bv gjbcrf"; //Режим поиска
 const char MAIN_MEASUR[] PROGMEM = "Pfvth ,tnf"; //Замер бета
 const char MAIN_LOGBOOK[] PROGMEM = ":ehyfk"; //Журнал
 const char MAIN_SETTINGS[] PROGMEM = "Yfcnhjqrb"; //Настройки
-const char MAIN_PARAM[] PROGMEM = "Gfhfvtnhs"; //Параметры
+const char MAIN_INFORMATION[] PROGMEM = "Byajhvfwbz"; //Информация
 const char MAIN_POWER_DOWN[] PROGMEM = "Dsrk/xtybt"; //Выключение
 
 //Журнал
@@ -229,10 +240,10 @@ const char UNIT_UR_H[] PROGMEM = "vrH|x"; //мкР/ч
 const char UNIT_MR[] PROGMEM = "vH";      //мР
 const char UNIT_MR_H[] PROGMEM = "vH|x";  //мР/ч
 
-const char UNIT_USV[] PROGMEM = "vrP";    //мкЗ
+const char UNIT_USV[] PROGMEM = "vrP";     //мкЗ
 const char UNIT_USV_H[] PROGMEM = "vrP|x"; //мкЗ/ч
-const char UNIT_MSV[] PROGMEM = "vP";     //мЗ
-const char UNIT_MSV_H[] PROGMEM = "vP|x"; //мЗ/ч
+const char UNIT_MSV[] PROGMEM = "vP";      //мЗ
+const char UNIT_MSV_H[] PROGMEM = "vP|x";  //мЗ/ч
 
 const char UNIT_DASH[] PROGMEM = "-"; //-
 
@@ -241,7 +252,11 @@ const char UNIT_DASH[] PROGMEM = "-"; //-
 //---------------------------------------------//
 #ifdef ENGLISH //если выбран язык "английский"
 //Основные
+#ifdef RADON
+const char INTRO[] PROGMEM = "Version"; //Версия ПО
+#else
 const char INTRO[] PROGMEM = "-=RADON=-"; //-=РАДОН=-
+#endif
 
 const char SETTINGS[] PROGMEM = "Settings"; //Настройки
 const char DAMAGED[] PROGMEM = "damaged!"; //повреждены!
@@ -296,6 +311,13 @@ const char S_SEARCH[] PROGMEM = "Search"; //Поиск
 const char S_IMP_PER_SEC[] PROGMEM = "cps"; //имп/с
 const char S_IMP_PER_MIN[] PROGMEM = "cpm"; //имп/м
 
+//Информация
+const char I_INFO PROGMEM = "FW " FW_VERSION; //ПО
+
+const char I_DEBUG[] PROGMEM = "Debug"; //Отладка
+const char I_PARAMETERS[] PROGMEM = "Parameters"; //Параметры
+const char I_RESET[] PROGMEM = "Reset settings"; //Сброс настроек
+
 //Параметры
 const char P_PARAM[] PROGMEM = "Parametrs"; //Параметры
 
@@ -333,14 +355,14 @@ const char S_ITEM_CONTRAST[] PROGMEM = "Contrast:"; //Контраст:
 const char S_ITEM_BRIGHT[] PROGMEM = "Bright:"; //Яркость:
 const char S_ITEM_ROTATION[] PROGMEM = "Rotate:"; //Разворот:
 const char S_ITEM_FLASHES[] PROGMEM = "Flashes:"; //Вспышки:
-const char S_ITEM_VOLUME[] PROGMEM = "Volume:"; //Громкость:
-const char S_ITEM_CLICKS[] PROGMEM = "Clicks:"; //Щелчки:
+const char S_ITEM_CLICKS[] PROGMEM = "Rad sound:"; //Щелчки:
 const char S_ITEM_BUTT_SOUND[] PROGMEM = "Butt sound:"; //Зв.кнопок:
-const char S_ITEM_DIFF_MEASUR[] PROGMEM = "Diff measur:"; //Разн.зам:
-const char S_ITEM_AVERAG[] PROGMEM = "Averag:"; //Усред.фон:
+const char S_ITEM_VOLUME[] PROGMEM = "Volume:"; //Громкость:
 const char S_ITEM_SIGMA[] PROGMEM = "Sigma:"; //Сигма:
-const char S_ITEM_SEARCH[] PROGMEM = "Search:"; //Поиск:
-const char S_ITEM_SPEED[] PROGMEM = "Speed:"; //Скорость:
+const char S_ITEM_AVERAG[] PROGMEM = "Averag:"; //Усред.фон:
+const char S_ITEM_DIFF_MEASUR[] PROGMEM = "Diff measur:"; //Разн.зам:
+const char S_ITEM_SEARCH[] PROGMEM = "Time S:"; //Поиск:
+const char S_ITEM_SPEED[] PROGMEM = "Speed S:"; //Скорость:
 const char S_ITEM_UNITS[] PROGMEM = "Units:"; //Ед.измер:
 const char S_ITEM_ALARM_BACK[] PROGMEM = "Alarm B:"; //Тревога Ф:
 const char S_ITEM_ALARM_THRESHOLD_BACK_1[] PROGMEM = "Back 1:"; //Порог Ф1:
@@ -366,7 +388,7 @@ const char MAIN_SEARCH[] PROGMEM = "Search mode"; //Режим поиска
 const char MAIN_MEASUR[] PROGMEM = "Measur mode"; //Замер бета
 const char MAIN_LOGBOOK[] PROGMEM = "Logbook"; //Журнал
 const char MAIN_SETTINGS[] PROGMEM = "Settings"; //Настройки
-const char MAIN_PARAM[] PROGMEM = "Parametrs"; //Параметры
+const char MAIN_INFORMATION[] PROGMEM = "Information"; //Информация
 const char MAIN_POWER_DOWN[] PROGMEM = "Turn off"; //Выключение
 
 //Журнал

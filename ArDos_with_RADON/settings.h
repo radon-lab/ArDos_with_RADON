@@ -16,7 +16,7 @@ struct Settings_1 {
   boolean rad_mode = DEFAULT_RAD_MODE; //единицы измерения дозы/фона(мкР/мкЗв)
   uint8_t rad_flash = DEFAULT_RAD_FLASH; //индикация попадания частиц
   uint8_t averag_time = DEFAULT_AVERAG; //длинна буфера усреднения замеров
-  uint8_t sigma_pos = DEFAULT_SIGMA_POS; //указатель сигмы
+  uint8_t sigma_lvl = DEFAULT_SIGMA_LVL; //уровень сигмы
   uint8_t search_score = DEFAULT_SEARCH_BUF; //количество ячеек буфера режима "поиск"
   uint8_t search_pos = DEFAULT_SEARCH_POS; //указатель на время время обновления графика в массиве
   uint16_t warn_level_back = DEFAULT_LEVEL_BACK_1; //уровень тревоги 1 фона

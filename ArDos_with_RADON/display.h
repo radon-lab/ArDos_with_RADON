@@ -53,6 +53,7 @@ void drawLine(uint8_t row, uint8_t start_x = 0, uint8_t end_x = 83, uint8_t line
 void print(const char *st, uint8_t x, uint8_t y);
 void printNumI(uint32_t num, uint8_t x, uint8_t y, uint8_t length = 0, char filler = ' ');
 void printNumF(float num, uint8_t dec, uint8_t x, uint8_t y, char divider = '.', uint8_t length = 0, char filler = ' ');
+void printNumIntF(uint32_t num, uint8_t dec, uint8_t div, uint8_t x, uint8_t y, char divider = '.', uint8_t length = 0, char filler = ' ');
 void drawBitmap(uint8_t x, uint8_t y, const uint8_t* bitmap, uint8_t size_x, uint8_t size_y);
 
 inline void _clear_buff(void); //очистка буфера
@@ -87,12 +88,12 @@ void stopWrite(void) //остановка обновления дисплея
 #include "SSD1306.h"
 #endif
 
-//-------------------------Инверсия текста----------------------------------------------------
+//--------------------------------Инверсия текста-----------------------------------------------------------
 void invertText(boolean mode) //инверсия текста
 {
   cfont.inverted = mode;
 }
-//-------------------------Установка шрифта----------------------------------------------------
+//--------------------------------Установка шрифта----------------------------------------------------------
 void setFont(const uint8_t* font) //установка шрифта
 {
   cfont.font = font;
@@ -100,11 +101,18 @@ void setFont(const uint8_t* font) //установка шрифта
   cfont.y_size = fontbyte(1);
   cfont.offset = fontbyte(2);
 }
-//-------------------------Вывод текста----------------------------------------------------
+//----------------------------------Вывод текста------------------------------------------------------------
 void print(const char *st, uint8_t x, uint8_t y) //вывод текста
 {
   _clear_buff();
   _add_text(st);
+  _print_text(x, y);
+}
+//------------------------------Вывод чисел с точкой--------------------------------------------------------
+void printNumIntF(uint32_t num, uint8_t dec, uint8_t div, uint8_t x, uint8_t y, char divider, uint8_t length, char filler) //вывод чисел с точкой
+{
+  _clear_buff();
+  _add_num_int_f(num, dec, div, divider, length, filler);
   _print_text(x, y);
 }
 //-------------------------Вывод чисел с плавающей точкой----------------------------------------------------
