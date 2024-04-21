@@ -36,9 +36,9 @@ enum {
   WAIT_PWR2 //режим питания 2
 };
 
-uint8_t sleep_status = 0; //флаги запрета сна
-uint8_t display_update = 0;
-uint8_t* display_cnt;
+uint8_t power_status = 0; //флаги режимов сна
+uint8_t display_update = 0; //состояние обновления дисплея
+uint8_t* display_cnt; //указатель на байт буфера дисплея
 
 void _set_contrast_lcd(uint8_t contrast);
 void _invert_lcd(boolean mode);
@@ -77,7 +77,7 @@ enum {
 void stopWrite(void) //остановка обновления дисплея
 {
   display_update = DISPLAY_IDLE; //перешли в режим ожидания
-  sleep_status &= ~(0x01 << WAIT_DSP); //сбросили флаг запрета сна
+  power_status &= ~(0x01 << WAIT_DSP); //сбросили флаг запрета сна
 }
 
 #include "SPI.h"

@@ -161,10 +161,8 @@ void _invert_lcd(boolean mode) //инверсия экрана
 {
   wireBeginTransmission(SSD1306_ADDR, SSD1306_ONE_COMMAND_MODE); //начинаем передачу
 
-  switch (mode) {
-    case 0: wireWrite(SSD1306_NORMALDISPLAY); break;
-    case 1: wireWrite(SSD1306_INVERTDISPLAY); break;
-  }
+  if (!mode) wireWrite(SSD1306_NORMALDISPLAY);
+  else wireWrite(SSD1306_INVERTDISPLAY);
   stopWrite(); //остановка обновления дисплея
 }
 //----------------------Вывод буфера на экран-----------------------------------------------
@@ -252,7 +250,7 @@ void _update_lcd(void) //вывод буфера на экран
     case DISPLAY_STOP:
       wireEnd(); //остановка шины wire
       display_update = DISPLAY_IDLE;
-      sleep_status &= ~(0x01 << WAIT_DSP); //сбросили флаг запрета сна
+      power_status &= ~(0x01 << WAIT_DSP); //сбросили флаг запрета сна
       break;
 
     default:
@@ -271,15 +269,13 @@ void _update_lcd(void) //вывод буфера на экран
 
       wireBeginTransmission(SSD1306_ADDR, SSD1306_COMMAND_MODE); //начинаем передачу
 #if ROTATE_DISP_RETURN
-      switch (mainSettings.rotation) {
-        case 0:
-          wireWrite(SSD1306_NORMAL_H); //нормальная горизонталь
-          wireWrite(SSD1306_NORMAL_V); //нормальная вертикаль
-          break;
-        case 1:
-          wireWrite(SSD1306_FLIP_H); //инверсия горизонтали
-          wireWrite(SSD1306_FLIP_V); //инверсия вертикали
-          break;
+      if (!mainSettings.rotation) {
+        wireWrite(SSD1306_NORMAL_H); //нормальная горизонталь
+        wireWrite(SSD1306_NORMAL_V); //нормальная вертикаль
+      }
+      else {
+        wireWrite(SSD1306_FLIP_H); //инверсия горизонтали
+        wireWrite(SSD1306_FLIP_V); //инверсия вертикали
       }
 #endif
       wireWrite(SSD1306_COLUMNADDR); //начало колонны
@@ -302,7 +298,7 @@ void _update_lcd(void) //вывод буфера на экран
       wireBeginTransmission(SSD1306_ADDR, SSD1306_DATA_MODE); //начинаем передачу
 
       display_update = DISPLAY_WRITE;
-      sleep_status |= (0x01 << WAIT_DSP); //установили флаг запрета сна
+      power_status |= (0x01 << WAIT_DSP); //установили флаг запрета сна
       break;
   }
 }

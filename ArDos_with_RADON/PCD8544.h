@@ -81,10 +81,8 @@ void _disable_sleep_lcd(void) //выключение режима сна
 void _invert_lcd(boolean mode) //инверсия экрана
 {
   COMMAND_LCD;
-  switch (mode) {
-    case 0: writeSPI(PCD8544_DISPLAYCONTROL | PCD8544_DISPLAYNORMAL); break;
-    case 1: writeSPI(PCD8544_DISPLAYCONTROL | PCD8544_DISPLAYINVERTED); break;
-  }
+  if (!mode) writeSPI(PCD8544_DISPLAYCONTROL | PCD8544_DISPLAYNORMAL);
+  else writeSPI(PCD8544_DISPLAYCONTROL | PCD8544_DISPLAYINVERTED);
   stopWrite(); //остановка обновления дисплея
 }
 //----------------------Вывод буфера на экран-----------------------------------------------
@@ -94,19 +92,17 @@ void _update_lcd(void) //вывод буфера на экран
     case DISPLAY_IDLE: return;
     case DISPLAY_WRITE:
 #if ROTATE_DISP_RETURN
-      switch (mainSettings.rotation) {
-        case 0:
-          writeSPI(*display_cnt++);
-          if ((uint16_t)display_cnt >= (uint16_t)(_lcd_buffer + sizeof(_lcd_buffer))) display_update = DISPLAY_STOP;
-          break;
-        case 1:
-          if ((uint16_t)display_cnt-- <= (uint16_t)_lcd_buffer) display_update = DISPLAY_STOP;
-          writeRevSPI(*display_cnt);
-          break;
+      if (!mainSettings.rotation) {
+        writeSPI(*display_cnt++);
+        if ((uint16_t)display_cnt >= (uint16_t)(_lcd_buffer + sizeof(_lcd_buffer))) display_update = DISPLAY_STOP;
+      }
+      else {
+        if ((uint16_t)--display_cnt <= (uint16_t)_lcd_buffer) display_update = DISPLAY_STOP;
+        writeRevSPI(*display_cnt);
       }
 #else
 #if DEFAULT_ROTATION
-      if ((uint16_t)display_cnt-- <= (uint16_t)_lcd_buffer) display_update = DISPLAY_STOP;
+      if ((uint16_t)--display_cnt <= (uint16_t)_lcd_buffer) display_update = DISPLAY_STOP;
       writeRevSPI(*display_cnt);
 #else
       writeSPI(*display_cnt++);
@@ -121,15 +117,13 @@ void _update_lcd(void) //вывод буфера на экран
       writeSPI(PCD8544_SETXADDR);
 
       display_update = DISPLAY_IDLE;
-      sleep_status &= ~(0x01 << WAIT_DSP); //сбросили флаг запрета сна
+      power_status &= ~(0x01 << WAIT_DSP); //сбросили флаг запрета сна
       break;
 
     default:
 #if ROTATE_DISP_RETURN
-      switch (mainSettings.rotation) {
-        case 0: display_cnt = _lcd_buffer; break;
-        case 1: display_cnt = _lcd_buffer + sizeof(_lcd_buffer); break;
-      }
+      if (!mainSettings.rotation) display_cnt = _lcd_buffer;
+      else display_cnt = _lcd_buffer + sizeof(_lcd_buffer);
 #else
 #if DEFAULT_ROTATION
       display_cnt = _lcd_buffer + sizeof(_lcd_buffer);
@@ -143,7 +137,7 @@ void _update_lcd(void) //вывод буфера на экран
       DATA_LCD;
 
       display_update = DISPLAY_WRITE;
-      sleep_status |= (0x01 << WAIT_DSP); //установили флаг запрета сна
+      power_status |= (0x01 << WAIT_DSP); //установили флаг запрета сна
       break;
   }
 }
