@@ -425,7 +425,11 @@ int main(void) //главный цикл программ
       case MAIN_PROGRAM: mainTask = main_screen(); break; //основной экран
       case SEARCH_PROGRAM: mainTask = search_menu(); break; //режим поиск
       case MEASUR_PROGRAM: mainTask = measur_menu(); break; //режим замера
+#if !LOGBOOK_RETURN
+      case LOGBOOK_PROGRAM: mainTask = logbook_measur(); break; //журнал замеров
+#else
       case LOGBOOK_PROGRAM: mainTask = logbook(); break; //журнал
+#endif
       case SETTINGS_PROGRAM: mainTask = settings(); break; //настройки
       case INFORMATION_PROGRAM: mainTask = information(); break; //информация
       case POWER_DOWN_PROGRAM: mainTask = power_down(); break; //отключение питания
@@ -3630,7 +3634,6 @@ void _logbook_data_switch(boolean inv, uint8_t num, uint8_t pos, uint8_t data_nu
   }
 
   if (temp_byte) {
-#if LOGBOOK_RETURN
     switch (data_num) {
       case 0:
       case 1:
@@ -3652,14 +3655,31 @@ void _logbook_data_switch(boolean inv, uint8_t num, uint8_t pos, uint8_t data_nu
         printNumI(temp_byte, RIGHT, pos_row); //номер ошибки
         break;
     }
-#else
+  }
+  else print(L_DATA_NULL, CENTER, pos_row); //- пусто -
+
+  invertText(false); //выключаем инверсию
+}
+//------------------------------------Отрисовка журнала замеров------------------------------------------------------
+void _logbook_measur_switch(boolean inv, uint8_t num, uint8_t pos) //отрисовка журнала замеров
+{
+  uint8_t pos_row = (pos + 1) * 8; //переводим позицию в номер строки
+
+  uint8_t temp_byte = _data_read_byte(num);
+  uint32_t temp_dword = _data_read_dword(num);
+
+  if (inv) {
+    drawLine(pos + 1, 0, 83, 0xFF); //рисуем линию
+    invertText(true); //включаем инверсию
+  }
+
+  if (temp_byte) {
     printNumI(temp_byte, LEFT, pos_row, 2); //время замера
     print(L_DATA_MINS, 12, pos_row); //м
 #if TYPE_MEASUR_LOGBOOK
     _print_small_couts_per_cm2((float)temp_dword / temp_byte, pos_row); //отрисовываем ч/см2
 #else
     _print_rads_unit(0, temp_dword, 0, 4, RIGHT, pos_row, 0, RIGHT, pos_row); //отрисовываем мкР/ч
-#endif
 #endif
   }
   else print(L_DATA_NULL, CENTER, pos_row); //- пусто -
@@ -3670,10 +3690,8 @@ void _logbook_data_switch(boolean inv, uint8_t num, uint8_t pos, uint8_t data_nu
 uint8_t logbook(void) //журнал
 {
   uint8_t pos = 0; //позиция
-  uint8_t cursor = 0; //курсор
-
-#if LOGBOOK_RETURN
   uint8_t point = 0; //пункт
+  uint8_t cursor = 0; //курсор
   uint8_t max_item = 4; //максимум пунктов
   boolean err_mode = 0; //режим отображения ошибок
 
@@ -3761,7 +3779,15 @@ uint8_t logbook(void) //журнал
       }
     }
   }
-#else
+
+  return INIT_PROGRAM;
+}
+//------------------------------------Журнал замеров------------------------------------------------------
+uint8_t logbook_measur(void) //журнал замеров
+{
+  uint8_t pos = 0; //позиция
+  uint8_t cursor = 0; //курсор
+
   while (1) {
     if (_data_update()) { //обработка данных
       switch (buttonState()) {
@@ -3806,11 +3832,11 @@ uint8_t logbook(void) //журнал
         _print_task_bar(L_LOGBOOK); //отрисовываем фон
 
         _logbook_data_read(2); //чтение журнала
-        for (uint8_t i = 0; i < 5; i++) _logbook_data_switch((i == cursor) ? 1 : 0, pos - cursor + i, i, 2); //отрисовывам информацию
+        for (uint8_t i = 0; i < 5; i++) _logbook_measur_switch((i == cursor) ? 1 : 0, pos - cursor + i, i); //отрисовывам информацию
       }
     }
   }
-#endif
+
   return INIT_PROGRAM;
 }
 //---------------------------------Отрисовка сообщения об ошибке---------------------------------------
