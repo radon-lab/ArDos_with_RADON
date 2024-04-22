@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.13
-  Версия программы RADON v4.4.3 low_pwr release 21.04.24 специально для проекта ArDos
+  Версия программы RADON v4.4.3 low_pwr release 22.04.24 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/ardos-dozimetr-prodolzhenie-temy-chast-%E2%84%962 и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -1889,11 +1889,7 @@ void _fast_light(void) //вкл/выкл подсветки
     else _BACKL_ON(); //включаем подсветку
 #endif
   }
-#if BUTTON_MODE
-  else FLASH_SWITCH; //иначе быстрое включение фонарика
-#else
   else if (!sleep_disable) sleep_manual ^= 0x01; //иначе переключаем ручную блокировку сна
-#endif
 }
 //------------------------Таймер общего назначения старт/стоп-------------------------------
 void _TIMER_WAIT(uint8_t _time) {
@@ -2620,7 +2616,7 @@ uint8_t measur_menu(void) //режим замера
       switch (buttonState()) {
 #ifdef PCD8544
 #if BUTTON_MODE
-        case UP_KEY_HOLD: //удержание кнопки вверх
+        case UP_KEY_PRESS: //клик кнопки вверх
 #else
         case DOWN_KEY_HOLD: //удержание кнопки вниз
 #endif
@@ -2639,16 +2635,15 @@ uint8_t measur_menu(void) //режим замера
 
 #if BUTTON_MODE
         case DOWN_KEY_PRESS: //клик кнопки вниз
-#endif
+#else
         case UP_KEY_PRESS: //клик кнопки вверх
+#endif
           if (measur) _measur_stop(); //если идет замер, спрашиваем нужно ли остановить замер
           break;
 
-#if !BUTTON_MODE
         case UP_KEY_HOLD: //удержание кнопки вверх
           FLASH_SWITCH; //быстрое включение фонарика
           break;
-#endif
 
         case SEL_KEY_PRESS: //клик кнопки выбора
           if (!measur) {
@@ -2824,7 +2819,7 @@ uint8_t search_menu(void) //инициализация режима поиск
       switch (buttonState()) {
 #ifdef PCD8544
 #if BUTTON_MODE
-        case UP_KEY_HOLD: //удержание кнопки вверх
+        case UP_KEY_PRESS: //нажатие кнопки вверх
 #else
         case DOWN_KEY_HOLD: //удержание кнопки вниз
 #endif
@@ -2845,28 +2840,19 @@ uint8_t search_menu(void) //инициализация режима поиск
           for (uint8_t i = 0; i < 76; i++) search_buff[i] = 0; //очищаем буфер графика
           break;
 
-#if !BUTTON_MODE
         case UP_KEY_HOLD: //удержание кнопки вверх
           FLASH_SWITCH; //вкл/выкл фонарика
           break;
-#endif
 
 #if BUTTON_MODE
-        case SEL_KEY_PRESS: //нажатие кнопки выбора
+        case DOWN_KEY_PRESS: //нажатие кнопки вниз
 #else
         case UP_KEY_PRESS: //нажатие кнопки вверх
 #endif
           search_disable = !search_disable; //запрещаем обновление графика
           break;
 
-#if BUTTON_MODE
-        case DOWN_KEY_PRESS: //нажатие кнопки вниз
-          if (units > 0) units--; else units = 2; //выбор режима
-          break;
-        case UP_KEY_PRESS: //нажатие кнопки вверх
-#else
         case SEL_KEY_PRESS: //нажатие кнопки выбора
-#endif
           if (units < 2) units++; else units = 0; //выбор режима
           break;
 
@@ -4159,7 +4145,7 @@ uint8_t main_screen(void)
 
       switch (buttonState()) {
 #if BUTTON_MODE
-        case UP_KEY_HOLD: //вкл/выкл посветки
+        case UP_KEY_PRESS: //вкл/выкл посветки
 #else
         case DOWN_KEY_HOLD: //вкл/выкл посветки
 #endif
@@ -4204,14 +4190,11 @@ uint8_t main_screen(void)
           }
           break;
 
-#if !BUTTON_MODE
         case UP_KEY_HOLD: //вкл/выкл фонарика
           if (skip_warn_messege()) FLASH_SWITCH; //быстрое включение фонарика
           break;
-#endif
 
 #if BUTTON_MODE
-        case UP_KEY_PRESS: //выбор режима
         case DOWN_KEY_PRESS: //выбор режима
 #else
         case SEL_KEY_PRESS: //выбор режима
