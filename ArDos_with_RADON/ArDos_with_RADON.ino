@@ -1,5 +1,5 @@
 /*Arduino IDE 1.8.13
-  Версия программы RADON v4.4.3 low_pwr release 22.04.24 специально для проекта ArDos
+  Версия программы RADON v4.4.3 low_pwr release 23.04.24 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/ardos-dozimetr-prodolzhenie-temy-chast-%E2%84%962 и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
 
@@ -4237,12 +4237,12 @@ uint8_t main_screen(void)
         clrScr(); //очистка экрана
 
         if (!alarm_messege()) { //если нет тревоги
-          drawBitmap(55, 0, font_alarm_img, 5, 8); //устанавлваем фон тревоги
           switch (scr_mode) { //рисуем шапку экрана
             case 0: _print_task_bar(MAIN_SCREEN_BACK); _alarm_show(alarm_back_wait + warn_back_wait, mainSettings.alarm_back); break;  //режим текущего фона
             case 1: _print_task_bar(MAIN_SCREEN_DOSE); _alarm_show(0, mainSettings.alarm_dose); break;  //режим накопленной дозы
           }
 
+          drawBitmap(55, 0, font_alarm_img, 5, 8); //устанавлваем фон тревоги
           drawBitmap(43, 0, font_sound_img, 4, 8); //устанавлваем фон звуков
           if ((mainSettings.buzz_switch & 0x7F) == 1) drawBitmap(47, 0, buzz_alt_on_img, 7, 8); //если щелчки включены полностью
           else if ((mainSettings.buzz_switch & 0x7F) == 2) drawBitmap(47, 0, buzz_alt_img, 7, 8); //иначе если щелчки включены только при фон1
