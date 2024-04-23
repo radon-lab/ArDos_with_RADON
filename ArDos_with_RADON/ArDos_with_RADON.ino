@@ -470,7 +470,7 @@ void INIT_SYSTEM(void) //инициализация
 #endif
 
   _delay_ms(START_TIME); //ждем
-  _init_timers(); //инициализация таймеров;
+  _init_timers(); //инициализация таймеров
 
 #ifdef PRR0
   PRR0 = (0x01 << PRTWI0) | (0x01 << PRTIM2) | (0x01 << PRTIM0) | (0x01 << PRUSART1) | (0x01 << PRTIM1) | (0x01 << PRSPI0) | (0x01 << PRUSART0) | (0x01 << PRADC); //отключаем все лишнее (I2C | TIMER2 | TIMER0 | TIMER1 | SPI | UART)
@@ -498,13 +498,17 @@ void INIT_SYSTEM(void) //инициализация
 #endif
 
   _read_memory(); //проверка и чтение данных из памяти
-  _init_param(); //инициализация параметров
   _rows_clear(); //очистка строк
+
+  _init_param(); //инициализация параметров
+  _init_battery(); //инициализация настроек акб
+  _init_settings(); //инициализация настроек
 
 #if !PUMP_FEEDBACK
   _adc_enable(); //включаем питание АЦП
 #endif
   _bat_update(); //опрос батареи
+
   _start_pump(); //первая накачка преобразователя
 
   _rows_clear(); //очистка строк
@@ -538,19 +542,19 @@ void _read_memory(void) //проверка и чтение данных из п�
     print(RES_RESET, CENTER, 0); //Сбросить
     print(RES_MAIN, CENTER, 8); //основные
     print(RES_SETTINGS_M, CENTER, 16); //настройки?
-    if (dialogSwitch()) dataReg |= 0x03; //если ответ да то устанавливаем флаг сброса
+    if (dialogSwitch(0)) dataReg |= 0x03; //если ответ да то устанавливаем флаг сброса
     clrScr(); //очистка экрана
 #if DEBUG_RETURN
     print(RES_RESET, CENTER, 0); //Сбросить
     print(RES_SETTINGS_P, CENTER, 8); //настройки
     print(RES_PUMP, CENTER, 16); //конвертера?
-    if (dialogSwitch()) dataReg |= 0x04; //если ответ да то устанавливаем флаг сброса
+    if (dialogSwitch(0)) dataReg |= 0x04; //если ответ да то устанавливаем флаг сброса
     clrScr(); //очистка экрана
 #endif
     print(RES_RESET, CENTER, 0); //Сбросить
     print(RES_DATA, CENTER, 8); //данные
     print(RES_USER, CENTER, 16); //пользователя?
-    if (dialogSwitch()) dataReg |= 0x18; //если ответ да то устанавливаем флаг сброса
+    if (dialogSwitch(0)) dataReg |= 0x18; //если ответ да то устанавливаем флаг сброса
 
     EEPROM_UpdateByte(EEPROM_BLOCK_CRC_STRUCT, crc); //обновляем значение контрольной суммы структур
   }
@@ -567,7 +571,7 @@ void _read_memory(void) //проверка и чтение данных из п�
       print(SETTINGS, CENTER, 0); //Настройки
       print(DAMAGED, CENTER, 8); //повреждены,
       print(RESTORE, CENTER, 16); //восстановить?
-      if (!dialogSwitch()) dataReg = 0; //если ответ нет то сбрасываем флаги
+      if (!dialogSwitch(0)) dataReg = 0; //если ответ нет то сбрасываем флаги
     }
   }
 
@@ -790,12 +794,18 @@ void _init_param(void) //инициализация параметров
 {
   GEIGER_CYCLE = (pgm_read_byte(&time_mass[0][0]) + pgm_read_byte(&time_mass[0][1])); //минимум секунд для начала расчетов
   GEIGER_MASS = (pgm_read_byte(&time_mass[MASS_TIME - 1][0]) + pgm_read_byte(&time_mass[MASS_TIME - 1][1])); //максимум секунд для окончания смещения коэффициентов
-
+}
+//-----------------------------Инициализация настроек акб----------------------------------------------
+void _init_battery(void) //инициализация настроек акб
+{
   LOW_BAT_POWER = _convert_adc_bat(LOW_BAT_POWER_V);
   LOW_BAT_STAT = _convert_adc_bat(LOW_BAT_STAT_V);
   MIN_BAT = _convert_adc_bat(MIN_BAT_V);
   MAX_BAT = _convert_adc_bat(MAX_BAT_V);
-
+}
+//------------------------------Инициализация настроек------------------------------------------------
+void _init_settings(void) //инициализация настроек
+{
   _set_contrast_lcd(mainSettings.contrast); //установка контрастности
   _BUZZ_VOL_SET(mainSettings.volume); //устанавливаем громкость щелчков
 }
@@ -2098,7 +2108,7 @@ boolean _bat_massege(void) //сообщение об разряженной ба
   return 0; //нормальное состояние
 }
 //---------------------------------------------Диалог выбора---------------------------------------------------------
-boolean dialogSwitch(void) //диалог выбора
+boolean dialogSwitch(uint8_t timer) //диалог выбора
 {
   boolean cursor = 0; //положение курсора
 
@@ -2111,6 +2121,10 @@ boolean dialogSwitch(void) //диалог выбора
       }
 
       if (_check_screen()) { //обновление дисплея
+        if (timer) { //если включен таймаут
+          if (++time_out > timer) return 0; //выходим по таймауту
+        }
+
         choice_menu(cursor); //меню выбора
       }
     }
@@ -3975,12 +3989,12 @@ void statistic_update(void) //обновление статистики
 //----------------------------------Сброс текущей дозы----------------------------------------------
 void data_reset(uint8_t mode) //сброс текущей дозы
 {
-  uint8_t cursor = 0; //курсор
   sleep_disable = 1; //запрещаем сон
   sleep_manual = 0; //отключили ручную блокировку сна
   power_manager = 0; //сбрасываем менеджер питания
 
   clrScr(); //очистка экрана
+
   switch (mode) {
     case 0: //текущая доза
       print(R_RESET, CENTER, 8); //Сбросить
@@ -3998,81 +4012,60 @@ void data_reset(uint8_t mode) //сброс текущей дозы
       break;
   }
 
-  while (1) {
-    if (_data_update()) { //обработка данных
-      switch (buttonState()) {
-        case DOWN_KEY_PRESS: cursor = 0; break; //выбор нет
-        case UP_KEY_PRESS: cursor = 1; break; //выбор да
 
-        case SEL_KEY_PRESS: //выбор пункта
-          switch (cursor) {
-            case 1:
-              clrScr(); //очистка экрана
-              switch (mode) {
-                case 0: //текущая доза
+  if (dialogSwitch(TIME_OUT_DATA)) { //подтверждение
+    clrScr(); //очистка экрана
+
+    switch (mode) {
+      case 0: //текущая доза
 #if GEIGER_OWN_BACK
-                  rad_sum_timer = 0;
+        rad_sum_timer = 0;
 #endif
-                  rad_sum = 0;
-                  rad_dose = 0;
-                  rad_dose_old = 0;
+        rad_sum = 0;
+        rad_dose = 0;
+        rad_dose_old = 0;
 
-                  rad_dose_save += rad_dose - rad_dose_old;
-                  time_save += time_sec - time_save_old;
-                  time_save_old = 0;
-                  time_sec = 0;
+        rad_dose_save += rad_dose - rad_dose_old;
+        time_save += time_sec - time_save_old;
+        time_save_old = 0;
+        time_sec = 0;
 
-                  stat_upd_tmr = 0;
+        stat_upd_tmr = 0;
 
-                  alarm_dose_wait = 0;
-                  warn_dose_wait = 0;
+        alarm_dose_wait = 0;
+        warn_dose_wait = 0;
 
-                  print(R_SUCC_CURRENT_DOSE, CENTER, 16); //Текущая доза
-                  print(R_SUCC_RESET, CENTER, 24); //сброшена!
-                  break;
+        print(R_SUCC_CURRENT_DOSE, CENTER, 16); //Текущая доза
+        print(R_SUCC_RESET, CENTER, 24); //сброшена!
+        break;
 
-                case 1: //накопленная доза
-                  time_save = 0;
-                  rad_dose_save = 0;
-                  _statistic_erase(); //стирание статистики
-                  rad_dose_old = rad_dose;
+      case 1: //накопленная доза
+        time_save = 0;
+        rad_dose_save = 0;
+        _statistic_erase(); //стирание статистики
+        rad_dose_old = rad_dose;
 
-                  print(R_SUCC_ALL_DOSE, CENTER, 16); //Общая доза
-                  print(R_SUCC_RESET, CENTER, 24); //сброшена!
-                  break;
+        print(R_SUCC_ALL_DOSE, CENTER, 16); //Общая доза
+        print(R_SUCC_RESET, CENTER, 24); //сброшена!
+        break;
 
-                case 2: //журнал
-                  _logbook_data_clear(); //очистка журнала
+      case 2: //журнал
+        _logbook_data_clear(); //очистка журнала
 
-                  if (bookSettings.logbook_alarm == 2) bookSettings.logbook_alarm = 1; //сброс флага тревоги
-                  if (bookSettings.logbook_warn == 2) bookSettings.logbook_warn = 1; //сброс флага опасности
-                  if (bookSettings.logbook_measur == 2) bookSettings.logbook_measur = 1; //сброс флага замеров
+        if (bookSettings.logbook_alarm == 2) bookSettings.logbook_alarm = 1; //сброс флага тревоги
+        if (bookSettings.logbook_warn == 2) bookSettings.logbook_warn = 1; //сброс флага опасности
+        if (bookSettings.logbook_measur == 2) bookSettings.logbook_measur = 1; //сброс флага замеров
 
-                  print(R_SUCC_LOGBOOK, CENTER, 16); //Журнал
-                  print(R_SUCC_CLEAR, CENTER, 24); //очищен!
-                  break;
-              }
-              _wait(MASSEGE_TIME); //ждем
-              break;
-          }
-          return; //выход
-      }
-
-      if (_check_screen()) {
-#if TIME_OUT_DATA
-        if (++time_out > TIME_OUT_DATA) return;
-#endif
-
-        choice_menu(cursor); //меню выбора
-      }
+        print(R_SUCC_LOGBOOK, CENTER, 16); //Журнал
+        print(R_SUCC_CLEAR, CENTER, 24); //очищен!
+        break;
     }
+    _wait(MASSEGE_TIME); //ждем
   }
 }
 //---------------------------------------Сохранить настройки--------------------------------------------
 void settings_save(uint8_t mode) //сохранить настройки
 {
-  boolean cursor = 0; //курсор
-
   switch (mode) {
     case 0:
       if (!(checkDataMemory((uint8_t*)&mainSettings, sizeof(mainSettings), EEPROM_BLOCK_CRC_MAIN))) return;
@@ -4095,64 +4088,32 @@ void settings_save(uint8_t mode) //сохранить настройки
   print(W_SAVE, CENTER, 8); //Сохранить
   print(W_SETTINGS, CENTER, 16); //настройки?
 
-  while (1) {
-    if (_data_update()) { //обработка данных
-      switch (buttonState()) {
-        case DOWN_KEY_PRESS: cursor = 0; break; //выбор нет
-        case UP_KEY_PRESS: cursor = 1; break; //выбор да
-
-        case SEL_KEY_PRESS: //выбор пункта
-          switch (cursor) {
-            case 1:
-              clrScr(); //очистка экрана
-              print(W_SETTINGS_SUCC, CENTER, 16); //Настройки
-              print(W_SAVE_SUCC, CENTER, 24); //Сохранены!
-              switch (mode) {
-                case 0: updateData((uint8_t*)&mainSettings, sizeof(mainSettings), EEPROM_BLOCK_SETTINGS_MAIN, EEPROM_BLOCK_CRC_MAIN); _BUZZ_VOL_SET(mainSettings.volume); break; //обновляем настройки
-#if DEBUG_RETURN
-                case 1: updateData((uint8_t*)&pumpSettings, sizeof(pumpSettings), EEPROM_BLOCK_SETTINGS_PUMP, EEPROM_BLOCK_CRC_PUMP); break; //обновляем настройки
-#endif
-#if LOGBOOK_RETURN
-                case 2: updateData((uint8_t*)&bookSettings, sizeof(bookSettings), EEPROM_BLOCK_SETTINGS_BOOK, EEPROM_BLOCK_CRC_BOOK); break; //обновляем настройки
-#endif
-              }
-              _wait(MASSEGE_TIME); //ждем
-              break;
-
-            case 0:
-              switch (mode) {
-                case 0: EEPROM_ReadBlock((uint16_t)&mainSettings, EEPROM_BLOCK_SETTINGS_MAIN, sizeof(mainSettings)); _set_contrast_lcd(mainSettings.contrast); break; //считываем настройки из памяти
+  if (!dialogSwitch(TIME_OUT_DATA)) { //отказ
+    switch (mode) {
+      case 0: EEPROM_ReadBlock((uint16_t)&mainSettings, EEPROM_BLOCK_SETTINGS_MAIN, sizeof(mainSettings)); _set_contrast_lcd(mainSettings.contrast); break; //считываем настройки из памяти
 #if DEBUG_RETURN || PUMP_READ_MEM
-                case 1: EEPROM_ReadBlock((uint16_t)&pumpSettings, EEPROM_BLOCK_SETTINGS_PUMP, sizeof(pumpSettings)); break; //считываем настройки из памяти
+      case 1: EEPROM_ReadBlock((uint16_t)&pumpSettings, EEPROM_BLOCK_SETTINGS_PUMP, sizeof(pumpSettings)); break; //считываем настройки из памяти
 #endif
 #if LOGBOOK_RETURN
-                case 2: EEPROM_ReadBlock((uint16_t)&bookSettings, EEPROM_BLOCK_SETTINGS_BOOK, sizeof(bookSettings)); break; //считываем настройки из памяти
+      case 2: EEPROM_ReadBlock((uint16_t)&bookSettings, EEPROM_BLOCK_SETTINGS_BOOK, sizeof(bookSettings)); break; //считываем настройки из памяти
 #endif
-              }
-              break;
-          }
-          return;
-      }
-
-      if (_check_screen()) {
-#if TIME_OUT_SETTINGS
-        if (++time_out > TIME_OUT_SETTINGS) {
-          switch (mode) {
-            case 0: EEPROM_ReadBlock((uint16_t)&mainSettings, EEPROM_BLOCK_SETTINGS_MAIN, sizeof(mainSettings)); _set_contrast_lcd(mainSettings.contrast); break; //считываем настройки из памяти
-#if DEBUG_RETURN || PUMP_READ_MEM
-            case 1: EEPROM_ReadBlock((uint16_t)&pumpSettings, EEPROM_BLOCK_SETTINGS_PUMP, sizeof(pumpSettings)); break; //считываем настройки из памяти
-#endif
-#if LOGBOOK_RETURN
-            case 2: EEPROM_ReadBlock((uint16_t)&bookSettings, EEPROM_BLOCK_SETTINGS_BOOK, sizeof(bookSettings)); break; //считываем настройки из памяти
-#endif
-          }
-          return; //выходим
-        }
-#endif
-
-        choice_menu(cursor); //меню выбора
-      }
     }
+  }
+  else { //подтверждение
+    clrScr(); //очистка экрана
+    print(W_SETTINGS_SUCC, CENTER, 16); //Настройки
+    print(W_SAVE_SUCC, CENTER, 24); //Сохранены!
+    
+    switch (mode) {
+      case 0: updateData((uint8_t*)&mainSettings, sizeof(mainSettings), EEPROM_BLOCK_SETTINGS_MAIN, EEPROM_BLOCK_CRC_MAIN); _BUZZ_VOL_SET(mainSettings.volume); break; //обновляем настройки
+#if DEBUG_RETURN
+      case 1: updateData((uint8_t*)&pumpSettings, sizeof(pumpSettings), EEPROM_BLOCK_SETTINGS_PUMP, EEPROM_BLOCK_CRC_PUMP); _init_battery(); break; //обновляем настройки
+#endif
+#if LOGBOOK_RETURN
+      case 2: updateData((uint8_t*)&bookSettings, sizeof(bookSettings), EEPROM_BLOCK_SETTINGS_BOOK, EEPROM_BLOCK_CRC_BOOK); break; //обновляем настройки
+#endif
+    }
+    _wait(MASSEGE_TIME); //ждем
   }
 }
 //----------------------------------Главные экраны------------------------------------------------------
