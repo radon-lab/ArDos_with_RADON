@@ -1,8 +1,8 @@
 /*Arduino IDE 1.8.13
-  Версия программы RADON v4.4.3 low_pwr release 24.04.24 специально для проекта ArDos
+  Версия программы RADON v4.4.3 low_pwr release 28.07.24 специально для проекта ArDos
   Страница проекта ArDos http://arduino.ru/forum/proekty/ardos-dozimetr-prodolzhenie-temy-chast-%E2%84%962 и прошивки RADON https://github.com/radon-lab/ArDos_with_RADON
   Желательна установка OptiBoot v8 https://github.com/Optiboot/optiboot
-  
+
 
   Внимание!!! При выключении пункта "СОН" в меню настроек влечет увеличением энергопотребления, но тем самым увеличивается производительность устройства.
 
@@ -1378,7 +1378,7 @@ boolean _data_update(void) //преобразование данных
         case TASK_UPDATE_SLEEP: //считаем время до ухода в сон
           if (mainSettings.sleep_switch && !sleep_manual) { //если сон не выключен
             if (sleep_count <= ((sleep_disable) ? mainSettings.time_bright : mainSettings.time_sleep)) sleep_count++; //счет ухода в сон
-            if (sleep_count == mainSettings.time_sleep && mainSettings.sleep_switch == 2) { //если пришло время спать и сон не запрещен
+            if ((sleep_count == mainSettings.time_sleep) && (mainSettings.sleep_switch == 2)) { //если пришло время спать и сон не запрещен
               _enable_sleep_lcd(); //уводим в сон дисплей
               _buzz_disable(); //запрещаем щелчки
               sleep_mode = 2; //выставляем флаг сна
@@ -4216,17 +4216,15 @@ uint8_t main_screen(void)
             if (screen_anim) drawBitmap(27, 0, error_ico_img, 14, 8); //ERR
           }
           else {
+#endif
             if (mainSettings.sleep_switch && sleep_manual) {
-              if (screen_anim) drawBitmap(32, 0, sleep_ico_img, 8, 8); //sleep
+              if (screen_anim || (sleep_manual & 0xFE)) drawBitmap(32, 0, sleep_ico_img, 8, 8); //sleep
             }
+#if LOGBOOK_RETURN
             else if (bookSettings.logbook_alarm == 2 || bookSettings.logbook_warn == 2 || bookSettings.logbook_measur == 2) {
               if (screen_anim) drawBitmap(31, 0, logbook_ico_img, 9, 8); //logbook
             }
             else if (bookSettings.logbook_alarm == 1 || bookSettings.logbook_warn == 1 || bookSettings.logbook_measur == 1) drawBitmap(31, 0, logbook_ico_img, 9, 8); //logbook
-          }
-#else
-          if (mainSettings.sleep_switch && sleep_manual) {
-            if (screen_anim) drawBitmap(32, 0, sleep_ico_img, 8, 8); //sleep
           }
 #endif
 
