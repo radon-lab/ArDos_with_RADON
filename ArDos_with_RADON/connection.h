@@ -47,7 +47,7 @@
 #define DECODE_BIT(pin) ((pin < 8) ? pin : ((pin < 14) ? (pin - 8) : (pin - 14)))
 
 #ifndef PRTWI //если бит PRTWI не обнаружен
-#define PRTWI PRTWI0 //создаем регистр PRR
+#define PRTWI PRTWI0 //создаем бит PRTWI
 #endif
 #ifndef PRR //если регистр PRR не обнаружен
 #define PRR PRR0 //создаем регистр PRR
