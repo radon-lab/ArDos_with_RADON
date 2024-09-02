@@ -46,6 +46,9 @@
 #define DECODE_PORT(pin) ((pin < 8) ? PORTD : ((pin < 14) ? PORTB : PORTC))
 #define DECODE_BIT(pin) ((pin < 8) ? pin : ((pin < 14) ? (pin - 8) : (pin - 14)))
 
+#ifndef PRTWI //если бит PRTWI не обнаружен
+#define PRTWI PRTWI0 //создаем регистр PRR
+#endif
 #ifndef PRR //если регистр PRR не обнаружен
 #define PRR PRR0 //создаем регистр PRR
 #endif
