@@ -25,21 +25,6 @@ struct _current_font {
   boolean inverted;
 } cfont;
 
-enum {
-  WAIT_WDT, //ожидание основоного таймера
-  WAIT_DSP, //ожидание дисплея
-  WAIT_ADC, //ожидание АЦП
-  WAIT_COMP, //ожидание компаратора
-  WAIT_TIM1, //ожидание таймера 1
-  WAIT_TIM2, //ожидание таймера 2
-  WAIT_PWR1, //режим питания 1
-  WAIT_PWR2 //режим питания 2
-};
-
-uint8_t power_status = 0; //флаги режимов сна
-uint8_t display_update = 0; //состояние обновления дисплея
-uint8_t* display_cnt; //указатель на байт буфера дисплея
-
 void _set_contrast_lcd(uint8_t contrast);
 void _invert_lcd(boolean mode);
 void _enable_sleep_lcd(void);
@@ -63,9 +48,25 @@ void _print_char(unsigned char c, uint8_t x, uint8_t row, uint8_t steps); //вы
 
 void _add_char(char ch); //запись символа
 void _add_text(const char *st); //запись текста
-void _add_num_float(float num, uint8_t dec, char divider = '.', uint8_t length = 0, char filler = ' '); //вывод чисел с плавающей точкой
-void _add_num_int_f(uint32_t num, uint8_t dec = 0, uint8_t div = 0, char divider = '.',  uint8_t length = 0, char filler = ' '); //вывод целых чисел с точкой
-void _add_num_int(uint32_t num, uint8_t length = 0, char filler = ' '); //вывод чисел
+void _add_num_int_f(uint32_t num, uint8_t dec = 0, uint8_t div = 0, char divider = '.',  uint8_t length = 0, char filler = ' '); //добавление целых чисел с точкой
+void _add_num_int(uint32_t num, uint8_t length = 0, char filler = ' '); //добавление целых чисел
+
+const uint16_t pow_table[] PROGMEM = {1, 10, 100, 1000}; //таблица умножения чисел
+
+enum {
+  WAIT_WDT, //ожидание основоного таймера
+  WAIT_DSP, //ожидание дисплея
+  WAIT_ADC, //ожидание АЦП
+  WAIT_COMP, //ожидание компаратора
+  WAIT_TIM1, //ожидание таймера 1
+  WAIT_TIM2, //ожидание таймера 2
+  WAIT_PWR1, //режим питания 1
+  WAIT_PWR2 //режим питания 2
+};
+
+uint8_t power_status = 0; //флаги режимов сна
+uint8_t display_update = 0; //состояние обновления дисплея
+uint8_t* display_cnt; //указатель на байт буфера дисплея
 
 enum {
   DISPLAY_IDLE, //дисплей в режиме ожидания
@@ -119,13 +120,16 @@ void printNumIntF(uint32_t num, uint8_t dec, uint8_t div, uint8_t x, uint8_t y, 
 void printNumF(float num, uint8_t dec, uint8_t x, uint8_t y, char divider, uint8_t length, char filler) //вывод чисел с плавающей точкой
 {
   _clear_buff();
-  _add_num_float(num, dec, divider, length, filler);
+  if (dec > 3) dec = 3;
+  _add_num_int_f(num * pgm_read_byte(&pow_table[dec]), dec, 0, divider, length, filler);
   _print_text(x, y);
 }
 //-------------------------Вывод чисел----------------------------------------------------
 void printNumI(uint32_t num, uint8_t x, uint8_t y, uint8_t length, char filler) //вывод чисел
 {
-  printNumF(num, 0, x, y, '.', length, filler);
+  _clear_buff();
+  _add_num_int(num, length, filler);
+  _print_text(x, y);
 }
 //-------------------------Очистка экрана----------------------------------------------------
 void clrScr(void) //очистка экрана
@@ -248,41 +252,8 @@ void _add_text(const char *st) //запись текста
     else _add_char(ch);
   }
 }
-//-------------------------Вывод чисел с плавающей точкой----------------------------------------------------
-void _add_num_float(float num, uint8_t dec, char divider, uint8_t length, char filler) //вывод чисел с плавающей точкой
-{
-  char ct[6];
-  char ft[6];
-  uint8_t c = 0, f = 0, d = 0;
-  uint32_t numInt = num;
-  float decNum = num - numInt;
-
-  if (numInt) {
-    while (numInt > 0) {
-      ct[c++] = '0' + (numInt % 10);
-      numInt = (numInt - (numInt % 10)) / 10;
-    }
-  }
-  else ct[c++] = '0';
-
-  if (dec) {
-    ft[d++] = divider;
-    for (uint8_t i = 0; i < dec; i++) {
-      decNum *= 10.0;
-      ft[d++] = '0' + decNum;
-      decNum -= (uint8_t)decNum;
-    }
-  }
-
-  if (length > (c + d)) {
-    while (f++ < (length - (c + d))) _add_char(filler);
-  }
-
-  for (uint8_t i = 0; i < c; i++) _add_char(ct[c - i - 1]);
-  for (uint8_t i = 0; i < d; i++) _add_char(ft[i]);
-}
-//-------------------------Вывод чисел----------------------------------------------------
-void _add_num_int_f(uint32_t num, uint8_t dec, uint8_t div, char divider, uint8_t length, char filler) //вывод чисел
+//-----------------------Добавление чисел--------------------------------------------------
+void _add_num_int_f(uint32_t num, uint8_t dec, uint8_t div, char divider, uint8_t length, char filler) //добавление чисел
 {
   char buff[10];
   uint8_t cnt = 0;
@@ -309,8 +280,8 @@ void _add_num_int_f(uint32_t num, uint8_t dec, uint8_t div, char divider, uint8_
     _add_char(buff[--cnt]);
   }
 }
-//-------------------------Вывод чисел----------------------------------------------------
-void _add_num_int(uint32_t num, uint8_t length, char filler) //вывод чисел
+//-----------------------Добавление чисел--------------------------------------------------
+void _add_num_int(uint32_t num, uint8_t length, char filler) //добавление чисел
 {
   _add_num_int_f(num, 0, 0, '.', length, filler);
 }
