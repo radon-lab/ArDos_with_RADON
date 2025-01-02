@@ -1,6 +1,6 @@
+#include "fonts.c"
 #include "resources.c"
 #include "languages.h"
-#include "DefaultFonts.c"
 
 #define fontbyte(x) pgm_read_byte(&cfont.font[x])
 #define bitmapbyte(x) pgm_read_byte(&bitmap[x])
@@ -51,20 +51,6 @@ void _add_text(const char *st); //запись текста
 void _add_num_int_f(uint32_t num, uint8_t dec = 0, uint8_t div = 0, char divider = '.',  uint8_t length = 0, char filler = ' '); //добавление целых чисел с точкой
 void _add_num_int(uint32_t num, uint8_t length = 0, char filler = ' '); //добавление целых чисел
 
-const uint16_t pow_table[] PROGMEM = {1, 10, 100, 1000}; //таблица умножения чисел
-
-enum {
-  WAIT_WDT, //ожидание основоного таймера
-  WAIT_DSP, //ожидание дисплея
-  WAIT_ADC, //ожидание АЦП
-  WAIT_COMP, //ожидание компаратора
-  WAIT_TIM1, //ожидание таймера 1
-  WAIT_TIM2, //ожидание таймера 2
-  WAIT_PWR1, //режим питания 1
-  WAIT_PWR2 //режим питания 2
-};
-
-uint8_t power_status = 0; //флаги режимов сна
 uint8_t display_update = 0; //состояние обновления дисплея
 uint8_t* display_cnt; //указатель на байт буфера дисплея
 
@@ -121,7 +107,7 @@ void printNumF(float num, uint8_t dec, uint8_t x, uint8_t y, char divider, uint8
 {
   _clear_buff();
   if (dec > 3) dec = 3;
-  _add_num_int_f(num * pgm_read_byte(&pow_table[dec]), dec, 0, divider, length, filler);
+  _add_num_int_f(num * pgm_read_word(&pow_table[dec]), dec, 0, divider, length, filler);
   _print_text(x, y);
 }
 //-------------------------Вывод чисел----------------------------------------------------
@@ -255,29 +241,33 @@ void _add_text(const char *st) //запись текста
 //-----------------------Добавление чисел--------------------------------------------------
 void _add_num_int_f(uint32_t num, uint8_t dec, uint8_t div, char divider, uint8_t length, char filler) //добавление чисел
 {
-  char buff[10];
+  boolean st = 0;
+  uint8_t ch = 0;
   uint8_t cnt = 0;
+  uint32_t tbl = 0;
 
-  if (num) {
-    while ((num > 0) && (cnt < 10)) {
-      buff[cnt++] = '0' + (num % 10);
-      num /= 10;
+  div = 10 - div;
+  length = div - length + boolean(dec);
+  dec = div - dec;
+
+  while (cnt < div) {
+    ch = 0;
+    tbl = pgm_read_dword(&div_table[cnt]);
+    while ((num >= tbl) && (ch < 9)) {
+      num -= tbl;
+      ch += 1;
     }
-  }
-  else buff[cnt++] = '0';
-
-  while (((dec + div) >= cnt) && (cnt < 10)) {
-    buff[cnt++] = '0';
-  }
-
-  while (length > (cnt - div + (boolean)dec)) {
-    length--;
-    _add_char(filler);
-  }
-
-  while (cnt > div) {
-    if (dec == (cnt - div)) _add_char(divider);
-    _add_char(buff[--cnt]);
+    if (cnt == dec) _add_char(divider);
+    if (ch) st = 1;
+    if (st) _add_char(ch + '0');
+    else {
+      if (cnt >= (dec - 1)) {
+        _add_char('0');
+        st = 1;
+      }
+      else if (cnt >= length) _add_char(filler);
+    }
+    cnt++;
   }
 }
 //-----------------------Добавление чисел--------------------------------------------------

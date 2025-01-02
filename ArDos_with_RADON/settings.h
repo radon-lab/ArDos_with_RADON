@@ -43,3 +43,18 @@ struct Settings_3 {
   uint8_t logbook_warn = DEFAULT_LOGBOOK_WARN; //указатель на активность журнала предупреждений
   uint8_t logbook_measur = DEFAULT_LOGBOOK_MEASUR; //указатель на активность журнала замеров
 } bookSettings;
+
+const uint16_t pow_table[] PROGMEM = {1, 10, 100, 1000}; //таблица умножения чисел
+const uint32_t div_table[] PROGMEM = {1000000000, 100000000, 10000000, 1000000, 100000, 10000, 1000, 100, 10, 1}; //таблица деления чисел
+
+enum {
+  WAIT_WDT, //ожидание основоного таймера
+  WAIT_DSP, //ожидание дисплея
+  WAIT_ADC, //ожидание АЦП
+  WAIT_COMP, //ожидание компаратора
+  WAIT_TIM1, //ожидание таймера 1
+  WAIT_TIM2, //ожидание таймера 2
+  WAIT_PWR1, //режим питания 1
+  WAIT_PWR2 //режим питания 2
+};
+uint8_t power_status = 0; //флаги режимов сна

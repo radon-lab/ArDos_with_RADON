@@ -66,20 +66,27 @@ void sendEnd(void) //отправка конца строки
 //-----------------------------------Отправка числа-----------------------------------
 void sendNum(uint32_t num, char start, char end) //отправка числа
 {
-  char buff[15]; //буфер числа
-  uint8_t count = 0; //счетчик символов
+  boolean st = 0;
+  uint8_t ch = 0;
+  uint8_t cnt = 0;
+  uint32_t tbl = 0;
 
-  buff[count++] = end; //установили символ разделитель
+  sendChar(start); //установили символ разделитель
 
-  if (num) { //если есть число
-    while (num > 0) { //пока есть число
-      buff[count++] = 48 + (num % 10); //установили символ
-      num = (num - (num % 10)) / 10; //убавили число
+  if (num) {
+    while (cnt < 10) {
+      ch = 0;
+      tbl = pgm_read_dword(&div_table[cnt]);
+      while ((num >= tbl) && (ch < 9)) {
+        num -= tbl;
+        ch += 1;
+      }
+      if (ch) st = 1;
+      if (st) sendChar(ch + '0');
+      cnt++;
     }
   }
-  else buff[count++] = 48; //иначе ноль
+  else sendChar('0');
 
-  buff[count++] = start; //установили символ разделитель
-
-  while (count) sendChar(buff[--count]); //отправляем данные
+  sendChar(end); //установили символ разделитель
 }
