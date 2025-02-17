@@ -5,6 +5,7 @@ struct Settings_1 {
   boolean rotation = DEFAULT_ROTATION; //флаг разворота дисплея
 #endif
   uint8_t volume = DEFAULT_VOLUME; //громкость всех звуков
+  uint8_t sensitiv = DEFAULT_SENSITIV; //чувствительность
   uint8_t alarm_back = DEFAULT_ALARM_BACK; //переключатель режимов тревоги фона
   uint8_t buzz_switch = DEFAULT_BUZ_SWITCH; //указатель на тип треска пищалкой
   boolean knock_disable = DEFAULT_KNOCK_DISABLE; //флаг запрет треска кнопками
@@ -31,7 +32,7 @@ struct Settings_2 {
   uint8_t ADC_value = DEFAULT_ADC_VALUE; //значение АЦП при котором 400В
   uint16_t k_delitel = DEFAULT_DIV_FACTOR; //коефициент делителя напряжения
 #endif
-  uint16_t puls = DEFAULT_PULS; //длинна импульса высоковольтного транса
+  uint16_t puls = DEFAULT_INDUCTION; //длинна импульса высоковольтного транса
   float reference = DEFAULT_REFERENCE; //опорное напряжение
   float geiger_time = DEFAULT_GEIGER_TIME; //время измерения
   uint16_t wdt_period = DEF_WDT_PERIOD; //период тика wdt
