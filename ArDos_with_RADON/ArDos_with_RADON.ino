@@ -3007,7 +3007,7 @@ uint8_t debug(void) //отладка
         case UP_KEY_KEEP: //удержание кнопки вверх
           switch (cursor) {
             case 0: if (pumpSettings.wdt_period < MAX_WDT_PERIOD) pumpSettings.wdt_period++; break; //период
-            case 1: if (pumpSettings.geiger_time < MAX_GEIGER_TIME) pumpSettings.geiger_time += ((uint8_t)pumpSettings.geiger_time < 100) ? 0.1 : 1; break; //счет
+            case 1: if (pumpSettings.geiger_time < MAX_GEIGER_TIME) pumpSettings.geiger_time += (pumpSettings.geiger_time < 100) ? 0.1 : 1; break; //счет
             case 2: if (pumpSettings.reference < 1.50) pumpSettings.reference += 0.01; break; //прибавляем опорное напряжение
             case 3: if (pumpSettings.puls < 700) pumpSettings.puls += 10; break; //прибавляем длинну импульса
 #if !PUMP_FEEDBACK
@@ -3021,7 +3021,7 @@ uint8_t debug(void) //отладка
         case DOWN_KEY_KEEP: //удержание кнопки вниз
           switch (cursor) {
             case 0: if (pumpSettings.wdt_period > MIN_WDT_PERIOD) pumpSettings.wdt_period--; break; //период
-            case 1: if (pumpSettings.geiger_time > MIN_GEIGER_TIME) pumpSettings.geiger_time -= ((uint8_t)pumpSettings.geiger_time < 100) ? 0.1 : 1; break; //счет
+            case 1: if (pumpSettings.geiger_time > MIN_GEIGER_TIME) pumpSettings.geiger_time -= (pumpSettings.geiger_time < 100) ? 0.1 : 1; break; //счет
             case 2: if (pumpSettings.reference > 0.50) pumpSettings.reference -= 0.01; break; //убавляем опорное напряжение
             case 3: if (pumpSettings.puls > 40) pumpSettings.puls -= 10; break; //убавляем длинну импульса
 #if !PUMP_FEEDBACK
@@ -3068,7 +3068,7 @@ uint8_t debug(void) //отладка
 #endif
 
         printNumI(pumpSettings.wdt_period, 20, 24); //период
-        printNumF(pumpSettings.geiger_time, ((uint8_t)pumpSettings.geiger_time < 100), RIGHT, 24, 46, 4, 32); //счёт
+        printNumF(pumpSettings.geiger_time, (pumpSettings.geiger_time < 100), RIGHT, 24, 46, 4, 32); //счёт
         printNumF(pumpSettings.reference, 2, 20, 32, 46, 4, 48); //опорное напряжение
         printNumI(pumpSettings.puls, RIGHT, 32); //длинна импульса
 #if !PUMP_FEEDBACK
