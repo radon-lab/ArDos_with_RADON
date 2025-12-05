@@ -1,4 +1,4 @@
-#define UART_BUFFER_SIZE 32 //размер буфера отправки данных(16..64)
+#define UART_BUFFER_SIZE 64 //размер буфера отправки данных(16..128)
 
 char sendBuff[UART_BUFFER_SIZE]; //буфер отправки данных
 uint8_t sendBuffStart; //начало передачи

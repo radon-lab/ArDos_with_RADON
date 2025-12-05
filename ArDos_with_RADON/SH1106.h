@@ -1,45 +1,55 @@
-#ifdef SSD1306
+#ifdef SH1106
 #define OFF_BACKL 10     //значение яркости при выключенной подсветке
 #define MIN_CONTRAST 50  //минимальное значение яркости
 #define MAX_CONTRAST 250 //максимальное значение яркости
 #define STEP_CONTRAST 10 //шаг значения яркости
 
 //Адрес дисплея
-#define SSD1306_ADDR 0x3C
+#define SH1106_ADDR 0x3C
 
 //Основные инструкции
-#define SSD1306_DISPLAY_OFF 0xAE
-#define SSD1306_DISPLAY_ON 0xAF
-#define SSD1306_COMMAND_MODE 0x00
-#define SSD1306_ONE_COMMAND_MODE 0x80
-#define SSD1306_DATA_MODE 0x40
-#define SSD1306_ADDRESSING_MODE 0x20
-#define SSD1306_HORIZONTAL 0x00
-#define SSD1306_VERTICAL 0x01
+#define SH1106_DISPLAY_OFF 0xAE
+#define SH1106_DISPLAY_ON 0xAF
+#define SH1106_COMMAND_MODE 0x00
+#define SH1106_ONE_COMMAND_MODE 0x80
+#define SH1106_DATA_MODE 0x40
+#define SH1106_ADDRESSING_MODE 0x20
+#define SH1106_HORIZONTAL 0x00
+#define SH1106_VERTICAL 0x01
 
 //Основные команды
-#define SSD1306_CONTRAST 0x81
-#define SSD1306_SETCOMPINS 0xDA
-#define SSD1306_SETVCOMDETECT 0xDB
-#define SSD1306_CLOCKDIV 0xD5
-#define SSD1306_SETMULTIPLEX 0xA8
-#define SSD1306_COLUMNADDR 0x21
-#define SSD1306_PAGEADDR 0x22
-#define SSD1306_CHARGEPUMP 0x8D
+#define SH1106_CONTRAST 0x81
+#define SH1106_SETCOMPINS 0xDA
+#define SH1106_SETVCOMDETECT 0xDB
+#define SH1106_CLOCKDIV 0xD5
+#define SH1106_SETMULTIPLEX 0xA8
+#define SH1106_CHARGEPUMP 0x8D
+#define SH1106_SETCOLUMNADDRL 0x00
+#define SH1106_SETCOLUMNADDRH 0x10
+#define SH1106_SETPAGEADDR 0xB0
 
 //Дополнительные инструкции
-#define SSD1306_FLIP_V 0xC0
-#define SSD1306_FLIP_H 0xA0
-#define SSD1306_NORMAL_V 0xC8
-#define SSD1306_NORMAL_H 0xA1
-#define SSD1306_NORMALDISPLAY 0xA6
-#define SSD1306_INVERTDISPLAY 0xA7
+#define SH1106_FLIP_V 0xC0
+#define SH1106_FLIP_H 0xA0
+#define SH1106_NORMAL_V 0xC8
+#define SH1106_NORMAL_H 0xA1
+#define SH1106_NORMALDISPLAY 0xA6
+#define SH1106_INVERTDISPLAY 0xA7
 
 #include "WIRE.h"
 
 #undef SEARCH_ANIM_DISABLE
 #define SEARCH_ANIM_DISABLE 1 //принудительно отключаем анимацию шкалы режима "Поиск"
 
+//------------------------Установка курсора дисплея------------------------------------------------
+void _set_position_lcd(uint8_t x, uint8_t y) //установка курсора дисплея
+{
+  wireBeginTransmission(SH1106_ADDR, SH1106_COMMAND_MODE);
+  wireWrite(SH1106_SETPAGEADDR | y);
+  wireWrite(SH1106_SETCOLUMNADDRL | (x & 0x0F));
+  wireWrite(SH1106_SETCOLUMNADDRH | ((x >> 4) & 0x0F));
+  wireEnd();
+}
 //-------------------------Инициализация дисплея----------------------------------------------------
 void _init_lcd(void) //инициализация дисплея
 {
@@ -48,51 +58,41 @@ void _init_lcd(void) //инициализация дисплея
 
   wireInit(); //инициализация wire
 
-  if (wireBeginTransmission(SSD1306_ADDR, SSD1306_COMMAND_MODE, 1000)) return; //начинаем передачу
+  if (wireBeginTransmission(SH1106_ADDR, SH1106_COMMAND_MODE, 1500)) return; //начинаем передачу
 
-  wireWrite(SSD1306_DISPLAY_OFF); //выключаем дисплей
-  wireWrite(SSD1306_CLOCKDIV); //пределитель
+  wireWrite(SH1106_DISPLAY_OFF); //выключаем дисплей
+  wireWrite(SH1106_CLOCKDIV); //пределитель
   wireWrite(0x80); //установили пределитель
-  wireWrite(SSD1306_CHARGEPUMP); //накачка
+  wireWrite(SH1106_CHARGEPUMP); //накачка
   wireWrite(0x14); //установили накачку
-  wireWrite(SSD1306_ADDRESSING_MODE); //режим адресации
-#if DISP_SCALE_IMG
-  wireWrite(SSD1306_VERTICAL); //вертикальный режим
-#else
-  wireWrite(SSD1306_HORIZONTAL); //горизонтальный режим
-#endif
+  wireWrite(SH1106_ADDRESSING_MODE); //режим адресации
 
 #if !ROTATE_DISP_RETURN && DEFAULT_ROTATION
-  wireWrite(SSD1306_FLIP_H); //инверсия горизонтали
-  wireWrite(SSD1306_FLIP_V); //инверсия вертикали
+  wireWrite(SH1106_FLIP_H); //инверсия горизонтали
+  wireWrite(SH1106_FLIP_V); //инверсия вертикали
 #else
-  wireWrite(SSD1306_NORMAL_H); //нормальная горизонталь
-  wireWrite(SSD1306_NORMAL_V); //нормальная вертикаль
+  wireWrite(SH1106_NORMAL_H); //нормальная горизонталь
+  wireWrite(SH1106_NORMAL_V); //нормальная вертикаль
 #endif
 
-  wireWrite(SSD1306_CONTRAST); //контраст
+  wireWrite(SH1106_CONTRAST); //контраст
   wireWrite(DEFAULT_CONTRAST); //установили контраст
-  wireWrite(SSD1306_SETVCOMDETECT);
+  wireWrite(SH1106_SETVCOMDETECT);
   wireWrite(0x40);
-  wireWrite(SSD1306_NORMALDISPLAY); //неинверсный режим
-  wireWrite(SSD1306_DISPLAY_ON); //включили дисплей
+  wireWrite(SH1106_NORMALDISPLAY); //неинверсный режим
+  wireWrite(SH1106_DISPLAY_ON); //включили дисплей
 
-  wireBeginTransmission(SSD1306_ADDR, SSD1306_COMMAND_MODE); //начинаем передачу
-  wireWrite(SSD1306_SETCOMPINS);
+  wireBeginTransmission(SH1106_ADDR, SH1106_COMMAND_MODE); //начинаем передачу
+  wireWrite(SH1106_SETCOMPINS);
   wireWrite(0x12);
-  wireWrite(SSD1306_SETMULTIPLEX);
+  wireWrite(SH1106_SETMULTIPLEX);
   wireWrite(0x3F);
 
-  wireBeginTransmission(SSD1306_ADDR, SSD1306_COMMAND_MODE); //начинаем передачу
-  wireWrite(SSD1306_COLUMNADDR); //начало колонны
-  wireWrite(0); //минимальное значение
-  wireWrite(127); //максимальное значение
-  wireWrite(SSD1306_PAGEADDR); //начало страницы
-  wireWrite(0); //минимальное значение
-  wireWrite(7); //максимальное значение
-
-  wireBeginTransmission(SSD1306_ADDR, SSD1306_DATA_MODE); //начинаем передачу
-  for (uint16_t i = 1024; i; i--) wireWrite(0x00); //очищаем блок
+  for (uint8_t y = 0; y < 7; y++) {
+    _set_position_lcd(0, y); //устанавливаем курсор
+    wireBeginTransmission(SH1106_ADDR, SH1106_DATA_MODE); //начинаем передачу
+    for (uint8_t i = 132; i; i--) wireWrite(0x00); //очищаем блок
+  }
 
   wireEnd(); //остановка шины wire
   stopWrite(); //остановка обновления дисплея
@@ -103,8 +103,8 @@ void _init_lcd(void) //инициализация дисплея
 //-------------------------Установка контрастности--------------------------------------------------
 void _set_contrast_lcd(uint8_t contrast) //установка контрастности
 {
-  wireBeginTransmission(SSD1306_ADDR, SSD1306_COMMAND_MODE); //начинаем передачу
-  wireWrite(SSD1306_CONTRAST); //записываем команду
+  wireBeginTransmission(SH1106_ADDR, SH1106_COMMAND_MODE); //начинаем передачу
+  wireWrite(SH1106_CONTRAST); //записываем команду
   wireWrite(contrast); //записываем команду
   wireEnd(); //остановка шины wire
   stopWrite(); //остановка обновления дисплея
@@ -112,8 +112,8 @@ void _set_contrast_lcd(uint8_t contrast) //установка контрастн
 //-------------------------Включение режима сна-----------------------------------------------------
 void _enable_sleep_lcd(void) //включение режима сна
 {
-  wireBeginTransmission(SSD1306_ADDR, SSD1306_ONE_COMMAND_MODE); //начинаем передачу
-  wireWrite(SSD1306_DISPLAY_OFF); //выключели дисплей
+  wireBeginTransmission(SH1106_ADDR, SH1106_ONE_COMMAND_MODE); //начинаем передачу
+  wireWrite(SH1106_DISPLAY_OFF); //выключели дисплей
   wireEnd(); //остановка шины wire
   wireWait(); //ожидание остановки шины
   stopWrite(); //остановка обновления дисплея
@@ -127,83 +127,67 @@ void _disable_sleep_lcd(void) //выключение режима сна
 
   wireInit(); //инициализация wire
 
-  wireBeginTransmission(SSD1306_ADDR, SSD1306_ONE_COMMAND_MODE); //начинаем передачу
-  wireWrite(SSD1306_DISPLAY_ON); //включили дисплей
+  wireBeginTransmission(SH1106_ADDR, SH1106_ONE_COMMAND_MODE); //начинаем передачу
+  wireWrite(SH1106_DISPLAY_ON); //включили дисплей
   wireEnd(); //остановка шины wire
   stopWrite(); //остановка обновления дисплея
 }
 //-------------------------Инверсия экрана----------------------------------------------------
 void _invert_lcd(boolean mode) //инверсия экрана
 {
-  wireBeginTransmission(SSD1306_ADDR, SSD1306_ONE_COMMAND_MODE); //начинаем передачу
+  wireBeginTransmission(SH1106_ADDR, SH1106_ONE_COMMAND_MODE); //начинаем передачу
 
-  if (!mode) wireWrite(SSD1306_NORMALDISPLAY);
-  else wireWrite(SSD1306_INVERTDISPLAY);
+  if (!mode) wireWrite(SH1106_NORMALDISPLAY);
+  else wireWrite(SH1106_INVERTDISPLAY);
   stopWrite(); //остановка обновления дисплея
 }
 //----------------------Вывод буфера на экран-----------------------------------------------
 void _update_lcd(void) //вывод буфера на экран
 {
+  static uint8_t pos_x;
+  static uint8_t pos_y;
+
 #if DISP_SCALE_IMG
   static uint8_t data;
   static uint16_t buff;
-  static uint8_t pos_x;
-  static uint8_t pos_y;
   static uint8_t copy_x;
   static uint8_t copy_step;
-#else
-  static uint8_t* display_cnt; //указатель на байт буфера дисплея
 #endif
-
   switch (display_update) {
     case DISPLAY_INIT:
+      pos_x = 0;
+      pos_y = 0;
+
 #if DISP_SCALE_IMG
       data = 0;
       buff = 0;
-      pos_x = 0;
-      pos_y = 0;
       copy_x = 0;
       copy_step = 0;
-#else
-      display_cnt = _lcd_buffer;
 #endif
 
-      wireBeginTransmission(SSD1306_ADDR, SSD1306_COMMAND_MODE); //начинаем передачу
+      wireBeginTransmission(SH1106_ADDR, SH1106_COMMAND_MODE); //начинаем передачу
 #if ROTATE_DISP_RETURN
       if (!mainSettings.rotation) {
-        wireWrite(SSD1306_NORMAL_H); //нормальная горизонталь
-        wireWrite(SSD1306_NORMAL_V); //нормальная вертикаль
+        wireWrite(SH1106_NORMAL_H); //нормальная горизонталь
+        wireWrite(SH1106_NORMAL_V); //нормальная вертикаль
       }
       else {
-        wireWrite(SSD1306_FLIP_H); //инверсия горизонтали
-        wireWrite(SSD1306_FLIP_V); //инверсия вертикали
+        wireWrite(SH1106_FLIP_H); //инверсия горизонтали
+        wireWrite(SH1106_FLIP_V); //инверсия вертикали
       }
 #endif
 
-#if DISP_SCALE_IMG
-      wireWrite(SSD1306_COLUMNADDR); //начало колонны
-      wireWrite(1); //минимальное значение
-      wireWrite(126); //максимальное значение
-      wireWrite(SSD1306_PAGEADDR); //начало страницы
-      wireWrite(0); //минимальное значение
-      wireWrite(7); //максимальное значение
-#else
-      wireWrite(SSD1306_COLUMNADDR); //начало колонны
-      wireWrite(22); //минимальное значение
-      wireWrite(105); //максимальное значение
-      wireWrite(SSD1306_PAGEADDR); //начало страницы
-      wireWrite(1); //минимальное значение
-      wireWrite(6); //максимальное значение
+#if !DISP_SCALE_IMG
+      _set_position_lcd(0, 1); //устанавливаем курсор
+      wireBeginTransmission(SH1106_ADDR, SH1106_DATA_MODE); //начинаем передачу
 #endif
-
-      wireBeginTransmission(SSD1306_ADDR, SSD1306_DATA_MODE); //начинаем передачу
 
       display_update = DISPLAY_WRITE;
       power_status |= (0x01 << WAIT_DSP); //установили флаг запрета сна
       break;
 
     case DISPLAY_WRITE:
-#if DISP_SCALE_IMG
+#if DISP_SCALE
       if (pos_x < 84) {
         if (pos_y < 6) {
           data = _lcd_buffer[(uint16_t)(pos_y * 84) + pos_x];
@@ -251,9 +235,17 @@ void _update_lcd(void) //вывод буфера на экран
       }
       else display_update = DISPLAY_STOP;
 #else
-      wireWrite(*display_cnt); //отрисовываем буфер
-      display_cnt++;
-      if ((uint16_t)display_cnt >= (uint16_t)(_lcd_buffer + sizeof(_lcd_buffer))) display_update = DISPLAY_STOP;
+      if (pos_x < 84) {
+        wireWrite((uint8_t)_lcd_buffer[(uint16_t)(pos_y * 84) + pos_x]);
+        pos_x++;
+      }
+      else {
+        if (++pos_y >= 6) display_update = DISPLAY_STOP;
+        else {
+          _set_position_lcd(24, pos_y + 1); //устанавливаем курсор
+          wireBeginTransmission(SH1106_ADDR, SH1106_DATA_MODE); //начинаем передачу
+        }
+      }
 #endif
       break;
 

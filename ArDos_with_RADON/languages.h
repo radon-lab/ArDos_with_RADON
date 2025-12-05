@@ -97,9 +97,6 @@ const char D_PUMP_ADC[] PROGMEM = "FWG"; //АЦП
 const char D_WDT_PER[] PROGMEM = "GTH"; //ПЕР
 const char D_GEIGER_TIME[] PROGMEM = "CX"; //СЧ
 
-const char D_COEF_NOW[] PROGMEM = "NTREO&"; //ТЕКУЩ
-const char D_COEF_LIMIT[] PROGMEM = "GJHJU&"; //ПОРОГ
-
 //Настройки
 const char S_SETTINGS[] PROGMEM = "Yfcnhjqrb"; //Настройки
 
@@ -343,9 +340,6 @@ const char D_COEF_DIV[] PROGMEM = "CDF"; //КДЛ
 const char D_PUMP_ADC[] PROGMEM = "ADC"; //АЦП
 const char D_WDT_PER[] PROGMEM = "WDT"; //ПЕР
 const char D_GEIGER_TIME[] PROGMEM = "GT"; //СЧ
-
-const char D_COEF_NOW[] PROGMEM = "NOW:"; //ТЕКУЩ
-const char D_COEF_LIMIT[] PROGMEM = "LIMIT:"; //ПОРОГ
 
 //Настройки
 const char S_SETTINGS[] PROGMEM = "Settings"; //Настройки
