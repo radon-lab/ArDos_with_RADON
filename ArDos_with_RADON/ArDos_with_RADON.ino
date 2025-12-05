@@ -1,5 +1,5 @@
 /*
-  Arduino IDE 1.8.13 версия прошивки RADON v4.4.6_04 beta от 05.12.25
+  Arduino IDE 1.8.13 версия прошивки RADON v4.4.6_05 beta от 05.12.25
   Исходник прошивки RADON - https://github.com/radon-lab/ArDos_with_RADON
   Страница проекта ArDos на форуме - http://arduino.ru/forum/proekty/ardos-dozimetr-prodolzhenie-temy-chast-%E2%84%962
 
@@ -120,7 +120,7 @@
 */
 
 //-------------Версия прошивки--------------
-#define FW_VERSION "4.4.6_04"
+#define FW_VERSION "4.4.6_05"
 
 //----------------Библиотеки----------------
 #include <util/delay.h>
@@ -1290,7 +1290,7 @@ void _print_time_bar(uint16_t num) //отрисовка сохранения д�
 {
   drawBitmap(0, 32, back_scale_img, 84, 8);
   uint8_t _start = map(num, 0, STAT_UPD_TIME - 1, 0, 70);
-  drawLine(4, 2 + _start, 12 + _start, 0x18); //рисуем шкалу
+  drawLine(4, 2 + _start, 11 + _start, 0x18); //рисуем шкалу
 }
 //------------------------------------------Частиц/см2*мин--------------------------------------------------------
 void _print_couts_per_cm2(float num) //частиц/см2*мин
@@ -2489,7 +2489,7 @@ void _settings_item_switch(boolean set, boolean inv, uint8_t num, uint8_t pos) /
 #ifdef PCD8544
           print(S_ITEM_CONTRAST, LEFT, pos_row); //Контраст:
 #endif
-#ifdef SSD1306
+#ifdef SSD1306 || SH1106
           print(S_ITEM_BRIGHT, LEFT, pos_row); //Яркость:
 #endif
           break;
