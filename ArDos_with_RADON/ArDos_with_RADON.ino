@@ -127,6 +127,7 @@
 
 //---------------Конфигурации---------------
 #include "EEPROM.h"
+#include "POWER.h"
 #include "config.h"
 #include "settings.h"
 #include "connection.h"

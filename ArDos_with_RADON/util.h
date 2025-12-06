@@ -31,22 +31,22 @@ float _measur_get_imp_per_min(uint32_t imp) //количество импуль�
   return ((float)imp / pgm_read_byte(&diff_measuring[mainSettings.measur_pos]));
 }
 //-------------------------Получить аппроксимированный фон-----------------------------------
-uint32_t _get_aprox_back(float _imp) //получить аппроксимированный фон
+uint32_t _get_aprox_back(float imp) //получить аппроксимированный фон
 {
-  if ((uint16_t)_imp >= pgm_read_word(&back_aprox_imp[PATTERNS_APROX - 1])) {
+  if ((uint16_t)imp >= pgm_read_word(&back_aprox_imp[PATTERNS_APROX - 1])) {
     for (uint8_t i = 0; i < PATTERNS_APROX; i++) { //выбор паттерна
-      if ((uint16_t)_imp >= pgm_read_word(&back_aprox_imp[i])) { //если имп/с совпадают с паттерном
+      if ((uint16_t)imp >= pgm_read_word(&back_aprox_imp[i])) { //если имп/с совпадают с паттерном
 #if GEIGER_DEAD_TIME
-        return (pumpSettings.geiger_time / (pgm_read_float(&back_aprox_coef[i]) * ((1.0 / _imp) - DEAD_TIME))); //рассчитываем фон в мкр/ч с поправкой на скорость счета и мертвое время
+        return (pumpSettings.geiger_time / (pgm_read_float(&back_aprox_coef[i]) * ((1.0 / imp) - DEAD_TIME))); //рассчитываем фон в мкр/ч с поправкой на скорость счета и мертвое время
 #else
-        return (pumpSettings.geiger_time / (pgm_read_float(&back_aprox_coef[i]) * (1.0 / _imp))); //рассчитываем фон в мкр/ч с поправкой на скорость счета
+        return (pumpSettings.geiger_time / (pgm_read_float(&back_aprox_coef[i]) * (1.0 / imp))); //рассчитываем фон в мкр/ч с поправкой на скорость счета
 #endif
         break;
       }
     }
   }
 
-  return (_imp * pumpSettings.geiger_time); //рассчитываем фон в мкр/ч
+  return (imp * pumpSettings.geiger_time); //рассчитываем фон в мкр/ч
 }
 //------------------------------Расчет точности замера----------------------------------------
 uint8_t _get_accur(uint32_t num) //расчет точности замера
