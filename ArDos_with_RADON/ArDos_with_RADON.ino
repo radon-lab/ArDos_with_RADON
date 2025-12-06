@@ -1,5 +1,5 @@
 /*
-  Arduino IDE 1.8.13 версия прошивки RADON v4.4.6_06 beta от 06.12.25
+  Arduino IDE 1.8.13 версия прошивки RADON v4.4.6_07 beta от 06.12.25
   Исходник прошивки RADON - https://github.com/radon-lab/ArDos_with_RADON
   Страница проекта ArDos на форуме - http://arduino.ru/forum/proekty/ardos-dozimetr-prodolzhenie-temy-chast-%E2%84%962
 
@@ -120,7 +120,7 @@
 */
 
 //-------------Версия прошивки--------------
-#define FW_VERSION "4.4.6_06"
+#define FW_VERSION "4.4.6_07"
 
 //----------------Библиотеки----------------
 #include <util/delay.h>
@@ -282,7 +282,7 @@ int main(void) //главный цикл программ
 #endif
       case SETTINGS_PROGRAM: mainTask = settingsMenu(); break; //настройки
       case INFORMATION_PROGRAM: mainTask = informationMenu(); break; //информация
-      case POWER_DOWN_PROGRAM: mainTask = system_power_down(); break; //отключение питания
+      case POWER_DOWN_PROGRAM: mainTask = _system_power_down(); break; //отключение питания
       case MENU_PROGRAM: mainTask = mainMenu(); break; //меню
 #if DEBUG_RETURN
       case DEBUG_PROGRAM: mainTask = debugMenu(); break; //отладка
@@ -306,7 +306,7 @@ void INIT_SYSTEM(void) //инициализация
   VIBRO_INIT; //инициализация вибромотора
   PWR_LCD_INIT;//инициализация питания дисплея
 
-#ifdef PCD8544
+#if defined(PCD8544)
   BACKL_INIT; //инициализация подсветки
   LCD_INIT; //инициализация пинов дисплея
 #endif
@@ -343,7 +343,7 @@ void INIT_SYSTEM(void) //инициализация
 
   _init_lcd(); //инициализируем дисплей
   _wdt_enable(); //запускаем WatchDog
-#ifdef PCD8544
+#if defined(PCD8544)
   _backl_lcd_on(); //включаем подсветку
 #endif
 
@@ -390,19 +390,19 @@ void _read_memory(void) //проверка и чтение данных из п�
     print(RES_RESET, CENTER, 0); //Сбросить
     print(RES_MAIN, CENTER, 8); //основные
     print(RES_SETTINGS_M, CENTER, 16); //настройки?
-    if (dialog_switch(0)) dataReg |= 0x03; //если ответ да то устанавливаем флаг сброса
+    if (_dialog_switch(0)) dataReg |= 0x03; //если ответ да то устанавливаем флаг сброса
     clrScr(); //очистка экрана
 #if DEBUG_RETURN
     print(RES_RESET, CENTER, 0); //Сбросить
     print(RES_SETTINGS_P, CENTER, 8); //настройки
     print(RES_PUMP, CENTER, 16); //конвертера?
-    if (dialog_switch(0)) dataReg |= 0x04; //если ответ да то устанавливаем флаг сброса
+    if (_dialog_switch(0)) dataReg |= 0x04; //если ответ да то устанавливаем флаг сброса
     clrScr(); //очистка экрана
 #endif
     print(RES_RESET, CENTER, 0); //Сбросить
     print(RES_DATA, CENTER, 8); //данные
     print(RES_USER, CENTER, 16); //пользователя?
-    if (dialog_switch(0)) dataReg |= 0x18; //если ответ да то устанавливаем флаг сброса
+    if (_dialog_switch(0)) dataReg |= 0x18; //если ответ да то устанавливаем флаг сброса
 
     EEPROM_UpdateByte(EEPROM_BLOCK_CRC_STRUCT, crc); //обновляем значение контрольной суммы структур
   }
@@ -419,7 +419,7 @@ void _read_memory(void) //проверка и чтение данных из п�
       print(SETTINGS, CENTER, 0); //Настройки
       print(DAMAGED, CENTER, 8); //повреждены,
       print(RESTORE, CENTER, 16); //восстановить?
-      if (!dialog_switch(0)) dataReg = 0; //если ответ нет то сбрасываем флаги
+      if (!_dialog_switch(0)) dataReg = 0; //если ответ нет то сбрасываем флаги
     }
   }
 
@@ -579,7 +579,7 @@ boolean _system_task(void) //основная задача
       if (!timer_flash) RAD_FLASH_OFF; //выключаем индикацию
     }
 
-#ifdef PCD8544
+#if defined(PCD8544)
     if (timer_light) { //отсчет миллисекунд для подсветки
       timer_light--;
       if (!timer_light) {
@@ -729,7 +729,6 @@ boolean _system_task(void) //основная задача
               }
 
               coef_now = (buff[RESET_BUFF_NUM / 2] > 1) ? sqrtf(buff[RESET_BUFF_NUM / 2]) : 1;
-
               uint16_t diff = abs(coef_prev - coef_now) * 10;
 
               if (diff > mainSettings.sensitiv) { //если видим скачок или спад
@@ -745,6 +744,7 @@ boolean _system_task(void) //основная задача
               coef_prev = coef_now;
             }
             break;
+            
           case TASK_CALC_BACK_6: { //расчет текущего фона этап-6
 #if APPROX_BACK_SCORE
               float imp_per_sec = 0; //текущее количество имп/с
@@ -872,7 +872,7 @@ boolean _system_task(void) //основная задача
               tmr_upd_err = 0; //сброс таймера
             }
 #if !PUMP_FEEDBACK
-            if (hv_adc < pumpSettings.ADC_value - HV_ADC_MIN) { //если значение АЦП преобразователя ниже на установленное значение
+            if (hv_adc < (pumpSettings.ADC_value - HV_ADC_MIN)) { //если значение АЦП преобразователя ниже на установленное значение
 #if LOGBOOK_RETURN
               _logbook_data_update(3, 4, hv_adc); //обновление журнала устанавливаем ошибку 4 - низкое напряжение
               error_switch = 2; //поднимаем флаг ошибки
@@ -953,10 +953,10 @@ boolean _system_task(void) //основная задача
               sleep_mode = 2; //выставляем флаг сна
             }
             else if (sleep_count == mainSettings.time_bright) { //если пришло время выключить подсветку
-#ifdef PCD8544
+#if defined(PCD8544)
               _backl_lcd_off(); //выключаем подсветку
 #endif
-#ifdef SSD1306
+#if defined(SSD1306) || defined(SH1106)
               _set_contrast_lcd(OFF_BACKL); //установка минимальной яркости
 #endif
               sleep_mode = 1; //выставляем флаг выключенной подсветки
@@ -1050,7 +1050,7 @@ boolean _system_task(void) //основная задача
   return 0; //запрещаем обновить данные
 }
 //---------------------------------------------Диалог выбора---------------------------------------------------------
-boolean dialog_switch(uint8_t timer) //диалог выбора
+boolean _dialog_switch(uint8_t timer) //диалог выбора
 {
   boolean cursor = 0; //положение курсора
 
@@ -1067,14 +1067,14 @@ boolean dialog_switch(uint8_t timer) //диалог выбора
           if (++time_out > timer) return 0; //выходим по таймауту
         }
 
-        choice_menu(cursor); //меню выбора
+        _choice_menu(cursor); //меню выбора
       }
     }
   }
   return 0;
 }
 //----------------------------------------------Меню выбора----------------------------------------------------------
-void choice_menu(boolean n) //меню выбора
+void _choice_menu(boolean n) //меню выбора
 {
   for (uint8_t i = 0; i < 2; i++) { //отрисовка пунктов
     if (n == i) invertText(true); //включаем инверсию
@@ -1086,7 +1086,7 @@ void choice_menu(boolean n) //меню выбора
   }
 }
 //----------------------------------Сброс текущей дозы----------------------------------------------
-void data_reset(uint8_t mode) //сброс текущей дозы
+void _data_reset(uint8_t mode) //сброс текущей дозы
 {
   sleep_disable = 1; //запрещаем сон
   sleep_manual = 0; //отключили ручную блокировку сна
@@ -1112,7 +1112,7 @@ void data_reset(uint8_t mode) //сброс текущей дозы
   }
 
 
-  if (dialog_switch(TIME_OUT_DATA)) { //подтверждение
+  if (_dialog_switch(TIME_OUT_DATA)) { //подтверждение
     clrScr(); //очистка экрана
 
     switch (mode) {
@@ -1163,7 +1163,7 @@ void data_reset(uint8_t mode) //сброс текущей дозы
   }
 }
 //---------------------------------------Сохранить настройки--------------------------------------------
-void settings_save(uint8_t mode) //сохранить настройки
+void _settings_save(uint8_t mode) //сохранить настройки
 {
   switch (mode) {
     case 0:
@@ -1187,7 +1187,7 @@ void settings_save(uint8_t mode) //сохранить настройки
   print(W_SAVE, CENTER, 8); //Сохранить
   print(W_SETTINGS, CENTER, 16); //настройки?
 
-  if (!dialog_switch(TIME_OUT_DATA)) { //отказ
+  if (!_dialog_switch(TIME_OUT_DATA)) { //отказ
     switch (mode) {
       case 0: EEPROM_ReadBlock((uint16_t)&mainSettings, EEPROM_BLOCK_SETTINGS_MAIN, sizeof(mainSettings)); _set_contrast_lcd(mainSettings.contrast); break; //считываем настройки из памяти
 #if DEBUG_RETURN || PUMP_READ_MEM
@@ -1418,18 +1418,18 @@ void _print_alarm_level(uint16_t lvl, uint8_t y, uint8_t mode)
 //----------------------------------------Индикация тревоги-------------------------------------------------------
 void _alarm_show(uint8_t wait, uint8_t alarm) //индикация тревоги
 {
-  if (wait) drawBitmap(60, 0, beep_alt_wait_img, 7, 8); //если ждем понижения фона
+  if (wait) drawBitmap(61, 0, beep_alt_wait_img, 5, 8); //если ждем понижения фона
   else {
     switch (alarm) { //если тревога запрещена
-      case 0: drawBitmap(60, 0, buzz_alt_off_img, 7, 8); break; //тревога выключена
-      case 1: drawBitmap(60, 0, buzz_alt_on_img, 7, 8); break; //только звук
-      case 2: drawBitmap(60, 0, beep_alt_vibro_img, 7, 8); break; //только вибрация
-      case 3: drawBitmap(60, 0, beep_alt_img, 8, 8); break; //звук и вибрация
+      case 0: drawBitmap(61, 0, buzz_alt_off_img, 5, 8); break; //тревога выключена
+      case 1: drawBitmap(61, 0, buzz_alt_on_img, 4, 8); break; //только звук
+      case 2: drawBitmap(61, 0, beep_alt_vibro_img, 5, 8); break; //только вибрация
+      case 3: drawBitmap(61, 0, beep_alt_img, 7, 8); break; //звук и вибрация
     }
   }
 }
 //--------------------------------Отображение сообщения тревоги--------------------------------------------
-void alarm_massage_show(boolean text, uint8_t pos) { //отображение сообщения тревоги
+void _alarm_massage_show(boolean text, uint8_t pos) { //отображение сообщения тревоги
   if (screen_anim) {
     invertText(true);
     drawLine(pos / 8, 0, 83, 0xFF); //рисуем линию
@@ -1440,7 +1440,7 @@ void alarm_massage_show(boolean text, uint8_t pos) { //отображение с
   invertText(false);
 }
 //-------------------------------------------Тревога--------------------------------------------------------
-boolean alarm_messege(void) //тревога
+boolean _alarm_messege(void) //тревога
 {
 #if ALARM_AUTO_DISABLE
   if (alarm_switch) {
@@ -1499,7 +1499,7 @@ boolean alarm_messege(void) //тревога
 
 #if TYPE_ALARM_IND != 2
     drawLine(4); //очистка строки 4
-    alarm_massage_show(1, 32); //тревога
+    _alarm_massage_show(1, 32); //тревога
 #endif
 
     drawLine(5); //очистка строки 5
@@ -1629,7 +1629,7 @@ void _measur_stop(void) //остановка замера
       }
 
       if (_check_screen()) {
-        choice_menu(cursor); //меню выбора
+        _choice_menu(cursor); //меню выбора
       }
     }
   }
@@ -1698,7 +1698,7 @@ uint8_t measurMenu(void) //режим замера
       if (_bat_massege()) return POWER_DOWN_PROGRAM; //обработка сообщения разряженой батареи
 
       switch (_button_state()) {
-#ifdef PCD8544
+#if defined(PCD8544)
 #if BUTTON_MODE
         case UP_KEY_PRESS: //клик кнопки вверх
 #else
@@ -1818,75 +1818,6 @@ uint8_t measurMenu(void) //режим замера
   }
   return INIT_PROGRAM;
 }
-//-------------------------Обновление данных поиска----------------------------------------------------
-void _search_update(void) //обновление данных поиска
-{
-  static uint8_t score_now; //текущее количество ячеек
-  static uint16_t score_cnt; //счетчик тиков графика
-  static uint16_t scan_now; //имп/с за период
-  static uint32_t imp_s; //имп/с для расчетов
-
-  if (++score_cnt >= search_time_now) { //расчет показаний
-    uint32_t temp_buff = 0; //временный буфер расчета имп
-    uint16_t temp_data = scan_buff; //запомнили текущее количество импульсов
-    scan_buff = 0; //сбрасываем счетчик импульсов
-
-    if (!search_disable) {
-      if (search_score_now < score_now) search_score_now++;
-      else search_score_now = score_now;
-      graf_max = MIN_IMP_SEARCH_BUFF; //сбрасываем максимум графика
-
-#if TYPE_GRAF_MOVE //слева-направо
-      for (uint8_t i = 75; i > 0; i--) {
-        search_buff[i] = search_buff[i - 1]; //сдвигаем массив
-        if (search_buff[i] > graf_max) graf_max = search_buff[i];
-      }
-      search_buff[0] = temp_data; //новое значение в последнюю ячейку
-
-      if (search_buff[0] > graf_max) graf_max = search_buff[0];
-#else //справа-налево
-      for (uint8_t i = 0; i < 75; i++) {
-        search_buff[i] = search_buff[i + 1]; //сдвигаем массив
-        if (search_buff[i] > graf_max) graf_max = search_buff[i];
-      }
-      search_buff[75] = temp_data; //новое значение в последнюю ячейку
-
-      if (search_buff[75] > graf_max) graf_max = search_buff[75];
-#endif
-    }
-
-#if TYPE_GRAF_MOVE //слева-направо
-    for (uint8_t i = 0; i < search_score_now; i++) temp_buff += search_buff[i]; //сдвигаем массив
-#else //справа-налево
-    for (uint8_t i = 76 - search_score_now; i < 76; i++) temp_buff += search_buff[i]; //сдвигаем массив
-#endif
-
-    search_imp_s = ((float)temp_buff / search_score_now) * (1000.00 / pgm_read_word(&search_time[mainSettings.search_pos])); //персчет имп/сек.
-    search_imp_m = search_imp_s * 60.0; //персчет импульсов в имп/мин.
-#if APPROX_BACK_SCORE
-    search_back = _get_aprox_back(search_imp_s); //считаем мкР/ч
-#else
-    search_back = search_imp_s * pumpSettings.geiger_time; //считаем мкР/ч
-#endif
-
-    imp_s = search_buff[0] * (1000.00 / pgm_read_word(&search_time[mainSettings.search_pos])); //персчет имп/сек.
-
-    score_now = (mainSettings.search_score != 8) ? mainSettings.search_score : map((imp_s > SEARCH_IND_MAX) ? SEARCH_IND_MAX : imp_s, 0, SEARCH_IND_MAX, 7, 0);
-    score_now = pgm_read_byte(&search_score[score_now]);
-
-    score_cnt = 0; //сброс
-    screen_update = 0; //разрешаем обновление графика
-  }
-
-  scan_now = (imp_s > SEARCH_IND_MAX) ? SEARCH_IND_MAX : imp_s; //устанавливаем точки максимумов
-  scan_now = map(scan_now, 0, SEARCH_IND_MAX, 0, 50); //корректируем под коэффициент
-#if SEARCH_ANIM_DISABLE
-  search_scan_ind = scan_now; //отображаем сразу
-#else
-  if (scan_now < search_scan_ind) search_scan_ind--; //добавляем плавности при уменьшении
-  else search_scan_ind = scan_now; //если увеличелось то отображаем сразу
-#endif
-}
 //-------------------------Инициализация режима поиск-----------------------------------------
 uint8_t searchMenu(void) //инициализация режима поиск
 {
@@ -1901,7 +1832,7 @@ uint8_t searchMenu(void) //инициализация режима поиск
       if (_bat_massege()) return POWER_DOWN_PROGRAM; //обработка сообщения разряженой батареи
 
       switch (_button_state()) {
-#ifdef PCD8544
+#if defined(PCD8544)
 #if BUTTON_MODE
         case UP_KEY_PRESS: //нажатие кнопки вверх
 #else
@@ -2134,7 +2065,7 @@ uint8_t logbookMenu(void) //журнал
                 case 0: bookSettings.logbook_alarm = (bookSettings.logbook_alarm) ? 0 : 1; break; //вкл/выкл журнала тревоги
                 case 1: bookSettings.logbook_warn = (bookSettings.logbook_warn) ? 0 : 1; break; //вкл/выкл журнала предупреждений
                 case 2: bookSettings.logbook_measur = (bookSettings.logbook_measur) ? 0 : 1; break; //вкл/выкл журнала замеров
-                case 3: data_reset(2); break;
+                case 3: _data_reset(2); break;
               }
               break;
           }
@@ -2143,7 +2074,7 @@ uint8_t logbookMenu(void) //журнал
         case SEL_KEY_HOLD: //выход к главным экранам
           switch (point) {
             case 0: return MENU_PROGRAM;
-            case 5: settings_save(2); pos = cursor = point - 1; point = 0; max_item = 4; break; //сохраняем настройки
+            case 5: _settings_save(2); pos = cursor = point - 1; point = 0; max_item = 4; break; //сохраняем настройки
             default: pos = cursor = point - 1; point = err_mode = 0; max_item = 4; break;
           }
           break;
@@ -2235,7 +2166,7 @@ uint8_t logbookMeasurMenu(void) //журнал замеров
           break;
 
         case SEL_KEY_PRESS: //выбор
-          data_reset(2); //очистка журнала
+          _data_reset(2); //очистка журнала
           break;
 
         case SEL_KEY_HOLD: //выход к главным экранам
@@ -2402,7 +2333,7 @@ uint8_t debugMenu(void) //отладка
           break;
 
         case SEL_KEY_HOLD: //выход в настройки
-          settings_save(1); //сохраняем настройки преобразователя
+          _settings_save(1); //сохраняем настройки преобразователя
           error_switch = 0; //сбрасываем указатель ошибки
           return MENU_PROGRAM;
       }
@@ -2410,7 +2341,7 @@ uint8_t debugMenu(void) //отладка
       if (_check_screen()) {
 #if TIME_OUT_DEBUG
         if (++time_out > TIME_OUT_DEBUG) {
-          settings_save(1); //сохраняем настройки преобразователя
+          _settings_save(1); //сохраняем настройки преобразователя
           error_switch = 0; //сбрасываем указатель ошибки
           return MAIN_PROGRAM;
         }
@@ -2486,10 +2417,9 @@ void _settings_item_switch(boolean set, boolean inv, uint8_t num, uint8_t pos) /
     case _SET_CONTRAST: //Контраст(Яркость)
       switch (set) {
         case 0:
-#ifdef PCD8544
+#if defined(PCD8544)
           print(S_ITEM_CONTRAST, LEFT, pos_row); //Контраст:
-#endif
-#ifdef SSD1306 || SH1106
+#elif defined(SSD1306) || defined(SH1106)
           print(S_ITEM_BRIGHT, LEFT, pos_row); //Яркость:
 #endif
           break;
@@ -2644,7 +2574,7 @@ void _settings_data_up(uint8_t pos) //прибавление данных
       switch (mainSettings.sleep_switch) {
         case 0:
           mainSettings.sleep_switch = 2;
-#ifdef PCD8544
+#if defined(PCD8544)
           BACKL_ON;
 #endif
           break;
@@ -2656,7 +2586,7 @@ void _settings_data_up(uint8_t pos) //прибавление данных
       switch (mainSettings.sleep_switch) {
         case 0:
           mainSettings.sleep_switch = 1;
-#ifdef PCD8544
+#if defined(PCD8544)
           BACKL_ON;
 #endif
           break;
@@ -2698,11 +2628,13 @@ void _settings_data_up(uint8_t pos) //прибавление данных
 void _settings_data_down(uint8_t pos) //убавление данных
 {
   switch (pos) {
-    case _SET_TIME_SLEEP: if (mainSettings.time_sleep > 10) { //Сон
+    case _SET_TIME_SLEEP: //Сон
+      if (mainSettings.time_sleep > 10) {
         mainSettings.time_sleep -= 5;
         if (mainSettings.time_bright == mainSettings.time_sleep) mainSettings.time_bright -= 5;
       }
-      else if (mainSettings.sleep_switch == 2) mainSettings.sleep_switch = 1; break;
+      else if (mainSettings.sleep_switch == 2) mainSettings.sleep_switch = 1;
+      break;
     case _SET_TIME_BRIGHT: if (mainSettings.time_bright > 5) mainSettings.time_bright -= 5; else mainSettings.sleep_switch = 0; break; //Подсветка
     case _SET_CONTRAST: if (mainSettings.contrast > MIN_CONTRAST) _set_contrast_lcd(mainSettings.contrast -= STEP_CONTRAST); break; //Контраст
 #if ROTATE_DISP_RETURN
@@ -2783,14 +2715,14 @@ uint8_t settingsMenu(void) //настройки
           break;
 
         case SEL_KEY_HOLD: //выход из настроек
-          settings_save(0); //сохраняем настройки
+          _settings_save(0); //сохраняем настройки
           return MENU_PROGRAM;
       }
 
       if (_check_screen()) {
 #if TIME_OUT_SETTINGS
         if (++time_out > TIME_OUT_SETTINGS) {
-          settings_save(0); //сохраняем настройки
+          _settings_save(0); //сохраняем настройки
           return MAIN_PROGRAM;
         }
 #endif
@@ -2933,7 +2865,7 @@ uint8_t mainScreen(void)
                 }
                 break;
 
-              case 1: data_reset(dose_mode); return MAIN_PROGRAM; //сбрасываем дозу и время
+              case 1: _data_reset(dose_mode); return MAIN_PROGRAM; //сбрасываем дозу и время
             }
           }
           break;
@@ -2960,7 +2892,7 @@ uint8_t mainScreen(void)
 #else
         case SEL_KEY_PRESS: //выбор режима
 #endif
-          if (_skip_warn_messege()) scr_mode = !scr_mode; break; //переключение фон/доза
+          if (_skip_warn_messege()) scr_mode = !scr_mode; //переключение фон/доза
           break;
 
         case SEL_KEY_HOLD: //настройки
@@ -2971,7 +2903,7 @@ uint8_t mainScreen(void)
       if (_check_screen()) { //обновление дисплея
         clrScr(); //очистка экрана
 
-        if (!alarm_messege()) { //если нет тревоги
+        if (!_alarm_messege()) { //если нет тревоги
           if (!scr_mode) { //режим текущего фона
             _print_task_bar(MAIN_SCREEN_BACK); //Фон
             _alarm_show(alarm_back_wait + warn_back_wait, mainSettings.alarm_back); //устанавлваем состояние тревоги
@@ -2983,13 +2915,13 @@ uint8_t mainScreen(void)
 
           drawBitmap(55, 0, font_alarm_img, 5, 8); //устанавлваем фон тревоги
           drawBitmap(43, 0, font_sound_img, 4, 8); //устанавлваем фон звуков
-          if ((mainSettings.buzz_switch & 0x7F) == 1) drawBitmap(47, 0, buzz_alt_on_img, 7, 8); //если щелчки включены полностью
-          else if ((mainSettings.buzz_switch & 0x7F) == 2) drawBitmap(47, 0, buzz_alt_img, 7, 8); //иначе если щелчки включены только при фон1
-          else drawBitmap(47, 0, buzz_alt_off_img, 7, 8); //иначе щелчки выключены
+          if ((mainSettings.buzz_switch & 0x7F) == 1) drawBitmap(48, 0, buzz_alt_on_img, 4, 8); //если щелчки включены полностью
+          else if ((mainSettings.buzz_switch & 0x7F) == 2) drawBitmap(48, 0, buzz_alt_img, 5, 8); //иначе если щелчки включены только при фон1
+          else drawBitmap(48, 0, buzz_alt_off_img, 5, 8); //иначе щелчки выключены
 
 #if LOGBOOK_RETURN
           if (error_switch) {
-            if (screen_anim) drawBitmap(27, 0, error_ico_img, 14, 8); //ERR
+            if (screen_anim) drawBitmap(34, 0, error_ico_img, 7, 8); //error
           }
           else {
 #endif
@@ -3006,7 +2938,7 @@ uint8_t mainScreen(void)
 
           //===========================================================//
           if (!scr_mode) { //режим измерения текущего фона
-            if (alarm_switch == 1) alarm_massage_show(0, 24); //предупреждение
+            if (alarm_switch == 1) _alarm_massage_show(0, 24); //предупреждение
             else {
 #if BUFF_SCALE_RETURN
               drawLine(3, 1, map(geiger_time_now, 0, 60, 5, 82), 0x06); //шкала точности
@@ -3060,7 +2992,7 @@ uint8_t mainScreen(void)
               setFont(TinyNumbersDown); //установка шрифта
               printNumI(time_sec % 60, 76, 23, 2, '0'); //секунд
 
-              if (alarm_switch == 2) alarm_massage_show(0, 32); //предупреждение
+              if (alarm_switch == 2) _alarm_massage_show(0, 32); //предупреждение
               else _print_time_bar(stat_upd_timer); //шкала времени до сохранения дозы
 
               _print_rads_unit(1, rad_dose, 1, 5, 1, 8, 1, 66, 16); //строка 1 текущая доза
