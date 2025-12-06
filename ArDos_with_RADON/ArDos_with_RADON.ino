@@ -1,5 +1,5 @@
 /*
-  Arduino IDE 1.8.13 версия прошивки RADON v4.4.6_05 beta от 05.12.25
+  Arduino IDE 1.8.13 версия прошивки RADON v4.4.6_06 beta от 06.12.25
   Исходник прошивки RADON - https://github.com/radon-lab/ArDos_with_RADON
   Страница проекта ArDos на форуме - http://arduino.ru/forum/proekty/ardos-dozimetr-prodolzhenie-temy-chast-%E2%84%962
 

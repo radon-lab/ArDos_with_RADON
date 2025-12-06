@@ -88,7 +88,7 @@ void _init_lcd(void) //инициализация дисплея
   wireWrite(SH1106_SETMULTIPLEX);
   wireWrite(0x3F);
 
-  for (uint8_t y = 0; y < 7; y++) {
+  for (uint8_t y = 0; y < 8; y++) {
     _set_position_lcd(0, y); //устанавливаем курсор
     wireBeginTransmission(SH1106_ADDR, SH1106_DATA_MODE); //начинаем передачу
     for (uint8_t i = 132; i; i--) wireWrite(0x00); //очищаем блок
@@ -149,9 +149,7 @@ void _update_lcd(void) //вывод буфера на экран
 
 #if DISP_SCALE_IMG
   static uint8_t data_0;
-  static uint16_t data_1;
-  static uint8_t copy_x;
-  static uint8_t copy_step;
+  static uint8_t data_1;
 #endif
   switch (display_update) {
     case DISPLAY_INIT:
@@ -161,8 +159,6 @@ void _update_lcd(void) //вывод буфера на экран
 #if DISP_SCALE_IMG
       data_0 = 0;
       data_1 = 0;
-      copy_x = 0;
-      copy_step = 0;
 #endif
 
       wireBeginTransmission(SH1106_ADDR, SH1106_COMMAND_MODE); //начинаем передачу
@@ -178,7 +174,7 @@ void _update_lcd(void) //вывод буфера на экран
 #endif
 
 #if DISP_SCALE_IMG
-      _set_position_lcd(2, 0); //устанавливаем курсор
+      _set_position_lcd(3, 0); //устанавливаем курсор
       wireBeginTransmission(SH1106_ADDR, SH1106_DATA_MODE); //начинаем передачу
 #else
       _set_position_lcd(24, 1); //устанавливаем курсор
@@ -198,7 +194,6 @@ void _update_lcd(void) //вывод буфера на экран
             case 5:
               data_0 = _lcd_buffer[(uint16_t)pos_x + ((pos_y == 5) ? (84 * 4) : 0)];
               data_0 = (data_0 << 1) | (data_0 & 0x01);
-              wireWrite(data_0); //отрисовываем буфер
               break;
             case 1:
             case 6:
@@ -208,7 +203,6 @@ void _update_lcd(void) //вывод буфера на экран
               data_0 |= (data_0 << 1);
               data_1 = (data_1 << 3);
               data_0 |= data_1 | ((data_1 & 0x08) >> 1);
-              wireWrite(data_0); //отрисовываем буфер
               break;
             case 2:
             case 7:
@@ -220,7 +214,6 @@ void _update_lcd(void) //вывод буфера на экран
                 data_1 = (data_1 << 5);
                 data_0 |= data_1 | ((data_1 & 0x20) >> 1);
               }
-              wireWrite(data_0); //отрисовываем буфер
               break;
             case 3:
               data_0 = _lcd_buffer[(uint16_t)pos_x + (84 * 2)];
@@ -229,26 +222,22 @@ void _update_lcd(void) //вывод буфера на экран
               data_0 |= ((data_0 & 0x10) << 1);
               data_1 = ((data_1 & 0x01) << 7);
               data_0 |= data_1 | (data_1 >> 1);
-              wireWrite(data_0); //отрисовываем буфер
               break;
             case 4:
               data_0 = _lcd_buffer[(uint16_t)pos_x + (84 * 3)];
               data_0 = (data_0 >> 1);
               data_0 |= ((data_0 & 0x40) << 1);
-              wireWrite(data_0); //отрисовываем буфер
               break;
           }
 
-          if (++copy_x > copy_step) {
-            if (++copy_step > 1) copy_step = 0;
-            copy_x = 0;
-            pos_x++;
-          }
+          wireWrite(data_0); //отрисовываем буфер
+          if (pos_x & 0x01) wireWrite(data_0); //отрисовываем буфер
+          pos_x++;
         }
         else {
           pos_y++;
           pos_x = 0;
-          _set_position_lcd(2, pos_y); //устанавливаем курсор
+          _set_position_lcd(3, pos_y); //устанавливаем курсор
           wireBeginTransmission(SH1106_ADDR, SH1106_DATA_MODE); //начинаем передачу
         }
       }
