@@ -120,7 +120,7 @@
 */
 
 //-------------Версия прошивки--------------
-#define FW_VERSION "4.4.6_05"
+#define FW_VERSION "4.4.6_06"
 
 //----------------Библиотеки----------------
 #include <util/delay.h>
@@ -221,10 +221,10 @@ enum {
   PARAMETERS_PROGRAM, //параметры
   DEBUG_PROGRAM //отладка
 };
-uint8_t mainTask = POWER_DOWN_PROGRAM; //переключать подпрограмм
+uint8_t mainTask = POWER_DOWN_PROGRAM; //указатель на текущую подпрограмму
 
 uint8_t error_switch = 0; //указатель на активность ошибки
-boolean light_switch = 1; //переключатель вкл/выкл подсветки дисплея
+boolean light_switch = 1; //переключатель подсветки дисплея
 
 enum {
   _SET_TIME_SLEEP, //сон
@@ -3072,7 +3072,7 @@ uint8_t mainScreen(void)
               _add_num_int(time_save / 60 / 60 / 24, 2, '0');
               _add_text(MAIN_SCREEN_DOSE_DAYS);
               _add_num_int((time_save / 60 / 60) % 24, 2, '0');
-              _add_text(MAIN_SCREEN_DOSE_HOURSE);
+              _add_text(MAIN_SCREEN_DOSE_HOURS);
               _add_num_int((time_save / 60) % 60, 2, '0');
               _add_text(MAIN_SCREEN_DOSE_MINS);
               _print_text(CENTER, 40); //вывод текста

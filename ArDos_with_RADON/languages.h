@@ -223,7 +223,7 @@ const char MAIN_SCREEN_GRAF_SEC[] PROGMEM = "CTR"; //СЕК
 const char MAIN_SCREEN_GRAF_MIN[] PROGMEM = "VBY"; //МИН
 
 const char MAIN_SCREEN_DOSE_DAYS[] PROGMEM = "l "; //д
-const char MAIN_SCREEN_DOSE_HOURSE[] PROGMEM = "x "; //ч
+const char MAIN_SCREEN_DOSE_HOURS[] PROGMEM = "x "; //ч
 const char MAIN_SCREEN_DOSE_MINS[] PROGMEM = "v"; //м
 
 const char MAIN_SCREEN_DOSE_ACCUM[] PROGMEM = "yfrjgktyj"; //накоплено
@@ -464,7 +464,7 @@ const char MAIN_SCREEN_BACK_MAX[] PROGMEM = "MAX:"; //МАКС:
 const char MAIN_SCREEN_CURRENT_DOSE_ALL[] PROGMEM = "ALL:"; //ВСЕГО:
 
 const char MAIN_SCREEN_DOSE_DAYS[] PROGMEM = "d "; //д
-const char MAIN_SCREEN_DOSE_HOURSE[] PROGMEM = "h "; //ч
+const char MAIN_SCREEN_DOSE_HOURS[] PROGMEM = "h "; //ч
 const char MAIN_SCREEN_DOSE_MINS[] PROGMEM = "m"; //м
 
 const char MAIN_SCREEN_GRAF_SEC[] PROGMEM = "SEC"; //СЕК
