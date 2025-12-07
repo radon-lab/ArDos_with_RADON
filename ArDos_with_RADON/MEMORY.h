@@ -1,3 +1,5 @@
+#define EEPROM_BLOCK_NULL 0 //начальная ячейка еепром
+
 #define EEPROM_SIZE_STATISTIC 256 //размер блока статистики
 #define EEPROM_BLOCK_STATISTIC 510 //первая ячейка блока статистики
 
@@ -15,6 +17,7 @@
 #define EEPROM_BLOCK_CRC_STRUCT (EEPROM_BLOCK_CRC_PUMP + 1) //ячейка контрольной суммы структур данных
 
 uint8_t cur_dose_cell = 0; //текущая ячейка хранения дозы
+
 uint32_t time_save; //время из памяти
 uint32_t rad_dose_save; //доза из памяти
 uint32_t time_save_old; //предыдущее значение сохраненного времени
