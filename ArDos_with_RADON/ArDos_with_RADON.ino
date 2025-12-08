@@ -1,5 +1,5 @@
 /*
-  Arduino IDE 1.8.13 версия прошивки RADON v4.4.6_07 beta от 07.12.25
+  Arduino IDE 1.8.13 версия прошивки RADON v4.4.6_08 beta от 08.12.25
   Исходник прошивки RADON - https://github.com/radon-lab/ArDos_with_RADON
   Страница проекта ArDos на форуме - http://arduino.ru/forum/proekty/ardos-dozimetr-prodolzhenie-temy-chast-%E2%84%962
 
@@ -957,7 +957,7 @@ boolean _system_task(void) //основная задача
 #if defined(PCD8544)
               _backl_lcd_off(); //выключаем подсветку
 #endif
-#if defined(SSD1306) || defined(SH1106)
+#if defined(SSD1306) || defined(SH1106) || defined(CH1116)
               _set_contrast_lcd(OFF_BACKL); //установка минимальной яркости
 #endif
               sleep_mode = 1; //выставляем флаг выключенной подсветки
@@ -2420,7 +2420,7 @@ void _settings_item_switch(boolean set, boolean inv, uint8_t num, uint8_t pos) /
         case 0:
 #if defined(PCD8544)
           print(S_ITEM_CONTRAST, LEFT, pos_row); //Контраст:
-#elif defined(SSD1306) || defined(SH1106)
+#elif defined(SSD1306) || defined(SH1106) || defined(CH1116)
           print(S_ITEM_BRIGHT, LEFT, pos_row); //Яркость:
 #endif
           break;

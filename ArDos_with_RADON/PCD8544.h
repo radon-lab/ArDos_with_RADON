@@ -1,4 +1,3 @@
-#ifdef PCD8544
 #define MIN_CONTRAST 0   //минимальное значение контрастности
 #define MAX_CONTRAST 127 //максимальное значение контрастности
 #define STEP_CONTRAST 1  //шаг значения контрастности
@@ -142,4 +141,3 @@ void _update_lcd(void) //вывод буфера на экран
       break;
   }
 }
-#endif

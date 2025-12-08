@@ -1,4 +1,3 @@
-#ifdef SSD1306
 #define OFF_BACKL 10     //значение яркости при выключенной подсветке
 #define MIN_CONTRAST 50  //минимальное значение яркости
 #define MAX_CONTRAST 250 //максимальное значение яркости
@@ -36,6 +35,18 @@
 #define SSD1306_INVERTDISPLAY 0xA7
 
 #include "WIRE.h"
+
+#if DISP_SCALE_IMG
+#define SSD1306_START_X 1
+#define SSD1306_END_X 126
+#define SSD1306_START_Y 0
+#define SSD1306_END_Y 7
+#else
+#define SSD1306_START_X 22
+#define SSD1306_END_X 105
+#define SSD1306_START_Y 1
+#define SSD1306_END_Y 6
+#endif
 
 #undef SEARCH_ANIM_DISABLE
 #define SEARCH_ANIM_DISABLE 1 //принудительно отключаем анимацию шкалы режима "Поиск"
@@ -180,21 +191,12 @@ void _update_lcd(void) //вывод буфера на экран
       }
 #endif
 
-#if DISP_SCALE_IMG
       wireWrite(SSD1306_COLUMNADDR); //начало колонны
-      wireWrite(1); //минимальное значение
-      wireWrite(126); //максимальное значение
+      wireWrite(SSD1306_START_X); //минимальное значение
+      wireWrite(SSD1306_END_X); //максимальное значение
       wireWrite(SSD1306_PAGEADDR); //начало страницы
-      wireWrite(0); //минимальное значение
-      wireWrite(7); //максимальное значение
-#else
-      wireWrite(SSD1306_COLUMNADDR); //начало колонны
-      wireWrite(22); //минимальное значение
-      wireWrite(105); //максимальное значение
-      wireWrite(SSD1306_PAGEADDR); //начало страницы
-      wireWrite(1); //минимальное значение
-      wireWrite(6); //максимальное значение
-#endif
+      wireWrite(SSD1306_START_Y); //минимальное значение
+      wireWrite(SSD1306_END_Y); //максимальное значение
 
       wireBeginTransmission(SSD1306_ADDR, SSD1306_DATA_MODE); //начинаем передачу
 
@@ -264,4 +266,3 @@ void _update_lcd(void) //вывод буфера на экран
       break;
   }
 }
-#endif

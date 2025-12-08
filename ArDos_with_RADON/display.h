@@ -65,14 +65,12 @@ void stopWrite(void) //остановка обновления дисплея
   power_status &= ~(0x01 << WAIT_DSP); //сбросили флаг запрета сна
 }
 
+#if defined(PCD8544)
 #include "SPI.h"
-#ifdef PCD8544
 #include "PCD8544.h"
-#endif
-#ifdef SSD1306
+#elif defined(SSD1306)
 #include "SSD1306.h"
-#endif
-#ifdef SH1106
+#elif defined(SH1106) || defined(CH1116)
 #include "SH1106.h"
 #endif
 

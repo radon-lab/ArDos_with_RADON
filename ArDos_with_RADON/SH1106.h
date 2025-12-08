@@ -1,4 +1,3 @@
-#ifdef SH1106
 #define OFF_BACKL 10     //значение яркости при выключенной подсветке
 #define MIN_CONTRAST 50  //минимальное значение яркости
 #define MAX_CONTRAST 250 //максимальное значение яркости
@@ -37,6 +36,26 @@
 #define SH1106_INVERTDISPLAY 0xA7
 
 #include "WIRE.h"
+
+#if defined(SH1106)
+#define SH1106_MAX_WIDTH 132
+#if DISP_SCALE_IMG
+#define SH1106_START_X 3
+#define SH1106_START_Y 0
+#else
+#define SH1106_START_X 24
+#define SH1106_START_Y 1
+#endif
+#elif defined(CH1116)
+#define SH1106_MAX_WIDTH 128
+#if DISP_SCALE_IMG
+#define SH1106_START_X 1
+#define SH1106_START_Y 0
+#else
+#define SH1106_START_X 22
+#define SH1106_START_Y 1
+#endif
+#endif
 
 #undef SEARCH_ANIM_DISABLE
 #define SEARCH_ANIM_DISABLE 1 //принудительно отключаем анимацию шкалы режима "Поиск"
@@ -91,7 +110,7 @@ void _init_lcd(void) //инициализация дисплея
   for (uint8_t y = 0; y < 8; y++) {
     _set_position_lcd(0, y); //устанавливаем курсор
     wireBeginTransmission(SH1106_ADDR, SH1106_DATA_MODE); //начинаем передачу
-    for (uint8_t i = 132; i; i--) wireWrite(0x00); //очищаем блок
+    for (uint8_t i = SH1106_MAX_WIDTH; i; i--) wireWrite(0x00); //очищаем блок
   }
 
   wireEnd(); //остановка шины wire
@@ -173,13 +192,8 @@ void _update_lcd(void) //вывод буфера на экран
       }
 #endif
 
-#if DISP_SCALE_IMG
-      _set_position_lcd(3, 0); //устанавливаем курсор
+      _set_position_lcd(SH1106_START_X, SH1106_START_Y); //устанавливаем курсор
       wireBeginTransmission(SH1106_ADDR, SH1106_DATA_MODE); //начинаем передачу
-#else
-      _set_position_lcd(24, 1); //устанавливаем курсор
-      wireBeginTransmission(SH1106_ADDR, SH1106_DATA_MODE); //начинаем передачу
-#endif
 
       display_update = DISPLAY_WRITE;
       power_status |= (0x01 << WAIT_DSP); //установили флаг запрета сна
@@ -237,7 +251,7 @@ void _update_lcd(void) //вывод буфера на экран
         else {
           pos_y++;
           pos_x = 0;
-          _set_position_lcd(3, pos_y); //устанавливаем курсор
+          _set_position_lcd(SH1106_START_X, pos_y); //устанавливаем курсор
           wireBeginTransmission(SH1106_ADDR, SH1106_DATA_MODE); //начинаем передачу
         }
       }
@@ -251,7 +265,7 @@ void _update_lcd(void) //вывод буфера на экран
         pos_x = 0;
         if (++pos_y >= 6) display_update = DISPLAY_STOP;
         else {
-          _set_position_lcd(24, pos_y + 1); //устанавливаем курсор
+          _set_position_lcd(SH1106_START_X, pos_y + 1); //устанавливаем курсор
           wireBeginTransmission(SH1106_ADDR, SH1106_DATA_MODE); //начинаем передачу
         }
       }
@@ -265,4 +279,3 @@ void _update_lcd(void) //вывод буфера на экран
       break;
   }
 }
-#endif
