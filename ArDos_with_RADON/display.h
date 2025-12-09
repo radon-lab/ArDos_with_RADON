@@ -51,15 +51,13 @@ void _add_text(const char *st); //запись текста
 void _add_num_int_f(uint32_t num, uint8_t dec = 0, uint8_t div = 0, char divider = '.',  uint8_t length = 0, char filler = ' '); //добавление целых чисел с точкой
 void _add_num_int(uint32_t num, uint8_t length = 0, char filler = ' '); //добавление целых чисел
 
-uint8_t display_update = 0; //состояние обновления дисплея
-uint8_t* display_cnt; //указатель на байт буфера дисплея
-
 enum {
   DISPLAY_IDLE, //дисплей в режиме ожидания
   DISPLAY_INIT, //инициализация передачи изображения на дисплей
   DISPLAY_WRITE, //передача изображения на дисплей
   DISPLAY_STOP //завершение передачи изображения на дисплей
 };
+uint8_t display_update = 0; //состояние обновления дисплея
 
 void stopWrite(void) //остановка обновления дисплея
 {
@@ -67,12 +65,13 @@ void stopWrite(void) //остановка обновления дисплея
   power_status &= ~(0x01 << WAIT_DSP); //сбросили флаг запрета сна
 }
 
+#if defined(PCD8544)
 #include "SPI.h"
-#ifdef PCD8544
 #include "PCD8544.h"
-#endif
-#ifdef SSD1306
+#elif defined(SSD1306)
 #include "SSD1306.h"
+#elif defined(SH1106) || defined(CH1116)
+#include "SH1106.h"
 #endif
 
 //--------------------------------Инверсия текста-----------------------------------------------------------

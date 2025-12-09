@@ -97,9 +97,6 @@ const char D_PUMP_ADC[] PROGMEM = "FWG"; //АЦП
 const char D_WDT_PER[] PROGMEM = "GTH"; //ПЕР
 const char D_GEIGER_TIME[] PROGMEM = "CX"; //СЧ
 
-const char D_COEF_NOW[] PROGMEM = "NTREO&"; //ТЕКУЩ
-const char D_COEF_LIMIT[] PROGMEM = "GJHJU&"; //ПОРОГ
-
 //Настройки
 const char S_SETTINGS[] PROGMEM = "Yfcnhjqrb"; //Настройки
 
@@ -226,7 +223,7 @@ const char MAIN_SCREEN_GRAF_SEC[] PROGMEM = "CTR"; //СЕК
 const char MAIN_SCREEN_GRAF_MIN[] PROGMEM = "VBY"; //МИН
 
 const char MAIN_SCREEN_DOSE_DAYS[] PROGMEM = "l "; //д
-const char MAIN_SCREEN_DOSE_HOURSE[] PROGMEM = "x "; //ч
+const char MAIN_SCREEN_DOSE_HOURS[] PROGMEM = "x "; //ч
 const char MAIN_SCREEN_DOSE_MINS[] PROGMEM = "v"; //м
 
 const char MAIN_SCREEN_DOSE_ACCUM[] PROGMEM = "yfrjgktyj"; //накоплено
@@ -343,9 +340,6 @@ const char D_COEF_DIV[] PROGMEM = "CDF"; //КДЛ
 const char D_PUMP_ADC[] PROGMEM = "ADC"; //АЦП
 const char D_WDT_PER[] PROGMEM = "WDT"; //ПЕР
 const char D_GEIGER_TIME[] PROGMEM = "GT"; //СЧ
-
-const char D_COEF_NOW[] PROGMEM = "NOW:"; //ТЕКУЩ
-const char D_COEF_LIMIT[] PROGMEM = "LIMIT:"; //ПОРОГ
 
 //Настройки
 const char S_SETTINGS[] PROGMEM = "Settings"; //Настройки
@@ -470,7 +464,7 @@ const char MAIN_SCREEN_BACK_MAX[] PROGMEM = "MAX:"; //МАКС:
 const char MAIN_SCREEN_CURRENT_DOSE_ALL[] PROGMEM = "ALL:"; //ВСЕГО:
 
 const char MAIN_SCREEN_DOSE_DAYS[] PROGMEM = "d "; //д
-const char MAIN_SCREEN_DOSE_HOURSE[] PROGMEM = "h "; //ч
+const char MAIN_SCREEN_DOSE_HOURS[] PROGMEM = "h "; //ч
 const char MAIN_SCREEN_DOSE_MINS[] PROGMEM = "m"; //м
 
 const char MAIN_SCREEN_GRAF_SEC[] PROGMEM = "SEC"; //СЕК

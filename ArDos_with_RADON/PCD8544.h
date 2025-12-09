@@ -1,4 +1,3 @@
-#ifdef PCD8544
 #define MIN_CONTRAST 0   //минимальное значение контрастности
 #define MAX_CONTRAST 127 //максимальное значение контрастности
 #define STEP_CONTRAST 1  //шаг значения контрастности
@@ -88,8 +87,29 @@ void _invert_lcd(boolean mode) //инверсия экрана
 //----------------------Вывод буфера на экран-----------------------------------------------
 void _update_lcd(void) //вывод буфера на экран
 {
+  static uint8_t* display_cnt; //указатель на байт буфера дисплея
+  
   switch (display_update) {
-    case DISPLAY_IDLE: return;
+    case DISPLAY_INIT:
+#if ROTATE_DISP_RETURN
+      if (!mainSettings.rotation) display_cnt = _lcd_buffer;
+      else display_cnt = _lcd_buffer + sizeof(_lcd_buffer);
+#else
+#if DEFAULT_ROTATION
+      display_cnt = _lcd_buffer + sizeof(_lcd_buffer);
+#else
+      display_cnt = _lcd_buffer;
+#endif
+#endif
+      COMMAND_LCD;
+      writeSPI(PCD8544_SETYADDR);
+      writeSPI(PCD8544_SETXADDR);
+      DATA_LCD;
+
+      display_update = DISPLAY_WRITE;
+      power_status |= (0x01 << WAIT_DSP); //установили флаг запрета сна
+      break;
+
     case DISPLAY_WRITE:
 #if ROTATE_DISP_RETURN
       if (!mainSettings.rotation) {
@@ -119,26 +139,5 @@ void _update_lcd(void) //вывод буфера на экран
       display_update = DISPLAY_IDLE;
       power_status &= ~(0x01 << WAIT_DSP); //сбросили флаг запрета сна
       break;
-
-    default:
-#if ROTATE_DISP_RETURN
-      if (!mainSettings.rotation) display_cnt = _lcd_buffer;
-      else display_cnt = _lcd_buffer + sizeof(_lcd_buffer);
-#else
-#if DEFAULT_ROTATION
-      display_cnt = _lcd_buffer + sizeof(_lcd_buffer);
-#else
-      display_cnt = _lcd_buffer;
-#endif
-#endif
-      COMMAND_LCD;
-      writeSPI(PCD8544_SETYADDR);
-      writeSPI(PCD8544_SETXADDR);
-      DATA_LCD;
-
-      display_update = DISPLAY_WRITE;
-      power_status |= (0x01 << WAIT_DSP); //установили флаг запрета сна
-      break;
   }
 }
-#endif
