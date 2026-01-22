@@ -58,7 +58,7 @@ void _search_update(void) //обновление данных поиска
 #if APPROX_BACK_SCORE
     search_back = _get_aprox_back(search_imp_s); //считаем мкР/ч
 #else
-    search_back = search_imp_s * pumpSettings.geiger_time; //считаем мкР/ч
+    search_back = search_imp_s * debugSettings.geiger_time; //считаем мкР/ч
 #endif
 
     imp_s = search_buff[0] * (1000.00 / pgm_read_word(&search_time[mainSettings.search_pos])); //персчет имп/сек.

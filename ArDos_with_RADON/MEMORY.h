@@ -10,11 +10,11 @@
 
 #define EEPROM_BLOCK_SETTINGS_MAIN (EEPROM_BLOCK_NULL) //ячейка основных настроек
 #define EEPROM_BLOCK_SETTINGS_BOOK (EEPROM_BLOCK_SETTINGS_MAIN + sizeof(mainSettings)) //ячейка настроек журнала
-#define EEPROM_BLOCK_SETTINGS_PUMP (EEPROM_BLOCK_SETTINGS_BOOK + sizeof(bookSettings)) //ячейка настроек преобразователя
-#define EEPROM_BLOCK_CRC_MAIN (EEPROM_BLOCK_SETTINGS_PUMP + sizeof(pumpSettings)) //ячейка контрольной суммы основных настроек
+#define EEPROM_BLOCK_SETTINGS_DEBUG (EEPROM_BLOCK_SETTINGS_BOOK + sizeof(bookSettings)) //ячейка настроек преобразователя
+#define EEPROM_BLOCK_CRC_MAIN (EEPROM_BLOCK_SETTINGS_DEBUG + sizeof(debugSettings)) //ячейка контрольной суммы основных настроек
 #define EEPROM_BLOCK_CRC_BOOK (EEPROM_BLOCK_CRC_MAIN + 1) //ячейка контрольной суммы настроек журнала
-#define EEPROM_BLOCK_CRC_PUMP (EEPROM_BLOCK_CRC_BOOK + 1) //ячейка контрольной суммы настроек преобразователя
-#define EEPROM_BLOCK_CRC_STRUCT (EEPROM_BLOCK_CRC_PUMP + 1) //ячейка контрольной суммы структур данных
+#define EEPROM_BLOCK_CRC_DEBUG (EEPROM_BLOCK_CRC_BOOK + 1) //ячейка контрольной суммы настроек преобразователя
+#define EEPROM_BLOCK_CRC_STRUCT (EEPROM_BLOCK_CRC_DEBUG + 1) //ячейка контрольной суммы структур данных
 
 uint8_t cur_dose_cell = 0; //текущая ячейка хранения дозы
 

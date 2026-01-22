@@ -580,7 +580,7 @@ void _analog_update(void) //обработка аналоговых входов
 #if !PUMP_FEEDBACK
       case ANALOG_DET_PIN: { //обратная связь
           hv_adc = ADCH; //записывем результат опроса АЦП
-          if ((hv_adc < pumpSettings.ADC_value) && (speed_puls < 999)) { //значение АЦП при котором на выходе 400В
+          if ((hv_adc < debugSettings.adc_value) && (speed_puls < 999)) { //значение АЦП при котором на выходе 400В
             _pump_puls(pump_puls_now); //импульс на преобразователь
             speed_puls++; //считаем скорость накачки
             ADCSRA |= (0x01 << ADSC); //запускаем преобразование
@@ -691,8 +691,8 @@ void _pump_puls(uint8_t puls) //ипульс на преобразователь
 //-------------------------------Обновить длину импульса--------------------------------------
 void _update_pump_puls(void) //обновить длину импульса
 {
-  uint16_t vcc = (uint16_t)((pumpSettings.reference * 256000UL) / ((bat_adc > MIN_BAT) ? MIN_BAT : bat_adc)); //напряжение батареи
-  pump_puls_now = (uint8_t)((469UL * pumpSettings.puls) / vcc); //находим длину импульса
+  uint16_t vcc = (uint16_t)((debugSettings.reference * 256000UL) / ((bat_adc > MIN_BAT) ? MIN_BAT : bat_adc)); //напряжение батареи
+  pump_puls_now = (uint8_t)((469UL * debugSettings.induction) / vcc); //находим длину импульса
 }
 //---------------------------Запуск накачки преобразователя---------------------------------
 void _pump_update(void) //накачка по обратной связи с АЦП
@@ -748,7 +748,7 @@ void _start_pump(void) //первая накачка
 #if PUMP_FEEDBACK
       _set_load_bar(timer, (START_PUMP_TIME / 50), 0); //прогресс бар накачки преобразователя
 #else
-      _set_load_bar(hv_adc, 0, pumpSettings.ADC_value); //прогресс бар накачки преобразователя
+      _set_load_bar(hv_adc, 0, debugSettings.adc_value); //прогресс бар накачки преобразователя
 #endif
     }
   }
@@ -760,7 +760,7 @@ void _start_pump(void) //первая накачка
 #if !PUMP_FEEDBACK
 uint16_t _convert_vcc_hv(uint8_t adc) //конвертация напряжения преобразователя
 {
-  return adc * pumpSettings.reference * pumpSettings.k_delitel / 256; //считем высокое перед выводом
+  return adc * debugSettings.reference * debugSettings.k_delitel / 256; //считем высокое перед выводом
 }
 #endif
 //--------------------------------Опрос батареи----------------------------------------------
@@ -777,10 +777,10 @@ void _bat_update(void) //опрос батареи
 //--------------------------Конвертация напряжения батареи-----------------------------------
 uint8_t _convert_adc_bat(float vcc) //конвертация напряжения батареи
 {
-  return (pumpSettings.reference * 256.0) / vcc; //состояние батареи
+  return (debugSettings.reference * 256.0) / vcc; //состояние батареи
 }
 //--------------------------Конвертация напряжения батареи-----------------------------------
 float _convert_vcc_bat(uint8_t adc) //конвертация напряжения батареи
 {
-  return (pumpSettings.reference * 256.0) / adc; //состояние батареи
+  return (debugSettings.reference * 256.0) / adc; //состояние батареи
 }
