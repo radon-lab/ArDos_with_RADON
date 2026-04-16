@@ -1,5 +1,5 @@
 /*
-  Arduino IDE 1.8.13 версия прошивки RADON v4.4.6 release от 21.01.26
+  Arduino IDE 1.8.13 версия прошивки RADON v4.4.6 release от 16.04.26
   Исходник прошивки RADON - https://github.com/radon-lab/ArDos_with_RADON
   Страница проекта ArDos на форуме - http://arduino.ru/forum/proekty/ardos-dozimetr-prodolzhenie-temy-chast-%E2%84%962
 
@@ -745,7 +745,7 @@ boolean _system_task(void) //основная задача
               coef_prev = coef_now;
             }
             break;
-            
+
           case TASK_CALC_BACK_6: { //расчет текущего фона этап-6
 #if APPROX_BACK_SCORE
               float imp_per_sec = 0; //текущее количество имп/с
@@ -947,13 +947,13 @@ boolean _system_task(void) //основная задача
 
         case TASK_UPDATE_SLEEP: //считаем время до ухода в сон
           if (mainSettings.sleep_switch && !sleep_manual) { //если сон не выключен
-            if (sleep_count <= ((sleep_disable) ? mainSettings.time_bright : mainSettings.time_sleep)) sleep_count++; //счет ухода в сон
-            if ((sleep_count == mainSettings.time_sleep) && (mainSettings.sleep_switch == 2)) { //если пришло время спать и сон не запрещен
+            if (sleep_count <= ((sleep_disable || (mainSettings.sleep_switch == 1)) ? mainSettings.time_bright : mainSettings.time_sleep)) sleep_count++; //счет ухода в сон
+            if (sleep_count == mainSettings.time_sleep) { //если пришло время спать и сон не запрещен
               _enable_sleep_lcd(); //уводим в сон дисплей
               _buzz_disable(); //запрещаем щелчки
               sleep_mode = 2; //выставляем флаг сна
             }
-            else if (sleep_count == mainSettings.time_bright) { //если пришло время выключить подсветку
+            if (sleep_count == mainSettings.time_bright) { //если пришло время выключить подсветку
 #if defined(PCD8544)
               _backl_lcd_off(); //выключаем подсветку
 #endif
