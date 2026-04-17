@@ -1,5 +1,5 @@
 /*
-  Arduino IDE 1.8.13 версия прошивки RADON v4.4.6 release от 16.04.26
+  Arduino IDE 1.8.13 версия прошивки RADON v4.4.6 release от 17.04.26
   Исходник прошивки RADON - https://github.com/radon-lab/ArDos_with_RADON
   Страница проекта ArDos на форуме - http://arduino.ru/forum/proekty/ardos-dozimetr-prodolzhenie-temy-chast-%E2%84%962
 
@@ -308,8 +308,11 @@ void INIT_SYSTEM(void) //инициализация
   PWR_LCD_INIT;//инициализация питания дисплея
 
 #if defined(PCD8544)
-  BACKL_INIT; //инициализация подсветки
   LCD_INIT; //инициализация пинов дисплея
+#endif
+
+#if defined(PCD8544) || BACKL_MODE
+  BACKL_INIT; //инициализация подсветки
 #endif
 
   SEL_INIT; //инициализация кнопки "ок"
@@ -344,7 +347,7 @@ void INIT_SYSTEM(void) //инициализация
 
   _init_lcd(); //инициализируем дисплей
   _wdt_enable(); //запускаем WatchDog
-#if defined(PCD8544)
+#if defined(PCD8544) || BACKL_MODE
   _backl_lcd_on(); //включаем подсветку
 #endif
 
@@ -580,7 +583,7 @@ boolean _system_task(void) //основная задача
       if (!timer_flash) RAD_FLASH_OFF; //выключаем индикацию
     }
 
-#if defined(PCD8544)
+#if defined(PCD8544) || BACKL_MODE
     if (timer_light) { //отсчет миллисекунд для подсветки
       timer_light--;
       if (!timer_light) {
@@ -948,19 +951,21 @@ boolean _system_task(void) //основная задача
         case TASK_UPDATE_SLEEP: //считаем время до ухода в сон
           if (mainSettings.sleep_switch && !sleep_manual) { //если сон не выключен
             if (sleep_count <= ((sleep_disable || (mainSettings.sleep_switch == 1)) ? mainSettings.time_bright : mainSettings.time_sleep)) sleep_count++; //счет ухода в сон
-            if (sleep_count == mainSettings.time_sleep) { //если пришло время спать и сон не запрещен
-              _enable_sleep_lcd(); //уводим в сон дисплей
-              _buzz_disable(); //запрещаем щелчки
-              sleep_mode = 2; //выставляем флаг сна
-            }
             if (sleep_count == mainSettings.time_bright) { //если пришло время выключить подсветку
-#if defined(PCD8544)
+#if defined(PCD8544) || BACKL_MODE
               _backl_lcd_off(); //выключаем подсветку
 #endif
 #if defined(SSD1306) || defined(SH1106) || defined(CH1116)
               _set_contrast_lcd(OFF_BACKL); //установка минимальной яркости
 #endif
               sleep_mode = 1; //выставляем флаг выключенной подсветки
+            }
+            if (sleep_count == mainSettings.time_sleep) { //если пришло время спать и сон не запрещен
+              if (mainSettings.sleep_switch == 2) { //если включен сон
+                _enable_sleep_lcd(); //уводим в сон дисплей
+                _buzz_disable(); //запрещаем щелчки
+                sleep_mode = 2; //выставляем флаг сна
+              }
             }
           }
           break;
@@ -1699,7 +1704,7 @@ uint8_t measurMenu(void) //режим замера
       if (_bat_massege()) return POWER_DOWN_PROGRAM; //обработка сообщения разряженой батареи
 
       switch (_button_state()) {
-#if defined(PCD8544)
+#if defined(PCD8544) || BACKL_MODE
 #if BUTTON_MODE
         case UP_KEY_PRESS: //клик кнопки вверх
 #else
@@ -1833,7 +1838,7 @@ uint8_t searchMenu(void) //инициализация режима поиск
       if (_bat_massege()) return POWER_DOWN_PROGRAM; //обработка сообщения разряженой батареи
 
       switch (_button_state()) {
-#if defined(PCD8544)
+#if defined(PCD8544) || BACKL_MODE
 #if BUTTON_MODE
         case UP_KEY_PRESS: //нажатие кнопки вверх
 #else
@@ -2575,7 +2580,7 @@ void _settings_data_up(uint8_t pos) //прибавление данных
       switch (mainSettings.sleep_switch) {
         case 0:
           mainSettings.sleep_switch = 2;
-#if defined(PCD8544)
+#if defined(PCD8544) || BACKL_MODE
           BACKL_ON;
 #endif
           break;
@@ -2587,7 +2592,7 @@ void _settings_data_up(uint8_t pos) //прибавление данных
       switch (mainSettings.sleep_switch) {
         case 0:
           mainSettings.sleep_switch = 1;
-#if defined(PCD8544)
+#if defined(PCD8544) || BACKL_MODE
           BACKL_ON;
 #endif
           break;
