@@ -1,5 +1,5 @@
 /*
-  Arduino IDE 1.8.13 версия прошивки RADON v4.4.6 release от 17.04.26
+  Arduino IDE 1.8.13 версия прошивки RADON v4.4.6 release от 20.04.26
   Исходник прошивки RADON - https://github.com/radon-lab/ArDos_with_RADON
   Страница проекта ArDos на форуме - http://arduino.ru/forum/proekty/ardos-dozimetr-prodolzhenie-temy-chast-%E2%84%962
 
@@ -311,7 +311,7 @@ void INIT_SYSTEM(void) //инициализация
   LCD_INIT; //инициализация пинов дисплея
 #endif
 
-#if defined(PCD8544) || BACKL_MODE
+#if defined(PCD8544) || BUTTON_BACKL
   BACKL_INIT; //инициализация подсветки
 #endif
 
@@ -347,7 +347,7 @@ void INIT_SYSTEM(void) //инициализация
 
   _init_lcd(); //инициализируем дисплей
   _wdt_enable(); //запускаем WatchDog
-#if defined(PCD8544) || BACKL_MODE
+#if defined(PCD8544) || BUTTON_BACKL
   _backl_lcd_on(); //включаем подсветку
 #endif
 
@@ -583,7 +583,7 @@ boolean _system_task(void) //основная задача
       if (!timer_flash) RAD_FLASH_OFF; //выключаем индикацию
     }
 
-#if defined(PCD8544) || BACKL_MODE
+#if defined(PCD8544) || BUTTON_BACKL
     if (timer_light) { //отсчет миллисекунд для подсветки
       timer_light--;
       if (!timer_light) {
@@ -952,7 +952,7 @@ boolean _system_task(void) //основная задача
           if (mainSettings.sleep_switch && !sleep_manual) { //если сон не выключен
             if (sleep_count <= ((sleep_disable || (mainSettings.sleep_switch == 1)) ? mainSettings.time_bright : mainSettings.time_sleep)) sleep_count++; //счет ухода в сон
             if (sleep_count == mainSettings.time_bright) { //если пришло время выключить подсветку
-#if defined(PCD8544) || BACKL_MODE
+#if defined(PCD8544) || BUTTON_BACKL
               _backl_lcd_off(); //выключаем подсветку
 #endif
 #if defined(SSD1306) || defined(SH1106) || defined(CH1116)
@@ -1704,7 +1704,7 @@ uint8_t measurMenu(void) //режим замера
       if (_bat_massege()) return POWER_DOWN_PROGRAM; //обработка сообщения разряженой батареи
 
       switch (_button_state()) {
-#if defined(PCD8544) || BACKL_MODE
+#if defined(PCD8544) || BUTTON_BACKL
 #if BUTTON_MODE
         case UP_KEY_PRESS: //клик кнопки вверх
 #else
@@ -1838,7 +1838,7 @@ uint8_t searchMenu(void) //инициализация режима поиск
       if (_bat_massege()) return POWER_DOWN_PROGRAM; //обработка сообщения разряженой батареи
 
       switch (_button_state()) {
-#if defined(PCD8544) || BACKL_MODE
+#if defined(PCD8544) || BUTTON_BACKL
 #if BUTTON_MODE
         case UP_KEY_PRESS: //нажатие кнопки вверх
 #else
@@ -2580,7 +2580,7 @@ void _settings_data_up(uint8_t pos) //прибавление данных
       switch (mainSettings.sleep_switch) {
         case 0:
           mainSettings.sleep_switch = 2;
-#if defined(PCD8544) || BACKL_MODE
+#if defined(PCD8544) || BUTTON_BACKL
           BACKL_ON;
 #endif
           break;
@@ -2592,7 +2592,7 @@ void _settings_data_up(uint8_t pos) //прибавление данных
       switch (mainSettings.sleep_switch) {
         case 0:
           mainSettings.sleep_switch = 1;
-#if defined(PCD8544) || BACKL_MODE
+#if defined(PCD8544) || BUTTON_BACKL
           BACKL_ON;
 #endif
           break;
