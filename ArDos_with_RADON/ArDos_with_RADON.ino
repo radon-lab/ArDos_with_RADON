@@ -1,5 +1,5 @@
 /*
-  Arduino IDE 1.8.13 версия прошивки RADON v4.4.6 release от 20.04.26
+  Arduino IDE 1.8.13 версия прошивки RADON v4.4.6 release от 06.07.26
   Исходник прошивки RADON - https://github.com/radon-lab/ArDos_with_RADON
   Страница проекта ArDos на форуме - http://arduino.ru/forum/proekty/ardos-dozimetr-prodolzhenie-temy-chast-%E2%84%962
 
@@ -327,10 +327,10 @@ void INIT_SYSTEM(void) //инициализация
   _init_timers(); //инициализация таймеров
 
 #ifdef PRR0
-  PRR0 = (0x01 << PRTWI0) | (0x01 << PRTIM2) | (0x01 << PRTIM0) | (0x01 << PRUSART1) | (0x01 << PRTIM1) | (0x01 << PRSPI0) | (0x01 << PRUSART0) | (0x01 << PRADC); //отключаем все лишнее (I2C | TIMER2 | TIMER0 | TIMER1 | SPI | UART)
+  PRR0 = (0x01 << PRTWI0) | (0x01 << PRTIM2) | (0x01 << PRTIM0) | (0x01 << PRUSART1) | (0x01 << PRTIM1) | (0x01 << PRSPI0) | (0x01 << PRUSART0) | (0x01 << PRADC); //отключаем все лишнее (I2C | TIMER2 | TIMER0 | TIMER1 | SPI | UART | ADC)
   PRR1 = (0x01 << PRTWI1) | (0x01 << PRPTC) | (0x01 << PRTIM4) | (0x01 << PRSPI1) | (0x01 << PRTIM3);
 #else
-  PRR = (0x01 << PRTWI) | (0x01 << PRTIM2) | (0x01 << PRTIM0) | (0x01 << PRTIM1) | (0x01 << PRSPI) | (0x01 << PRUSART0); //отключаем все лишнее (I2C | TIMER2 | TIMER0 | TIMER1 | SPI | UART)
+  PRR = (0x01 << PRTWI) | (0x01 << PRTIM2) | (0x01 << PRTIM0) | (0x01 << PRTIM1) | (0x01 << PRSPI) | (0x01 << PRUSART0) | (0x01 << PRADC); //отключаем все лишнее (I2C | TIMER2 | TIMER0 | TIMER1 | SPI | UART | ADC)
 #endif
 
 #if PUMP_FEEDBACK != 1
